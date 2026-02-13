@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { UserProvider } from '@/components/providers/user-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
