@@ -1,8 +1,8 @@
-import { Metadata } from "next";
+﻿import { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { Header } from "@/components/layout/Header";
 import { ClientLayout } from "./ClientLayout";
 import { getUserWithCompany } from "@/lib/supabase/server";
 
@@ -21,8 +21,10 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // R├®cup├®rer l'utilisateur c├┤t├® serveur
   const user = await getUserWithCompany();
   
+  // Rediriger vers login si pas authentifi├®
   if (!user) {
     redirect("/login");
   }
