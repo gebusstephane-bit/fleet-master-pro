@@ -1,15 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Désactiver la compression
+  compress: false,
+  
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Désactiver complètement le output file tracing
-  outputFileTracing: false,
-  // Désactiver l'optimisation SWC qui cause des bugs
-  swcMinify: false,
   images: {
     remotePatterns: [
       {
@@ -19,15 +18,25 @@ const nextConfig = {
     ],
   },
   experimental: {
-    // Désactiver les optimisations expérimentales problématiques
-    optimizeCss: false,
     serverComponentsExternalPackages: ['@supabase/supabase-js'],
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...config.resolve.alias,
       'mapbox-gl': 'mapbox-gl/dist/mapbox-gl.js',
     };
+    
+    // Fix chunking pour éviter clientModules error
+    if (!isServer) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          default: false,
+          vendors: false,
+        },
+      };
+    }
+    
     return config;
   },
 };
