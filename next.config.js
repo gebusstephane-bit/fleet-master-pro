@@ -14,6 +14,8 @@ const nextConfig = {
       },
     ],
   },
+  // Désactiver le tracing qui cause l'erreur ENOENT
+  outputFileTracing: false,
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
