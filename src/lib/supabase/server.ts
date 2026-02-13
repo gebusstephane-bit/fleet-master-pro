@@ -6,7 +6,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { Database } from '@/types/supabase';
-import { logger } from '@/lib/logger';
 
 /**
  * Crée un client Supabase standard (respecte RLS)
@@ -81,71 +80,61 @@ export async function getSession() {
  */
 export async function getUserWithCompany() {
   try {
+    // Vérifier que les variables d'environnement sont définies
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.error('getUserWithCompany: Missing Supabase env vars');
+      return null;
+    }
+
     // 1. Vérifier l'authentification avec le client standard
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError) {
-      logger.info('getUserWithCompany: Erreur auth', { message: authError.message });
+      console.log('getUserWithCompany: Auth error', authError.message);
       return null;
     }
     
     if (!user) {
-      logger.info('getUserWithCompany: Pas d\'utilisateur authentifié');
+      console.log('getUserWithCompany: No authenticated user');
       return null;
     }
     
-    logger.info('getUserWithCompany: Auth user ID', { userId: user.id });
+    console.log('getUserWithCompany: User found', user.id);
     
     // 2. Récupérer les données avec le client admin (bypass RLS)
     const adminClient = createAdminClient();
     
-    // ESSAI 1: Table profiles
-    let userData = null;
-    let companyData = null;
+    // Récupérer le profil
+    const { data: profile, error: profileError } = await adminClient
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
     
-    try {
-      const { data: profile, error: profileError } = await adminClient
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      if (!profileError && profile) {
-        logger.info('getUserWithCompany: Profil trouvé dans profiles');
-        userData = profile;
-      }
-    } catch (e) {
-      logger.info('getUserWithCompany: Erreur profiles', { error: e });
-    }
-    
-    // ESSAI 2: Table users (fallback)
-    if (!userData) {
-      try {
-        const { data: userDb, error: userError } = await adminClient
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        if (!userError && userDb) {
-          logger.info('getUserWithCompany: Profil trouvé dans users');
-          userData = userDb;
-        }
-      } catch (e) {
-        logger.info('getUserWithCompany: Erreur users', { error: e });
-      }
-    }
-    
-    if (!userData) {
-      logger.info('getUserWithCompany: Aucun profil trouvé');
-      // Créer un profil minimal pour permettre la connexion
+    if (profileError) {
+      console.log('getUserWithCompany: Profile error', profileError.message);
+      // Retourner un profil minimal basé sur l'utilisateur auth
       return {
         id: user.id,
-        email: user.email,
+        email: user.email || '',
         first_name: user.user_metadata?.first_name || '',
         last_name: user.user_metadata?.last_name || '',
-        role: 'ADMIN', // Par défaut pour permettre l'accès
+        role: 'ADMIN',
+        is_active: true,
+        company_id: null,
+        companies: null,
+      };
+    }
+    
+    if (!profile) {
+      console.log('getUserWithCompany: No profile found');
+      return {
+        id: user.id,
+        email: user.email || '',
+        first_name: user.user_metadata?.first_name || '',
+        last_name: user.user_metadata?.last_name || '',
+        role: 'ADMIN',
         is_active: true,
         company_id: null,
         companies: null,
@@ -153,33 +142,28 @@ export async function getUserWithCompany() {
     }
     
     // 3. Récupérer la company si possible
-    if (userData.company_id) {
+    let companyData = null;
+    if (profile.company_id) {
       try {
         const { data: company } = await adminClient
           .from('companies')
           .select('*')
-          .eq('id', userData.company_id)
+          .eq('id', profile.company_id)
           .single();
         companyData = company;
       } catch (e) {
-        logger.info('getUserWithCompany: Pas de company trouvée');
+        console.log('getUserWithCompany: No company found');
       }
     }
     
-    logger.info('getUserWithCompany: Données récupérées', {
-      id: userData?.id,
-      email: userData?.email,
-      role: userData?.role,
-      company_id: userData?.company_id,
-      hasCompany: !!companyData,
-    });
+    console.log('getUserWithCompany: Success', { id: profile.id, email: profile.email });
     
     return {
-      ...userData,
+      ...profile,
       companies: companyData,
     };
   } catch (e) {
-    logger.error('getUserWithCompany: Exception', e as Error);
+    console.error('getUserWithCompany: Exception', e);
     return null;
   }
 }
@@ -200,36 +184,13 @@ export async function getCurrentUser() {
     // Récupérer juste le company_id avec le client admin
     const adminClient = createAdminClient();
     
-    // Essayer profiles d'abord
-    let data = null;
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('id, email, role, company_id')
+      .eq('id', user.id)
+      .single();
     
-    try {
-      const result = await adminClient
-        .from('profiles')
-        .select('id, email, role, company_id')
-        .eq('id', user.id)
-        .single();
-      if (result.data) data = result.data;
-    } catch (e) {
-      logger.info('getCurrentUser: profiles error, trying users');
-    }
-    
-    // Fallback sur users
-    if (!data) {
-      try {
-        const result = await adminClient
-          .from('profiles')
-          .select('id, email, company_id')
-          .eq('id', user.id)
-          .single();
-        if (result.data) data = { ...result.data, role: 'ADMIN' };
-      } catch (e) {
-        logger.info('getCurrentUser: users error too');
-      }
-    }
-    
-    if (!data) {
-      // Retourner des données minimales
+    if (!profile) {
       return {
         id: user.id,
         email: user.email,
@@ -238,9 +199,9 @@ export async function getCurrentUser() {
       };
     }
     
-    return data;
+    return profile;
   } catch (e) {
-    logger.error('getCurrentUser: Exception', e as Error);
+    console.error('getCurrentUser: Exception', e);
     return null;
   }
 }
