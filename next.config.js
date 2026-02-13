@@ -1,14 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   eslint: {
-    // Désactiver ESLint pendant le build pour les erreurs (garder les warnings)
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // Désactiver les erreurs TypeScript pendant le build
     ignoreBuildErrors: true,
   },
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -16,7 +16,6 @@ const nextConfig = {
       },
     ],
   },
-  // Configuration pour Mapbox (cjs module)
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
