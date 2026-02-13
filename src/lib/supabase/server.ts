@@ -62,7 +62,22 @@ export async function getUserWithCompany() {
       return null;
     }
     
-    // Retourner un objet minimal
+    // Récupérer le profil depuis la base de données
+    const adminClient = createAdminClient();
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    
+    if (profile) {
+      return {
+        ...profile,
+        companies: null,
+      };
+    }
+    
+    // Fallback: retourner les données de auth
     return {
       id: user.id,
       email: user.email || '',
