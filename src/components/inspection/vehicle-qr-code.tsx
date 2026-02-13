@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Printer, QrCode, Link2, ExternalLink } from 'lucide-react';
-import { generateInspectionToken } from '@/actions/inspections';
+import { Printer, QrCode, Link2, ExternalLink, Download } from 'lucide-react';
 
 interface VehicleQRCodeProps {
   vehicleId: string;
@@ -14,24 +14,34 @@ interface VehicleQRCodeProps {
 }
 
 export function VehicleQRCode({ vehicleId, registration }: VehicleQRCodeProps) {
-  const [qrData, setQrData] = useState<{ url: string; token: string } | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
-  const generateQR = async () => {
-    setLoading(true);
-    try {
-      const result = await generateInspectionToken({ vehicleId });
-      if (result?.data?.success) {
-        setQrData({
-          url: result.data.qrCodeUrl,
-          token: result.data.token,
-        });
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-    } finally {
-      setLoading(false);
-    }
+  // URL publique complete pour le QR code
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+  const qrUrl = `${baseUrl}/inspection/${vehicleId}`;
+
+  const handleDownload = () => {
+    const svg = document.getElementById(`qr-inspection-${vehicleId}`);
+    if (!svg) return;
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx?.drawImage(img, 0, 0);
+      const pngFile = canvas.toDataURL('image/png');
+      
+      const downloadLink = document.createElement('a');
+      downloadLink.download = `qr-code-${registration}.png`;
+      downloadLink.href = pngFile;
+      downloadLink.click();
+    };
+
+    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
   };
 
   return (
@@ -43,28 +53,39 @@ export function VehicleQRCode({ vehicleId, registration }: VehicleQRCodeProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!qrData ? (
+        {!showQR ? (
           <div className="text-center py-6">
             <p className="text-sm text-slate-500 mb-4">
               Générez un QR Code pour permettre le contrôle rapide de ce véhicule
             </p>
-            <Button onClick={generateQR} disabled={loading} className="w-full">
-              {loading ? 'Génération...' : 'Générer QR Code'}
+            <Button onClick={() => setShowQR(true)} className="w-full">
+              Générer QR Code
             </Button>
           </div>
         ) : (
           <>
             {/* QR Code */}
             <div className="flex justify-center p-4 bg-white rounded-lg border">
-              {/* Ici on intègrera un vrai composant QR Code */}
-              <div className="w-48 h-48 bg-slate-100 flex items-center justify-center text-slate-400">
-                <QrCode className="w-24 h-24" />
-              </div>
+              <QRCodeSVG
+                id={`qr-inspection-${vehicleId}`}
+                value={qrUrl}
+                size={200}
+                level="M"
+                includeMargin={true}
+                imageSettings={{
+                  src: '/logo.png',
+                  x: undefined,
+                  y: undefined,
+                  height: 24,
+                  width: 24,
+                  excavate: true,
+                }}
+              />
             </div>
 
             <div className="text-center space-y-2">
               <p className="text-sm text-slate-500">Scannez pour contrôler ce véhicule</p>
-              <p className="text-xs text-slate-400 break-all font-mono">{qrData.url}</p>
+              <p className="text-xs text-slate-400 break-all font-mono">{qrUrl}</p>
             </div>
 
             <div className="flex gap-2">
@@ -79,10 +100,18 @@ export function VehicleQRCode({ vehicleId, registration }: VehicleQRCodeProps) {
               <Button 
                 variant="outline" 
                 className="flex-1"
-                onClick={() => navigator.clipboard.writeText(qrData.url)}
+                onClick={handleDownload}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                PNG
+              </Button>
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => navigator.clipboard.writeText(qrUrl)}
               >
                 <Link2 className="w-4 h-4 mr-2" />
-                Copier lien
+                Copier
               </Button>
             </div>
           </>

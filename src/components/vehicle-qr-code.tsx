@@ -24,13 +24,12 @@ export function VehicleQRCode({
 }: VehicleQRCodeProps) {
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   
-  // Format des donnees du QR code
-  const qrData = `fleetmaster://vehicle/${vehicleId}`;
+  // URL publique complete pour le QR code (doit etre une URL web valide)
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+  const vehicleUrl = `${baseUrl}/inspection/${vehicleId}`;
   
-  // URL publique (si le vehicule doit etre accessible via URL)
-  const vehicleUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/inspection/${vehicleId}`
-    : '';
+  // Les donnees du QR code = URL publique directement (pas de schema personnalise)
+  const qrData = vehicleUrl;
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
