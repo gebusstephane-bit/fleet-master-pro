@@ -1,0 +1,231 @@
+'use server';
+
+import { z } from 'zod';
+import { authActionClient } from '@/lib/safe-action';
+import { createAdminClient } from '@/lib/supabase/server';
+import { STRIPE_PLANS, PlanType } from '@/lib/stripe/config';
+import { revalidatePath } from 'next/cache';
+
+// Schémas
+const upgradeSchema = z.object({
+  plan: z.enum(['BASIC', 'PRO']),
+  yearly: z.boolean().default(false),
+});
+
+// Récupérer l'abonnement de l'entreprise
+export const getCompanySubscription = authActionClient
+  .action(async ({ ctx }) => {
+    const supabase = createAdminClient();
+    
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('company_id', ctx.user.company_id)
+      .single();
+    
+    if (error) {
+      throw new Error('Abonnement non trouvé');
+    }
+    
+    return { success: true, data };
+  });
+
+// Vérifier les limites actuelles
+export const checkSubscriptionLimits = authActionClient
+  .action(async ({ ctx }) => {
+    const supabase = createAdminClient();
+    
+    // Récupérer l'abonnement avec les compteurs
+    const { data: sub } = await supabase
+      .from('company_subscription')
+      .select('*')
+      .eq('company_id', ctx.user.company_id)
+      .single();
+    
+    if (!sub) {
+      throw new Error('Abonnement non trouvé');
+    }
+    
+    return {
+      success: true,
+      data: {
+        plan: sub.plan,
+        vehicleLimit: sub.vehicle_limit,
+        vehicleCount: sub.current_vehicle_count,
+        canAddVehicle: sub.can_add_vehicle,
+        userLimit: sub.user_limit,
+        userCount: sub.current_user_count,
+        canAddUser: sub.can_add_user,
+        periodEnd: sub.current_period_end,
+      }
+    };
+  });
+
+// Créer une session de checkout Stripe
+export const createCheckoutSession = authActionClient
+  .schema(upgradeSchema)
+  .action(async ({ parsedInput, ctx }) => {
+    const { plan, yearly } = parsedInput;
+    const supabase = createAdminClient();
+    
+    // Récupérer l'entreprise
+    const { data: company } = await supabase
+      .from('companies')
+      .select('id, name, email')
+      .eq('id', ctx.user.company_id)
+      .single();
+    
+    if (!company) {
+      throw new Error('Entreprise non trouvée');
+    }
+    
+    // Récupérer ou créer le customer Stripe
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('stripe_customer_id')
+      .eq('company_id', company.id)
+      .single();
+    
+    let customerId = subscription?.stripe_customer_id;
+    
+    if (!customerId) {
+      // Créer un customer Stripe
+      const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY!));
+      
+      const customer = await stripe.customers.create({
+        email: company.email,
+        name: company.name,
+        metadata: {
+          company_id: company.id,
+        },
+      });
+      
+      customerId = customer.id;
+      
+      // Sauvegarder le customer_id
+      await supabase
+        .from('subscriptions')
+        .update({ stripe_customer_id: customerId })
+        .eq('company_id', company.id);
+    }
+    
+    // Créer la session de checkout
+    const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY!));
+    
+    const priceId = yearly 
+      ? STRIPE_PLANS[plan].stripePriceId?.replace('monthly', 'yearly')
+      : STRIPE_PLANS[plan].stripePriceId;
+    
+    if (!priceId) {
+      throw new Error('Price ID non configuré');
+    }
+    
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?success=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
+      subscription_data: {
+        metadata: {
+          company_id: company.id,
+          plan: plan,
+        },
+        trial_period_days: 14, // 14 jours d'essai
+      },
+    });
+    
+    return { success: true, url: session.url };
+  });
+
+// Créer une demande Enterprise (sur devis)
+export const requestEnterpriseQuote = authActionClient
+  .schema(z.object({
+    message: z.string().min(10),
+    phone: z.string().optional(),
+  }))
+  .action(async ({ parsedInput, ctx }) => {
+    const { message, phone } = parsedInput;
+    const supabase = createAdminClient();
+    
+    // Récupérer les infos de l'entreprise
+    const { data: company } = await supabase
+      .from('companies')
+      .select('id, name, email, siret')
+      .eq('id', ctx.user.company_id)
+      .single();
+    
+    if (!company) {
+      throw new Error('Entreprise non trouvée');
+    }
+    
+    // Envoyer email à l'équipe commerciale
+    const { sendEmail } = await import('@/lib/email');
+    
+    await sendEmail({
+      to: 'sales@fleetmaster.pro',
+      subject: `Demande de devis Enterprise - ${company.name}`,
+      html: `
+        <h2>Nouvelle demande de devis Enterprise</h2>
+        <p><strong>Entreprise:</strong> ${company.name}</p>
+        <p><strong>Email:</strong> ${company.email}</p>
+        <p><strong>SIRET:</strong> ${company.siret || 'Non renseigné'}</p>
+        ${phone ? `<p><strong>Téléphone:</strong> ${phone}</p>` : ''}
+        <p><strong>Message:</strong></p>
+        <blockquote>${message}</blockquote>
+        <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/companies/${company.id}">Voir la fiche entreprise</a></p>
+      `,
+    });
+    
+    // Créer une notification interne
+    await supabase.from('notifications').insert({
+      company_id: company.id,
+      type: 'ENTERPRISE_QUOTE_REQUEST',
+      title: 'Demande de devis Enterprise',
+      message: `Demande envoyée par ${company.name}`,
+      read: false,
+    });
+    
+    revalidatePath('/settings/billing');
+    
+    return { success: true, message: 'Votre demande a été envoyée. Notre équipe vous contactera sous 24h.' };
+  });
+
+// Downgrader vers Starter (annulation)
+export const cancelSubscription = authActionClient
+  .action(async ({ ctx }) => {
+    const supabase = createAdminClient();
+    
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('stripe_subscription_id, plan')
+      .eq('company_id', ctx.user.company_id)
+      .single();
+    
+    if (!sub?.stripe_subscription_id) {
+      throw new Error('Aucun abonnement actif à annuler');
+    }
+    
+    // Annuler chez Stripe
+    const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY!));
+    
+    await stripe.subscriptions.cancel(sub.stripe_subscription_id);
+    
+    // Mettre à jour en base (le webhook confirmera, mais on prépare)
+    await supabase
+      .from('subscriptions')
+      .update({
+        status: 'CANCELED',
+        canceled_at: new Date().toISOString(),
+      })
+      .eq('company_id', ctx.user.company_id);
+    
+    revalidatePath('/settings/billing');
+    
+    return { success: true, message: 'Abonnement annulé. Vous resterez sur le plan actuel jusqu\'à la fin de la période.' };
+  });
