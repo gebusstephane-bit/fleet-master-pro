@@ -6,7 +6,27 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { STRIPE_PLANS, PlanType } from '@/lib/stripe/config';
+// PlanType: 'ESSENTIAL' | 'PRO' | 'UNLIMITED'
+type PlanType = 'ESSENTIAL' | 'PRO' | 'UNLIMITED';
+
+// Mapping des plans vers les limites
+const PLAN_LIMITS: Record<PlanType, { maxVehicles: number; maxDrivers: number; features: string[] }> = {
+  ESSENTIAL: {
+    maxVehicles: 3,
+    maxDrivers: 2,
+    features: ['3 véhicules maximum', '2 utilisateurs', 'Support email (48h)', 'Tableau de bord'],
+  },
+  PRO: {
+    maxVehicles: 15,
+    maxDrivers: 5,
+    features: ['15 véhicules maximum', '5 utilisateurs', 'Support prioritaire (24h)', 'API d\'accès'],
+  },
+  UNLIMITED: {
+    maxVehicles: 999,
+    maxDrivers: 999,
+    features: ['Véhicules illimités', 'Utilisateurs illimités', 'Support dédié 24/7', 'Personnalisation complète'],
+  },
+};
 import { stripe, isStripeConfigured, isWebhookConfigured } from '@/lib/stripe/stripe';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
@@ -109,7 +129,7 @@ async function handleNewRegistration(
   try {
     // Récupérer les métadonnées
     const metadata = session.metadata || session.subscription?.metadata || {};
-    const plan = (metadata.plan as PlanType) || 'ESSENTIAL';
+    const plan = (metadata.plan_type as PlanType) || 'ESSENTIAL';
     const email = metadata.email || session.customer_details?.email;
     const companyName = metadata.company_name;
     const siret = metadata.siret || '';
@@ -171,8 +191,8 @@ async function handleNewRegistration(
         email,
         subscription_plan: plan.toLowerCase(),
         subscription_status: 'active', // ✅ ACTIF car paiement réussi
-        max_vehicles: STRIPE_PLANS[plan]?.maxVehicles || 1,
-        max_drivers: STRIPE_PLANS[plan]?.maxDrivers || 1,
+        max_vehicles: PLAN_LIMITS[plan]?.maxVehicles || 3,
+        max_drivers: PLAN_LIMITS[plan]?.maxDrivers || 2,
         stripe_customer_id: session.customer as string,
       })
       .select()
@@ -217,9 +237,9 @@ async function handleNewRegistration(
         status: 'ACTIVE',
         current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
         current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-        vehicle_limit: STRIPE_PLANS[plan]?.maxVehicles || 1,
-        user_limit: STRIPE_PLANS[plan]?.maxDrivers || 1,
-        features: STRIPE_PLANS[plan]?.features || [],
+        vehicle_limit: PLAN_LIMITS[plan]?.maxVehicles || 3,
+        user_limit: PLAN_LIMITS[plan]?.maxDrivers || 2,
+        features: PLAN_LIMITS[plan]?.features || [],
         trial_ends_at: subscription.trial_end 
           ? new Date(subscription.trial_end * 1000).toISOString()
           : null,
@@ -268,9 +288,9 @@ async function handleSubscriptionUpdate(
     status: 'ACTIVE',
     current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
     current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-    vehicle_limit: STRIPE_PLANS[plan]?.maxVehicles || 1,
-    user_limit: STRIPE_PLANS[plan]?.maxDrivers || 1,
-    features: STRIPE_PLANS[plan]?.features || [],
+    vehicle_limit: PLAN_LIMITS[plan]?.maxVehicles || 3,
+    user_limit: PLAN_LIMITS[plan]?.maxDrivers || 2,
+    features: PLAN_LIMITS[plan]?.features || [],
   }, {
     onConflict: 'company_id'
   });
@@ -279,8 +299,8 @@ async function handleSubscriptionUpdate(
   await supabase.from('companies').update({
     subscription_plan: plan.toLowerCase(),
     subscription_status: 'active',
-    max_vehicles: STRIPE_PLANS[plan]?.maxVehicles || 1,
-    max_drivers: STRIPE_PLANS[plan]?.maxDrivers || 1,
+    max_vehicles: PLAN_LIMITS[plan]?.maxVehicles || 3,
+    max_drivers: PLAN_LIMITS[plan]?.maxDrivers || 2,
   }).eq('id', companyId);
 
   console.log(`✅ Subscription updated for ${companyId} -> ${plan}`);
@@ -395,17 +415,17 @@ async function handleSubscriptionUpdated(
   if (sub?.company_id) {
     await supabase.from('subscriptions').update({
       plan: plan,
-      vehicle_limit: STRIPE_PLANS[plan].vehicleLimit,
-      user_limit: STRIPE_PLANS[plan].userLimit,
-      features: STRIPE_PLANS[plan].features,
+      vehicle_limit: PLAN_LIMITS[plan].maxVehicles,
+      user_limit: PLAN_LIMITS[plan].maxDrivers,
+      features: PLAN_LIMITS[plan].features,
       current_period_start: new Date(updatedSub.current_period_start * 1000).toISOString(),
       current_period_end: new Date(updatedSub.current_period_end * 1000).toISOString(),
     }).eq('stripe_subscription_id', updatedSub.id);
 
     await supabase.from('companies').update({
       subscription_plan: plan.toLowerCase(),
-      max_vehicles: STRIPE_PLANS[plan].vehicleLimit,
-      max_drivers: STRIPE_PLANS[plan].userLimit,
+      max_vehicles: PLAN_LIMITS[plan].maxVehicles,
+      max_drivers: PLAN_LIMITS[plan].maxDrivers,
     }).eq('id', sub.company_id);
   }
 

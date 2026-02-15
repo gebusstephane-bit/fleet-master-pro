@@ -7,11 +7,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe, isStripeConfigured } from '@/lib/stripe/stripe';
-import { STRIPE_PLANS, PlanType } from '@/lib/stripe/config';
 
 interface CheckoutRequest {
   email: string;
-  plan: string;
+  priceId: string;
+  planType: string;
   tempData: {
     companyName: string;
     siret: string;
@@ -33,22 +33,20 @@ export async function POST(request: NextRequest) {
     }
 
     const body: CheckoutRequest = await request.json();
-    const { email, plan, tempData } = body;
+    const { email, priceId, planType, tempData } = body;
 
     // Validation
-    if (!email || !plan || !tempData) {
+    if (!email || !priceId || !planType || !tempData) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    const normalizedPlan = plan.toUpperCase() as PlanType;
-    const planConfig = STRIPE_PLANS[normalizedPlan];
-
-    if (!planConfig || !planConfig.stripePriceId) {
+    // Validation du priceId (doit commencer par price_)
+    if (!priceId.startsWith('price_')) {
       return NextResponse.json(
-        { error: 'Invalid plan or Stripe not configured for this plan' },
+        { error: 'Invalid price ID format' },
         { status: 400 }
       );
     }
@@ -69,7 +67,7 @@ export async function POST(request: NextRequest) {
       customer: customer.id,
       line_items: [
         {
-          price: planConfig.stripePriceId,
+          price: priceId,
           quantity: 1,
         },
       ],
@@ -79,7 +77,7 @@ export async function POST(request: NextRequest) {
       subscription_data: {
         metadata: {
           registration_pending: 'true',
-          plan: normalizedPlan,
+          plan_type: planType,
           company_name: tempData.companyName,
           siret: tempData.siret,
           first_name: tempData.firstName,
@@ -91,7 +89,7 @@ export async function POST(request: NextRequest) {
       },
       metadata: {
         registration_pending: 'true',
-        plan: normalizedPlan,
+        plan_type: planType,
         company_name: tempData.companyName,
         email: email,
       },

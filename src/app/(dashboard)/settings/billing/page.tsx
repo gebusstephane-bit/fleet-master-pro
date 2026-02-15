@@ -11,8 +11,6 @@ import {
   ArrowRight, 
   Building2,
   Calendar,
-  Car,
-  Users,
   Sparkles,
   Loader2
 } from 'lucide-react';
@@ -20,8 +18,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useSubscription, useSubscriptionLimits, useCreateCheckout, useCancelSubscription } from '@/hooks/use-subscription';
-import { STRIPE_PLANS, formatPrice } from '@/lib/stripe/config';
-import { PlanType } from '@/lib/stripe/config';
+import { PLANS, formatPrice, PlanId, ACTIVE_PLANS } from '@/lib/plans';
+
+// Helper pour convertir le plan de la DB (uppercase) vers la clé PLANS (lowercase)
+function getPlanKey(dbPlan: string): PlanId {
+  return dbPlan.toLowerCase() as PlanId;
+}
 
 export default function BillingPage() {
   const searchParams = useSearchParams();
@@ -33,7 +35,6 @@ export default function BillingPage() {
   const createCheckout = useCreateCheckout();
   const cancelSub = useCancelSubscription();
   
-  const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(planParam as PlanType || null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   if (subLoading || limitsLoading) {
@@ -44,45 +45,43 @@ export default function BillingPage() {
     );
   }
 
-  const currentPlan = subscription?.plan || 'STARTER';
-  const isEnterprise = currentPlan === 'ENTERPRISE';
+  const currentPlanKey = getPlanKey(subscription?.plan || 'ESSENTIAL');
+  const currentPlan = PLANS[currentPlanKey];
+  const isUnlimited = currentPlanKey === 'unlimited';
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Abonnement & Facturation</h1>
-        <p className="text-gray-600">Gérez votre plan et vos paiements</p>
+        <h1 className="text-2xl font-bold">Facturation</h1>
+        <p className="text-gray-500">Gérez votre abonnement et vos paiements</p>
       </div>
 
       {/* Success Message */}
-      <AnimatePresence>
-        {success && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3"
-          >
-            <CheckCircle className="h-5 w-5 text-green-600" />
-            <div>
-              <p className="font-medium text-green-800">Paiement confirmé !</p>
-              <p className="text-sm text-green-700">
-                Votre abonnement {planParam} est maintenant actif.
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {success && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3"
+        >
+          <CheckCircle className="h-5 w-5 text-green-600" />
+          <div>
+            <p className="font-medium text-green-800">Paiement réussi !</p>
+            <p className="text-sm text-green-600">
+              Votre abonnement a été mis à jour{planParam ? ` vers le plan ${planParam}` : ''}.
+            </p>
+          </div>
+        </motion.div>
+      )}
 
-      {/* Current Plan Card */}
+      {/* Current Plan */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-blue-500" />
-                Plan actuel : {STRIPE_PLANS[currentPlan].name}
+                Plan actuel : {currentPlan.name}
               </CardTitle>
               <CardDescription>
                 {subscription?.status === 'TRIALING' 
@@ -91,14 +90,14 @@ export default function BillingPage() {
                 }
               </CardDescription>
             </div>
-            {isEnterprise ? (
+            {isUnlimited ? (
               <span className="inline-flex items-center px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-sm font-medium">
                 <Building2 className="h-4 w-4 mr-1" />
-                Sur mesure
+                Illimité
               </span>
             ) : (
               <span className="text-2xl font-bold">
-                {formatPrice(STRIPE_PLANS[currentPlan].priceMonthly ? STRIPE_PLANS[currentPlan].priceMonthly * 100 : null)}
+                {formatPrice(currentPlan.priceMonthly)}
                 <span className="text-sm font-normal text-gray-500">/mois</span>
               </span>
             )}
@@ -130,7 +129,7 @@ export default function BillingPage() {
           </div>
 
           {/* Actions */}
-          {!isEnterprise && currentPlan !== 'STARTER' && (
+          {!isUnlimited && subscription?.plan !== 'STARTER' && (
             <div className="flex gap-3">
               <Button 
                 variant="outline" 
@@ -163,9 +162,9 @@ export default function BillingPage() {
               <div className="flex-1">
                 <p className="font-medium text-amber-800">Confirmer l'annulation ?</p>
                 <p className="text-sm text-amber-700 mt-1">
-                  Vous resterez sur le plan {STRIPE_PLANS[currentPlan].name} jusqu'au 
+                  Vous resterez sur le plan {currentPlan.name} jusqu'au 
                   {new Date(subscription?.current_period_end).toLocaleDateString('fr-FR')}, 
-                  puis serez downgradé vers Starter (1 véhicule).
+                  puis perdrez l'accès au dashboard.
                 </p>
                 <div className="flex gap-3 mt-4">
                   <Button
@@ -193,48 +192,44 @@ export default function BillingPage() {
       </AnimatePresence>
 
       {/* Upgrade Options */}
-      {currentPlan !== 'ENTERPRISE' && (
+      {!isUnlimited && (
         <div>
           <h2 className="text-lg font-semibold mb-4">Upgrader votre plan</h2>
           <div className="grid md:grid-cols-3 gap-4">
-            {(['BASIC', 'PRO', 'ENTERPRISE'] as PlanType[]).map((plan) => {
-              const planConfig = STRIPE_PLANS[plan];
-              const isCurrent = currentPlan === plan;
-              const canUpgrade = ['STARTER', 'BASIC'].includes(currentPlan) && 
-                ['BASIC', 'PRO', 'ENTERPRISE'].indexOf(plan) > ['STARTER', 'BASIC'].indexOf(currentPlan);
+            {ACTIVE_PLANS.map((planKey) => {
+              const plan = PLANS[planKey];
+              const dbPlanName = planKey.toUpperCase();
+              const isCurrent = currentPlanKey === planKey;
+              const canUpgrade = ['ESSENTIAL', 'PRO'].includes(subscription?.plan || 'ESSENTIAL') && 
+                ['ESSENTIAL', 'PRO', 'UNLIMITED'].indexOf(dbPlanName) > 
+                ['ESSENTIAL', 'PRO', 'UNLIMITED'].indexOf(subscription?.plan || 'ESSENTIAL');
 
               return (
                 <Card 
-                  key={plan} 
+                  key={planKey} 
                   className={`${isCurrent ? 'border-blue-500 bg-blue-50/30' : ''} ${
-                    plan === 'ENTERPRISE' ? 'bg-gray-900 text-white' : ''
+                    planKey === 'unlimited' ? 'bg-gray-900 text-white' : ''
                   }`}
                 >
                   <CardHeader>
-                    <CardTitle className={`text-lg ${plan === 'ENTERPRISE' ? 'text-white' : ''}`}>
-                      {planConfig.name}
+                    <CardTitle className={`text-lg ${planKey === 'unlimited' ? 'text-white' : ''}`}>
+                      {plan.name}
                     </CardTitle>
-                    <CardDescription className={plan === 'ENTERPRISE' ? 'text-gray-400' : ''}>
-                      {planConfig.vehicleLimit === Infinity ? 'Illimité' : `Jusqu'à ${planConfig.vehicleLimit}`} véhicules
+                    <CardDescription className={planKey === 'unlimited' ? 'text-gray-400' : ''}>
+                      Jusqu'à {plan.maxVehicles} véhicules
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="mb-4">
-                      {planConfig.priceMonthly === null ? (
-                        <span className="text-2xl font-bold">Sur devis</span>
-                      ) : (
-                        <div>
-                          <span className="text-2xl font-bold">{planConfig.priceMonthly}€</span>
-                          <span className="text-gray-500">/mois</span>
-                        </div>
-                      )}
+                      <span className="text-2xl font-bold">{plan.priceMonthly}€</span>
+                      <span className="text-gray-500">/mois</span>
                     </div>
 
                     {isCurrent ? (
                       <Button disabled className="w-full">
                         Plan actuel
                       </Button>
-                    ) : plan === 'ENTERPRISE' ? (
+                    ) : planKey === 'unlimited' ? (
                       <Button asChild className="w-full bg-white text-gray-900 hover:bg-gray-100">
                         <Link href="/pricing">
                           Contacter les ventes
@@ -243,7 +238,7 @@ export default function BillingPage() {
                     ) : canUpgrade ? (
                       <Button 
                         className="w-full"
-                        onClick={() => createCheckout.mutate({ plan, yearly: false })}
+                        onClick={() => createCheckout.mutate({ plan: dbPlanName, yearly: false })}
                         disabled={createCheckout.isPending}
                       >
                         {createCheckout.isPending ? (
@@ -280,9 +275,7 @@ export default function BillingPage() {
           <div className="text-center py-8 text-gray-500">
             <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-30" />
             <p>Aucune facture pour le moment</p>
-            {currentPlan === 'STARTER' && (
-              <p className="text-sm mt-1">Passez à un plan payant pour voir vos factures</p>
-            )}
+            <p className="text-sm mt-1">Les factures apparaîtront ici après votre premier paiement</p>
           </div>
         </CardContent>
       </Card>

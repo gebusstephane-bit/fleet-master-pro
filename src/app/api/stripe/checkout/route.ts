@@ -1,12 +1,27 @@
 /**
  * API Checkout Stripe
- * Crée une session de paiement pour upgrader l'abonnement
+ * Crée une session de paiement pour upgrader l'abonnement (utilisateurs existants)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { STRIPE_PLANS, PlanType } from '@/lib/stripe/config';
 import { stripe, isStripeConfigured } from '@/lib/stripe/stripe';
+
+// Mapping des plans vers les variables d'environnement Stripe
+const PLAN_PRICE_IDS: Record<string, { monthly: string; yearly: string }> = {
+  ESSENTIAL: {
+    monthly: process.env.STRIPE_PRICE_ID_ESSENTIAL || '',
+    yearly: process.env.STRIPE_PRICE_ID_ESSENTIAL_YEARLY || process.env.STRIPE_PRICE_ID_ESSENTIAL || '',
+  },
+  PRO: {
+    monthly: process.env.STRIPE_PRICE_ID_PRO || '',
+    yearly: process.env.STRIPE_PRICE_ID_PRO_YEARLY || process.env.STRIPE_PRICE_ID_PRO || '',
+  },
+  UNLIMITED: {
+    monthly: process.env.STRIPE_PRICE_ID_UNLIMITED || '',
+    yearly: process.env.STRIPE_PRICE_ID_UNLIMITED_YEARLY || process.env.STRIPE_PRICE_ID_UNLIMITED || '',
+  },
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,9 +43,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!['BASIC', 'PRO'].includes(plan)) {
+    const normalizedPlan = plan.toUpperCase();
+    if (!['ESSENTIAL', 'PRO', 'UNLIMITED'].includes(normalizedPlan)) {
       return NextResponse.json(
-        { error: 'Invalid plan. Only BASIC and PRO are allowed' },
+        { error: 'Invalid plan. Only ESSENTIAL, PRO and UNLIMITED are allowed' },
         { status: 400 }
       );
     }
@@ -80,13 +96,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Déterminer le price_id
-    const priceId = yearly
-      ? STRIPE_PLANS[plan as PlanType].stripePriceId?.replace('monthly', 'yearly')
-      : STRIPE_PLANS[plan as PlanType].stripePriceId;
+    const planConfig = PLAN_PRICE_IDS[normalizedPlan];
+    const priceId = yearly ? planConfig.yearly : planConfig.monthly;
 
     if (!priceId) {
       return NextResponse.json(
-        { error: 'Price ID not configured' },
+        { error: 'Price ID not configured for this plan' },
         { status: 500 }
       );
     }
@@ -101,16 +116,16 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: 'subscription',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?success=true&plan=${plan}`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?success=true&plan=${normalizedPlan}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
       subscription_data: {
         metadata: {
           company_id: companyId,
-          plan: plan,
+          plan_type: normalizedPlan,
         },
-        trial_period_days: 14, // 14 jours d'essai gratuit
+        trial_period_days: 14,
       },
-      allow_promotion_codes: true, // Permettre les codes promo
+      allow_promotion_codes: true,
     });
 
     return NextResponse.json({ url: session.url });
@@ -123,3 +138,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const dynamic = 'force-dynamic';

@@ -11,7 +11,8 @@ import {
   requestEnterpriseQuote,
   cancelSubscription,
 } from '@/actions/subscription';
-import { PlanType } from '@/lib/stripe/config';
+// PlanType: 'ESSENTIAL' | 'PRO' | 'UNLIMITED'
+type PlanType = 'ESSENTIAL' | 'PRO' | 'UNLIMITED';
 
 export const subscriptionKeys = {
   all: ['subscription'] as const,

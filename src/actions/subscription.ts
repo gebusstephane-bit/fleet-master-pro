@@ -3,12 +3,27 @@
 import { z } from 'zod';
 import { authActionClient } from '@/lib/safe-action';
 import { createAdminClient } from '@/lib/supabase/server';
-import { STRIPE_PLANS, PlanType } from '@/lib/stripe/config';
 import { revalidatePath } from 'next/cache';
+
+// Mapping des plans vers les variables d'environnement Stripe
+const PLAN_PRICE_IDS: Record<string, { monthly: string; yearly: string }> = {
+  ESSENTIAL: {
+    monthly: process.env.STRIPE_PRICE_ID_ESSENTIAL || '',
+    yearly: process.env.STRIPE_PRICE_ID_ESSENTIAL_YEARLY || process.env.STRIPE_PRICE_ID_ESSENTIAL || '',
+  },
+  PRO: {
+    monthly: process.env.STRIPE_PRICE_ID_PRO || '',
+    yearly: process.env.STRIPE_PRICE_ID_PRO_YEARLY || process.env.STRIPE_PRICE_ID_PRO || '',
+  },
+  UNLIMITED: {
+    monthly: process.env.STRIPE_PRICE_ID_UNLIMITED || '',
+    yearly: process.env.STRIPE_PRICE_ID_UNLIMITED_YEARLY || process.env.STRIPE_PRICE_ID_UNLIMITED || '',
+  },
+};
 
 // Schémas
 const upgradeSchema = z.object({
-  plan: z.enum(['BASIC', 'PRO']),
+  plan: z.enum(['ESSENTIAL', 'PRO', 'UNLIMITED']),
   yearly: z.boolean().default(false),
 });
 
@@ -112,12 +127,11 @@ export const createCheckoutSession = authActionClient
     // Créer la session de checkout
     const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY!));
     
-    const priceId = yearly 
-      ? STRIPE_PLANS[plan].stripePriceId?.replace('monthly', 'yearly')
-      : STRIPE_PLANS[plan].stripePriceId;
+    const planConfig = PLAN_PRICE_IDS[plan];
+    const priceId = yearly ? planConfig.yearly : planConfig.monthly;
     
     if (!priceId) {
-      throw new Error('Price ID non configuré');
+      throw new Error('Price ID non configuré pour ce plan');
     }
     
     const session = await stripe.checkout.sessions.create({
@@ -134,16 +148,16 @@ export const createCheckoutSession = authActionClient
       subscription_data: {
         metadata: {
           company_id: company.id,
-          plan: plan,
+          plan_type: plan,
         },
-        trial_period_days: 14, // 14 jours d'essai
+        trial_period_days: 14,
       },
     });
     
     return { success: true, url: session.url };
   });
 
-// Créer une demande Enterprise (sur devis)
+// Créer une demande Enterprise (sur devis) - devient demande Unlimited
 export const requestEnterpriseQuote = authActionClient
   .schema(z.object({
     message: z.string().min(10),
@@ -169,9 +183,9 @@ export const requestEnterpriseQuote = authActionClient
     
     await sendEmail({
       to: 'sales@fleetmaster.pro',
-      subject: `Demande de devis Enterprise - ${company.name}`,
+      subject: `Demande de devis Unlimited - ${company.name}`,
       html: `
-        <h2>Nouvelle demande de devis Enterprise</h2>
+        <h2>Nouvelle demande de devis Unlimited</h2>
         <p><strong>Entreprise:</strong> ${company.name}</p>
         <p><strong>Email:</strong> ${company.email}</p>
         <p><strong>SIRET:</strong> ${company.siret || 'Non renseigné'}</p>
@@ -185,8 +199,8 @@ export const requestEnterpriseQuote = authActionClient
     // Créer une notification interne
     await supabase.from('notifications').insert({
       company_id: company.id,
-      type: 'ENTERPRISE_QUOTE_REQUEST',
-      title: 'Demande de devis Enterprise',
+      type: 'UNLIMITED_QUOTE_REQUEST',
+      title: 'Demande de devis Unlimited',
       message: `Demande envoyée par ${company.name}`,
       read: false,
     });
@@ -196,7 +210,7 @@ export const requestEnterpriseQuote = authActionClient
     return { success: true, message: 'Votre demande a été envoyée. Notre équipe vous contactera sous 24h.' };
   });
 
-// Downgrader vers Starter (annulation)
+// Annuler l'abonnement
 export const cancelSubscription = authActionClient
   .action(async ({ ctx }) => {
     const supabase = createAdminClient();
