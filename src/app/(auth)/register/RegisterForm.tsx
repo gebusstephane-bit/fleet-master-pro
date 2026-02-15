@@ -12,12 +12,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Eye, EyeOff, AlertCircle, Check, CreditCard, ArrowLeft } from 'lucide-react';
-import { getSupabaseClient } from '@/lib/supabase/client';
-import { SUBSCRIPTION_PLANS } from '@/lib/stripe/config';
-import type { SubscriptionPlan } from '@/types';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Eye, EyeOff, AlertCircle, Check, CreditCard } from 'lucide-react';
+import { PLANS, PlanId, ACTIVE_PLANS } from '@/lib/plans';
 
-// Schéma de validation
+// Schéma de validation - 3 plans payants uniquement
 const registerSchema = z.object({
   companyName: z.string().min(2, 'Le nom de l\'entreprise est requis'),
   siret: z.string().regex(/^\d{14}$/, 'Le SIRET doit contenir 14 chiffres'),
@@ -27,7 +26,7 @@ const registerSchema = z.object({
   phone: z.string().regex(/^\d{10}$/, 'Le téléphone doit contenir 10 chiffres'),
   password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
   confirmPassword: z.string(),
-  plan: z.enum(['starter', 'pro', 'business']),
+  plan: z.enum(['essential', 'pro', 'unlimited']),
   acceptTerms: z.boolean().refine((val) => val === true, {
     message: 'Vous devez accepter les conditions d\'utilisation',
   }),
@@ -37,8 +36,6 @@ const registerSchema = z.object({
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
-
-const PAID_PLANS = ['pro', 'business'];
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -61,13 +58,13 @@ export default function RegisterForm() {
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      plan: 'starter',
+      plan: 'essential', // Plan par défaut: Essential
       acceptTerms: false,
     },
   });
 
-  const selectedPlan = watch('plan');
-  const isPaidPlan = PAID_PLANS.includes(selectedPlan);
+  const selectedPlan = watch('plan') as PlanId;
+  const planConfig = PLANS[selectedPlan];
 
   // Gérer le retour annulation Stripe
   useEffect(() => {
@@ -92,7 +89,7 @@ export default function RegisterForm() {
     }
   };
 
-  // CRITIQUE : Créer la session Stripe AVANT création user
+  // TOUS les plans sont payants - redirection Stripe obligatoire
   const createStripeCheckout = async (formData: RegisterFormData) => {
     setIsRedirectingToStripe(true);
     
@@ -139,65 +136,13 @@ export default function RegisterForm() {
     }
   };
 
-  // Flux plan gratuit : création immédiate
-  const handleFreePlanRegistration = async (formData: RegisterFormData) => {
-    const supabase = getSupabaseClient();
-    
-    // 1. Créer l'utilisateur dans Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        data: {
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          company_name: formData.companyName,
-          plan: formData.plan,
-        },
-      },
-    });
-
-    if (authError) throw authError;
-
-    if (authData.user) {
-      // 2. Créer l'entreprise et le profil
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: authData.user.id,
-          email: formData.email,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phone: formData.phone,
-          companyName: formData.companyName,
-          siret: formData.siret,
-          plan: formData.plan,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        await supabase.auth.admin.deleteUser(authData.user.id);
-        throw new Error(result.error || 'Erreur lors de la création du compte');
-      }
-
-      // 3. Redirection confirmation
-      router.push('/register/confirm');
-    }
-  };
-
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      if (isPaidPlan) {
-        await createStripeCheckout(data);
-      } else {
-        await handleFreePlanRegistration(data);
-      }
+      // TOUS les plans sont payants - toujours passer par Stripe
+      await createStripeCheckout(data);
     } catch (err: any) {
       let errorMessage = err.message || 'Une erreur est survenue. Veuillez réessayer.';
       
@@ -217,10 +162,11 @@ export default function RegisterForm() {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl text-center">Créer un compte</CardTitle>
         <CardDescription className="text-center">
-          Commencez votre essai gratuit de 14 jours
+          Choisissez votre formule et commencez dès maintenant
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Indicateur d'étape */}
         <div className="flex justify-center mb-6">
           <div className="flex items-center space-x-2">
             {[1, 2, 3].map((s) => (
@@ -257,6 +203,7 @@ export default function RegisterForm() {
             </Alert>
           )}
 
+          {/* ÉTAPE 1 : Informations entreprise */}
           {step === 1 && (
             <>
               <div className="space-y-2">
@@ -317,6 +264,7 @@ export default function RegisterForm() {
             </>
           )}
 
+          {/* ÉTAPE 2 : Mot de passe */}
           {step === 2 && (
             <>
               <div className="space-y-2">
@@ -343,7 +291,7 @@ export default function RegisterForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmer</Label>
+                <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
                 <Input id="confirmPassword" type="password" placeholder="••••••••" disabled={isLoading} {...register('confirmPassword')} />
                 {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
               </div>
@@ -355,51 +303,92 @@ export default function RegisterForm() {
             </>
           )}
 
+          {/* ÉTAPE 3 : Sélection du plan (3 plans payants) */}
           {step === 3 && (
             <>
               <div className="space-y-3">
-                <Label>Choisissez votre plan</Label>
+                <Label>Choisissez votre formule</Label>
                 <div className="grid gap-3">
-                  {(Object.keys(SUBSCRIPTION_PLANS) as SubscriptionPlan[]).map((plan) => (
-                    <div
-                      key={plan}
-                      className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                        selectedPlan === plan ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-                      }`}
-                      onClick={() => setValue('plan', plan)}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-semibold">{SUBSCRIPTION_PLANS[plan].name}</h4>
-                          <p className="text-sm text-muted-foreground">{SUBSCRIPTION_PLANS[plan].description}</p>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold">{SUBSCRIPTION_PLANS[plan].priceMonthly}€/mois</div>
-                          {PAID_PLANS.includes(plan) && (
-                            <div className="text-xs text-blue-600 mt-1 font-medium">Paiement sécurisé Stripe</div>
-                          )}
+                  {ACTIVE_PLANS.map((planId) => {
+                    const plan = PLANS[planId];
+                    const isSelected = selectedPlan === planId;
+                    
+                    return (
+                      <div
+                        key={planId}
+                        className={`relative border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                          isSelected 
+                            ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => setValue('plan', planId)}
+                      >
+                        {/* Badge Popular */}
+                        {plan.popular && (
+                          <Badge className="absolute -top-2 left-4 bg-primary text-primary-foreground">
+                            Le plus populaire
+                          </Badge>
+                        )}
+                        
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold text-lg">{plan.name}</h4>
+                              {isSelected && <Check className="w-4 h-4 text-primary" />}
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {plan.description}
+                            </p>
+                            
+                            {/* Features */}
+                            <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                              {plan.features.slice(0, 3).map((feature, idx) => (
+                                <li key={idx}>✓ {feature}</li>
+                              ))}
+                              {plan.features.length > 3 && (
+                                <li className="text-primary">+ {plan.features.length - 3} autres fonctionnalités</li>
+                              )}
+                            </ul>
+                          </div>
+                          
+                          <div className="text-right ml-4">
+                            <div className="text-2xl font-bold">{plan.priceMonthly}€</div>
+                            <div className="text-xs text-muted-foreground">/mois</div>
+                            <div className="text-xs text-green-600 mt-1">
+                              {plan.priceYearly}€/an
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
+                </div>
+                
+                {/* Info paiement sécurisé */}
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground bg-muted p-2 rounded">
+                  <CreditCard className="w-4 h-4" />
+                  <span>Paiement sécurisé par Stripe • 14 jours d&apos;essai inclus</span>
                 </div>
               </div>
 
               <div className="flex items-start space-x-2">
                 <input type="checkbox" id="acceptTerms" className="mt-1" {...register('acceptTerms')} />
                 <Label htmlFor="acceptTerms" className="text-sm font-normal cursor-pointer">
-                  J&apos;accepte les <Link href="/terms" className="text-primary hover:underline">CGU</Link>
+                  J&apos;accepte les <Link href="/terms" className="text-primary hover:underline">conditions d&apos;utilisation</Link>
+                  {' '}et la{' '}<Link href="/privacy" className="text-primary hover:underline">politique de confidentialité</Link>
                 </Label>
               </div>
               {errors.acceptTerms && <p className="text-sm text-destructive">{errors.acceptTerms.message}</p>}
 
               <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(2)}>Retour</Button>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(2)}>
+                  Retour
+                </Button>
                 <Button type="submit" className="flex-1" disabled={isLoading || isRedirectingToStripe}>
                   {isLoading || isRedirectingToStripe ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isPaidPlan ? 'Redirection...' : 'Création...'}</>
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Redirection...</>
                   ) : (
-                    isPaidPlan ? 'Continuer vers le paiement' : 'Créer mon compte'
+                    <><CreditCard className="mr-2 h-4 w-4" />Payer {planConfig.priceMonthly}€/mois</>
                   )}
                 </Button>
               </div>

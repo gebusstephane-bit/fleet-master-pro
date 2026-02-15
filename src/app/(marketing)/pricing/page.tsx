@@ -3,21 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Check, X, Sparkles, Building2, ArrowRight, HelpCircle } from 'lucide-react';
+import { Check, Sparkles, ArrowRight, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { STRIPE_PLANS, formatPrice } from '@/lib/stripe/config';
-import { EnterpriseForm } from './enterprise-form';
-
-const plans = [
-  STRIPE_PLANS.STARTER,
-  STRIPE_PLANS.BASIC,
-  STRIPE_PLANS.PRO,
-  STRIPE_PLANS.ENTERPRISE,
-];
+import { PLANS, ACTIVE_PLANS } from '@/lib/plans';
 
 export default function PricingPage() {
   const [yearly, setYearly] = useState(false);
-  const [showEnterpriseForm, setShowEnterpriseForm] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -47,7 +38,7 @@ export default function PricingPage() {
                 Connexion
               </Link>
               <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700">
-                <Link href="/register">Essai gratuit</Link>
+                <Link href="/register">Commencer</Link>
               </Button>
             </div>
           </div>
@@ -70,9 +61,9 @@ export default function PricingPage() {
                 Des prix adaptés à votre flotte
               </h1>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Commencez gratuit avec 1 véhicule. Évoluez quand vous êtes prêt. 
+                3 formules simples et transparentes. 
                 <span className="block mt-2 text-sm text-gray-500">
-                  Tous les plans incluent un essai gratuit de 14 jours (sauf Starter).
+                  Tous les plans incluent un essai gratuit de 14 jours.
                 </span>
               </p>
             </motion.div>
@@ -108,158 +99,99 @@ export default function PricingPage() {
             </motion.div>
           </div>
 
-          {/* Pricing Cards */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 items-start">
-            {plans.map((plan, index) => (
-              <motion.div
-                key={plan.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className={`relative rounded-2xl p-6 ${
-                  plan.popular
-                    ? 'bg-white shadow-xl border-2 border-blue-500 scale-105 z-10 lg:-mt-4'
-                    : plan.id === 'enterprise'
-                    ? 'bg-gray-900 text-white border border-gray-800'
-                    : 'bg-white border border-gray-200 shadow-sm'
-                }`}
-              >
-                {/* Popular badge */}
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                      <Sparkles className="h-4 w-4" />
-                      Le plus populaire
-                    </span>
-                  </div>
-                )}
-
-                {/* Plan name */}
-                <div className="mb-4">
-                  <h3 className={`text-xl font-semibold ${plan.id === 'enterprise' ? 'text-white' : 'text-gray-900'}`}>
-                    {plan.name}
-                  </h3>
-                  <p className={`text-sm mt-1 ${plan.id === 'enterprise' ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {plan.id === 'starter' && 'Pour tester'}
-                    {plan.id === 'basic' && 'Pour les TPE'}
-                    {plan.id === 'pro' && 'Pour les PME'}
-                    {plan.id === 'enterprise' && 'Pour les grands comptes'}
-                  </p>
-                </div>
-
-                {/* Price */}
-                <div className="mb-6">
-                  {plan.priceMonthly === null ? (
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold text-white">Sur devis</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-baseline gap-2">
-                      <span className={`text-4xl font-bold ${plan.id === 'enterprise' ? 'text-white' : 'text-gray-900'}`}>
-                        {formatPrice(yearly ? plan.priceYearly! * 100 : plan.priceMonthly * 100)}
+          {/* Pricing Cards - 3 plans */}
+          <div className="grid md:grid-cols-3 gap-8 items-start max-w-6xl mx-auto">
+            {ACTIVE_PLANS.map((planId, index) => {
+              const plan = PLANS[planId];
+              return (
+                <motion.div
+                  key={planId}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className={`relative rounded-2xl p-6 ${
+                    plan.popular
+                      ? 'bg-white shadow-xl border-2 border-blue-500 scale-105 z-10 lg:-mt-4'
+                      : 'bg-white border border-gray-200 shadow-sm'
+                  }`}
+                >
+                  {/* Popular badge */}
+                  {plan.popular && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                      <span className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                        <Sparkles className="h-4 w-4" />
+                        Le plus populaire
                       </span>
-                      {plan.priceMonthly > 0 && (
-                        <span className={plan.id === 'enterprise' ? 'text-gray-400' : 'text-gray-500'}>
-                          /mois
-                        </span>
-                      )}
                     </div>
                   )}
-                  {yearly && plan.priceYearly && (
-                    <p className="text-sm text-green-600 mt-1">
-                      Économisez {formatPrice((plan.priceMonthly * 12 - plan.priceYearly) * 100)}
-                    </p>
-                  )}
-                </div>
 
-                {/* Limits */}
-                <div className={`p-3 rounded-lg mb-6 ${plan.id === 'enterprise' ? 'bg-gray-800' : 'bg-gray-50'}`}>
-                  <div className="flex justify-between text-sm">
-                    <span className={plan.id === 'enterprise' ? 'text-gray-400' : 'text-gray-600'}>
-                      Véhicules
-                    </span>
-                    <span className={`font-medium ${plan.id === 'enterprise' ? 'text-white' : 'text-gray-900'}`}>
-                      {plan.vehicleLimit === Infinity ? 'Illimité' : `Max ${plan.vehicleLimit}`}
-                    </span>
+                  {/* Plan name */}
+                  <div className="mb-4">
+                    <h3 className="text-xl font-semibold text-gray-900">{plan.name}</h3>
+                    <p className="text-sm mt-1 text-gray-500">{plan.description}</p>
                   </div>
-                  <div className="flex justify-between text-sm mt-2">
-                    <span className={plan.id === 'enterprise' ? 'text-gray-400' : 'text-gray-600'}>
-                      Utilisateurs
-                    </span>
-                    <span className={`font-medium ${plan.id === 'enterprise' ? 'text-white' : 'text-gray-900'}`}>
-                      {plan.userLimit === Infinity ? 'Illimité' : `Max ${plan.userLimit}`}
-                    </span>
-                  </div>
-                </div>
 
-                {/* CTA */}
-                {plan.id === 'enterprise' ? (
-                  <Button
-                    onClick={() => setShowEnterpriseForm(true)}
-                    className="w-full mb-6 bg-white text-gray-900 hover:bg-gray-100"
-                    size="lg"
-                  >
-                    <Building2 className="mr-2 h-4 w-4" />
-                    {plan.cta}
-                  </Button>
-                ) : (
+                  {/* Price */}
+                  <div className="mb-6">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-bold text-gray-900">
+                        {yearly ? plan.priceYearly : plan.priceMonthly}€
+                      </span>
+                      <span className="text-gray-500">/mois</span>
+                    </div>
+                    {yearly && (
+                      <p className="text-sm text-green-600 mt-1">
+                        Économisez {(plan.priceMonthly * 12 - plan.priceYearly)}€/an
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Limits */}
+                  <div className="p-3 rounded-lg mb-6 bg-gray-50">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Véhicules</span>
+                      <span className="font-medium text-gray-900">
+                        {plan.maxVehicles === 999 ? 'Illimité' : `Max ${plan.maxVehicles}`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm mt-2">
+                      <span className="text-gray-600">Utilisateurs</span>
+                      <span className="font-medium text-gray-900">
+                        {plan.maxDrivers === 999 ? 'Illimité' : `Max ${plan.maxDrivers}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* CTA */}
                   <Button
                     asChild
                     className={`w-full mb-6 ${
                       plan.popular
                         ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                        : plan.id === 'starter'
-                        ? 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                         : 'bg-gray-900 hover:bg-gray-800 text-white'
                     }`}
                     size="lg"
                   >
-                    <Link href={plan.id === 'starter' ? '/register' : '/register?plan=' + plan.id}>
+                    <Link href={`/register?plan=${planId}`}>
                       {plan.cta}
-                      {plan.id !== 'starter' && <ArrowRight className="ml-2 h-4 w-4" />}
+                      <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>
-                )}
 
-                {/* Features */}
-                <div className="space-y-3">
-                  <p className={`text-sm font-medium ${plan.id === 'enterprise' ? 'text-gray-400' : 'text-gray-900'}`}>
-                    Inclus :
-                  </p>
-                  {plan.features.map((feature) => (
-                    <div key={feature} className="flex items-start gap-3">
-                      <Check className={`h-5 w-5 flex-shrink-0 ${plan.id === 'enterprise' ? 'text-green-400' : 'text-green-500'}`} />
-                      <span className={`text-sm ${plan.id === 'enterprise' ? 'text-gray-300' : 'text-gray-600'}`}>
-                        {feature}
-                      </span>
-                    </div>
-                  ))}
-                  
-                  {plan.disabledFeatures.length > 0 && (
-                    <>
-                      <div className="pt-2 border-t border-gray-200" />
-                      <p className="text-sm font-medium text-gray-400">
-                        Non inclus :
-                      </p>
-                      {plan.disabledFeatures.map((feature) => (
-                        <div key={feature} className="flex items-start gap-3">
-                          <X className="h-5 w-5 flex-shrink-0 text-gray-300" />
-                          <span className="text-sm text-gray-400 line-through">
-                            {feature}
-                          </span>
-                        </div>
-                      ))}
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            ))}
+                  {/* Features */}
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-gray-900">Inclus :</p>
+                    {plan.features.map((feature) => (
+                      <div key={feature} className="flex items-start gap-3">
+                        <Check className="h-5 w-5 flex-shrink-0 text-green-500" />
+                        <span className="text-sm text-gray-600">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
-
-          {/* Enterprise Form Modal */}
-          {showEnterpriseForm && (
-            <EnterpriseForm onClose={() => setShowEnterpriseForm(false)} />
-          )}
 
           {/* FAQ Section */}
           <motion.div 
@@ -283,11 +215,11 @@ export default function PricingPage() {
                 },
                 {
                   q: 'Y a-t-il un engagement minimum ?',
-                  a: 'Non, vous pouvez annuler à tout moment. Si vous annulez, vous restez sur votre plan jusqu\'à la fin de la période payée, puis downgrage automatique vers Starter.'
+                  a: 'Non, vous pouvez annuler à tout moment. Si vous annulez, votre accès est maintenu jusqu\'à la fin de la période payée.'
                 },
                 {
                   q: 'Comment fonctionne l\'essai gratuit de 14 jours ?',
-                  a: 'Les plans Basic et Pro incluent 14 jours d\'essai gratuit. Aucune carte bancaire n\'est demandée. À la fin de l\'essai, vous choisissez de continuer ou de passer sur le plan Starter.'
+                  a: 'Tous les plans incluent 14 jours d\'essai gratuit. Une carte bancaire est demandée mais vous n\'êtes pas débité immédiatement. Annulez avant la fin des 14 jours pour ne pas être facturé.'
                 },
                 {
                   q: 'Puis-je payer en plusieurs fois pour l\'annuel ?',
@@ -321,7 +253,7 @@ export default function PricingPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="bg-white text-blue-600 hover:bg-blue-50">
-                <Link href="/register">Commencer gratuitement</Link>
+                <Link href="/register">Commencer l&apos;essai gratuit</Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
                 <Link href="/#features">Voir les fonctionnalités</Link>

@@ -109,7 +109,7 @@ async function handleNewRegistration(
   try {
     // Récupérer les métadonnées
     const metadata = session.metadata || session.subscription?.metadata || {};
-    const plan = (metadata.plan as PlanType) || 'STARTER';
+    const plan = (metadata.plan as PlanType) || 'ESSENTIAL';
     const email = metadata.email || session.customer_details?.email;
     const companyName = metadata.company_name;
     const siret = metadata.siret || '';
@@ -346,18 +346,15 @@ async function handleSubscriptionCanceled(
   supabase: ReturnType<typeof createAdminClient>,
   deletedSub: import('stripe').Stripe.Subscription
 ) {
-  // Downgrader vers Starter
+  // L'abonnement est annulé - L'accès est bloqué jusqu'à réabonnement
   await supabase.from('subscriptions').update({
-    plan: 'STARTER',
     status: 'CANCELED',
-    vehicle_limit: 1,
-    user_limit: 1,
     stripe_subscription_id: null,
     stripe_price_id: null,
     current_period_end: new Date().toISOString(),
   }).eq('stripe_subscription_id', deletedSub.id);
 
-  // Mettre à jour companies
+  // Mettre à jour companies - bloquer l'accès
   const { data: sub } = await supabase
     .from('subscriptions')
     .select('company_id')
@@ -366,14 +363,11 @@ async function handleSubscriptionCanceled(
 
   if (sub?.company_id) {
     await supabase.from('companies').update({
-      subscription_plan: 'starter',
-      subscription_status: 'active', // Toujours actif mais limité
-      max_vehicles: 1,
-      max_drivers: 1,
+      subscription_status: 'canceled', // Bloque l'accès au dashboard
     }).eq('id', sub.company_id);
   }
 
-  console.log(`👋 Subscription canceled, downgraded to STARTER`);
+  console.log(`👋 Subscription canceled, access blocked`);
 }
 
 async function handleSubscriptionUpdated(
@@ -381,10 +375,16 @@ async function handleSubscriptionUpdated(
   updatedSub: import('stripe').Stripe.Subscription
 ) {
   const priceId = updatedSub.items.data[0].price.id;
-  let plan: PlanType = 'STARTER';
+  let plan: PlanType = 'ESSENTIAL';
   
-  if (priceId.includes('basic')) plan = 'BASIC';
-  else if (priceId.includes('pro')) plan = 'PRO';
+  // Mapping des price IDs vers les plans
+  const essentialPriceId = process.env.STRIPE_PRICE_ID_ESSENTIAL;
+  const proPriceId = process.env.STRIPE_PRICE_ID_PRO;
+  const unlimitedPriceId = process.env.STRIPE_PRICE_ID_UNLIMITED;
+  
+  if (priceId === essentialPriceId || priceId.includes('essential')) plan = 'ESSENTIAL';
+  else if (priceId === proPriceId || priceId.includes('pro')) plan = 'PRO';
+  else if (priceId === unlimitedPriceId || priceId.includes('unlimited')) plan = 'UNLIMITED';
   
   const { data: sub } = await supabase
     .from('subscriptions')
