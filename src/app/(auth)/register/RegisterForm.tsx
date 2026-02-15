@@ -94,12 +94,22 @@ export default function RegisterForm() {
     setIsRedirectingToStripe(true);
     
     try {
+      const plan = PLANS[selectedPlan];
+      
+      // Debug log
+      console.log('Envoi à Stripe:', { 
+        priceId: plan.priceId, 
+        planType: selectedPlan,
+        email: formData.email 
+      });
+      
       const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: formData.email,
-          plan: selectedPlan,
+          priceId: plan.priceId,     // ← ESSENTIEL : le vrai ID Stripe
+          planType: selectedPlan,    // ← 'essential', 'pro' ou 'unlimited'
           tempData: {
             companyName: formData.companyName,
             siret: formData.siret,
