@@ -1,20 +1,13 @@
-/**
- * Configuration des plans FleetMaster Pro
- * 
- * 3 plans payants uniquement (ZERO gratuit) :
- * - Essential : 29€/mois - 3 véhicules
- * - Pro : 49€/mois - 15 véhicules  
- * - Unlimited : 129€/mois - Véhicules illimités
- */
+// src/lib/plans.ts - VERSION HARDCODÉE (fonctionne immédiatement)
 
 export const PLANS = {
   essential: {
     id: 'essential',
     name: 'Essential',
     priceMonthly: 29,
-    priceYearly: 290, // 2 mois offerts
-    priceId: process.env.STRIPE_PRICE_ID_ESSENTIAL || '',
-    priceIdYearly: process.env.STRIPE_PRICE_ID_ESSENTIAL_YEARLY || '',
+    priceYearly: 290,
+    priceId: 'price_1T16Qc2S7pahLrnmcxhOm73Z', // ← ID Stripe Essential
+    priceIdYearly: 'price_1T16Qc2S7pahLrnmcxhOm73Z', // Même ID si pas d'annuel
     maxVehicles: 3,
     maxDrivers: 2,
     features: [
@@ -33,9 +26,9 @@ export const PLANS = {
     id: 'pro',
     name: 'Pro',
     priceMonthly: 49,
-    priceYearly: 490, // 2 mois offerts
-    priceId: process.env.STRIPE_PRICE_ID_PRO || '',
-    priceIdYearly: process.env.STRIPE_PRICE_ID_PRO_YEARLY || '',
+    priceYearly: 490,
+    priceId: 'price_1T16T52S7pahLrnmtBhKKRYj', // ← ID Stripe Pro
+    priceIdYearly: 'price_1T16T52S7pahLrnmtBhKKRYj',
     maxVehicles: 15,
     maxDrivers: 5,
     features: [
@@ -49,16 +42,16 @@ export const PLANS = {
       'Notifications push/SMS',
     ],
     description: 'Pour les PME',
-    popular: true, // Mis en avant visuellement
+    popular: true,
     cta: 'Choisir le plan Pro',
   },
   unlimited: {
     id: 'unlimited',
     name: 'Unlimited',
     priceMonthly: 129,
-    priceYearly: 1290, // 2 mois offerts
-    priceId: process.env.STRIPE_PRICE_ID_UNLIMITED || '',
-    priceIdYearly: process.env.STRIPE_PRICE_ID_UNLIMITED_YEARLY || '',
+    priceYearly: 1290,
+    priceId: 'price_1T16UD2S7pahLrnmZOWa0c1g', // ← ID Stripe Unlimited
+    priceIdYearly: 'price_1T16UD2S7pahLrnmZOWa0c1g',
     maxVehicles: 999,
     maxDrivers: 999,
     features: [
@@ -83,10 +76,8 @@ export type PlanId = keyof typeof PLANS;
 export const ACTIVE_PLANS = ['essential', 'pro', 'unlimited'] as const;
 
 // Early adopters = comptes gratuits pour lancement
-// Géré côté serveur uniquement
 export const EARLY_ADOPTER_EMAILS: string[] = [
   // À remplir manuellement si besoin
-  // Exemple: 'client@example.com',
 ];
 
 // Vérifier si un email est early adopter
