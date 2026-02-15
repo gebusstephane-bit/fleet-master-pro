@@ -6,55 +6,7 @@ import { useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check, Sparkles } from "lucide-react";
-
-const plans = [
-  {
-    name: "Starter",
-    price: "0€",
-    period: "pour commencer",
-    description: "Parfait pour tester la plateforme",
-    features: [
-      "1 véhicule",
-      "Géolocalisation de base",
-      "Rappels documents",
-      "Support email",
-    ],
-    cta: "Commencer gratuit",
-    popular: false,
-  },
-  {
-    name: "Pro",
-    price: "29€",
-    period: "par véhicule / mois",
-    description: "Pour les flottes en croissance",
-    features: [
-      "Véhicules illimités",
-      "Maintenance prédictive IA",
-      "Optimisation tournées",
-      "Rapports avancés",
-      "Support prioritaire",
-      "API access",
-    ],
-    cta: "Essai 14 jours gratuit",
-    popular: true,
-  },
-  {
-    name: "Enterprise",
-    price: "Sur mesure",
-    period: "pour grandes flottes",
-    description: "Solution clé en main dédiée",
-    features: [
-      "Tout du plan Pro",
-      "Intégrations personnalisées",
-      "Account manager dédié",
-      "Formation équipe",
-      "SLA garanti 99.9%",
-      "Hébergement dédié",
-    ],
-    cta: "Contacter les ventes",
-    popular: false,
-  },
-];
+import { PLANS, ACTIVE_PLANS } from "@/lib/plans";
 
 export function Pricing() {
   const ref = useRef(null);
@@ -77,71 +29,74 @@ export function Pricing() {
             Des prix transparents
           </h2>
           <p className="mt-4 text-lg text-gray-600">
-            Commencez gratuit. Évoluez quand vous êtes prêt.
+            3 formules pour toutes les tailles de flotte. Essai gratuit de 14 jours.
           </p>
         </motion.div>
 
-        {/* Pricing cards */}
+        {/* Pricing cards - 3 plans depuis PLANS */}
         <div className="grid md:grid-cols-3 gap-8 items-start">
-          {plans.map((plan, index) => (
-            <motion.div
-              key={plan.name}
-              initial={{ opacity: 0, y: 30 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`relative rounded-2xl p-8 ${
-                plan.popular
-                  ? "bg-white shadow-xl border-2 border-blue-500 scale-105 z-10"
-                  : "bg-white border border-gray-200 shadow-sm"
-              }`}
-            >
-              {/* Popular badge */}
-              {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                    <Sparkles className="h-4 w-4" />
-                    Plus populaire
-                  </span>
+          {ACTIVE_PLANS.map((planId, index) => {
+            const plan = PLANS[planId];
+            return (
+              <motion.div
+                key={planId}
+                initial={{ opacity: 0, y: 30 }}
+                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className={`relative rounded-2xl p-8 ${
+                  plan.popular
+                    ? "bg-white shadow-xl border-2 border-blue-500 scale-105 z-10"
+                    : "bg-white border border-gray-200 shadow-sm"
+                }`}
+              >
+                {/* Popular badge */}
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <span className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                      <Sparkles className="h-4 w-4" />
+                      Plus populaire
+                    </span>
+                  </div>
+                )}
+
+                {/* Plan name */}
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  {plan.name}
+                </h3>
+                <p className="text-gray-500 text-sm mb-6">{plan.description}</p>
+
+                {/* Price */}
+                <div className="mb-6">
+                  <span className="text-4xl font-bold text-gray-900">{plan.priceMonthly}€</span>
+                  <span className="text-gray-500 ml-2">/mois</span>
                 </div>
-              )}
 
-              {/* Plan name */}
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {plan.name}
-              </h3>
-              <p className="text-gray-500 text-sm mb-6">{plan.description}</p>
+                {/* CTA */}
+                <Link href={`/register?plan=${planId}`} className="block mb-8">
+                  <Button
+                    className={`w-full ${
+                      plan.popular
+                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                        : "bg-gray-900 hover:bg-gray-800 text-white"
+                    }`}
+                    size="lg"
+                  >
+                    {plan.cta}
+                  </Button>
+                </Link>
 
-              {/* Price */}
-              <div className="mb-6">
-                <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                <span className="text-gray-500 ml-2">{plan.period}</span>
-              </div>
-
-              {/* CTA */}
-              <Link href={plan.name === "Enterprise" ? "mailto:sales@fleetmaster.pro" : "/register"} className="block mb-8">
-                <Button
-                  className={`w-full ${
-                    plan.popular
-                      ? "bg-blue-600 hover:bg-blue-700 text-white"
-                      : "bg-gray-900 hover:bg-gray-800 text-white"
-                  }`}
-                  size="lg"
-                >
-                  {plan.cta}
-                </Button>
-              </Link>
-
-              {/* Features */}
-              <ul className="space-y-4">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3">
-                    <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-600 text-sm">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          ))}
+                {/* Features */}
+                <ul className="space-y-4">
+                  {plan.features.slice(0, 6).map((feature) => (
+                    <li key={feature} className="flex items-start gap-3">
+                      <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-600 text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            );
+          })}
         </div>
 
         {/* Trust note */}
