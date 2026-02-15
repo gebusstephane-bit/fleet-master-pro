@@ -1,16 +1,16 @@
 /**
- * Page de confirmation d'inscription
+ * Page d'attente de paiement
  */
 
 import { Suspense } from 'react';
-import ConfirmContent from './ConfirmContent';
+import PaymentPendingContent from './PaymentPendingContent';
 
 export const dynamic = 'force-dynamic';
 
-export default function ConfirmPage() {
+export default function PaymentPendingPage() {
   return (
     <Suspense fallback={<div className="flex justify-center p-8">Chargement...</div>}>
-      <ConfirmContent />
+      <PaymentPendingContent />
     </Suspense>
   );
 }

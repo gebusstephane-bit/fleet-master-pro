@@ -1,81 +1,82 @@
 /**
- * Middleware Next.js pour FleetMaster Pro
- * Gère l'authentification et la protection des routes par rôle
+ * Middleware Next.js - VÉRIFICATION SUBSCRIPTION STATUS
+ * 
+ * Bloque l'accès aux routes protégées si :
+ * - subscription_status === 'pending_payment' (inscription non finalisée)
+ * - subscription_status === 'unpaid' (paiement échoué)
+ * - subscription_status === 'canceled' (abonnement annulé)
  */
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-// Routes publiques
-const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/auth/callback', '/unauthorized'];
+// Routes publiques (pas de vérification)
+const publicRoutes = [
+  '/', 
+  '/login', 
+  '/register', 
+  '/forgot-password', 
+  '/auth/callback', 
+  '/unauthorized', 
+  '/pricing',
+  '/terms',
+  '/privacy',
+];
 
-// SUPERADMIN - Email hardcoded autorisé
+// Routes API publiques
+const publicApiRoutes = ['/api/auth', '/api/stripe/webhook', '/api/stripe/create-checkout-session'];
+
+// Routes autorisées pendant un paiement en attente
+const pendingPaymentAllowedRoutes = [
+  '/register/confirm',
+  '/settings/billing',
+  '/api/stripe',
+  '/payment-pending',
+];
+
+// SUPERADMIN
 const SUPERADMIN_EMAIL = 'contact@fleet-master.fr';
-
-// Routes par rôle requis
-const roleRoutes = {
-  admin: ['/admin'],
-  manager: ['/settings/users', '/settings/company'],
-  operational: ['/inspection', '/maintenance/new', '/fuel'],
-  all: ['/dashboard', '/vehicles', '/drivers', '/routes', '/agenda', '/maintenance', '/alerts', '/inspections', '/settings'],
-};
-
-// Logger conditionnel (uniquement en développement)
-const logger = {
-  log: (...args: unknown[]) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(...args);
-    }
-  },
-  error: (...args: unknown[]) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.error(...args);
-    }
-  },
-};
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ============================================
-  // 🔐 SUPERADMIN PROTECTION (Hardcoded)
+  // 🔐 SUPERADMIN
   // ============================================
   if (pathname.startsWith('/superadmin')) {
     const response = NextResponse.next();
-    
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: any) {
-            response.cookies.set({ name, value, ...options });
-          },
-          remove(name: string, options: any) {
-            response.cookies.set({ name, value: '', ...options });
-          },
+          get(name: string) { return request.cookies.get(name)?.value; },
+          set(name: string, value: string, options: any) { response.cookies.set({ name, value, ...options }); },
+          remove(name: string, options: any) { response.cookies.set({ name, value: '', ...options }); },
         },
       }
     );
 
     const { data: { user } } = await supabase.auth.getUser();
-    
     if (!user || user.email?.toLowerCase() !== SUPERADMIN_EMAIL.toLowerCase()) {
       return NextResponse.redirect(new URL('/404', request.url));
     }
-    
     return response;
   }
 
-  // Routes publiques - laisser passer
-  if (publicRoutes.some(route => pathname === route || pathname.startsWith('/api/auth'))) {
+  // Routes publiques
+  if (publicRoutes.some(route => pathname === route)) {
     return NextResponse.next();
   }
 
-  // Vérifier la session
+  // API routes publiques
+  if (publicApiRoutes.some(route => pathname.startsWith(route))) {
+    return NextResponse.next();
+  }
+
+  // ============================================
+  // 🔍 VÉRIFICATION AUTH + SUBSCRIPTION
+  // ============================================
   const response = NextResponse.next();
   
   const supabase = createServerClient(
@@ -83,60 +84,86 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {
-          response.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: any) {
-          response.cookies.set({ name, value: '', ...options });
-        },
+        get(name: string) { return request.cookies.get(name)?.value; },
+        set(name: string, value: string, options: any) { response.cookies.set({ name, value, ...options }); },
+        remove(name: string, options: any) { response.cookies.set({ name, value: '', ...options }); },
       },
     }
   );
 
   const { data: { user } } = await supabase.auth.getUser();
   
+  // Pas authentifié → login
   if (!user) {
     const redirectUrl = new URL('/login', request.url);
     redirectUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Récupérer le rôle depuis les user_metadata OU depuis la base
-  let userRole = user.user_metadata?.role;
-  
-  if (!userRole) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+  // Récupérer le profil et l'entreprise
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, company_id')
+    .eq('id', user.id)
+    .single();
+
+  // Si pas de company_id (cas rare), autoriser l'accès pour création
+  if (!profile?.company_id) {
+    return response;
+  }
+
+  // Vérifier le statut de l'abonnement
+  const { data: company } = await supabase
+    .from('companies')
+    .select('subscription_status, subscription_plan, trial_ends_at')
+    .eq('id', profile.company_id)
+    .single();
+
+  if (!company) {
+    return response;
+  }
+
+  const subscriptionStatus = company.subscription_status;
+
+  // ============================================
+  // 🚫 BLOCAGES SELON STATUT
+  // ============================================
+
+  // 1. PAIEMENT EN ATTENTE
+  if (subscriptionStatus === 'pending_payment') {
+    const isAllowedRoute = pendingPaymentAllowedRoutes.some(route => pathname.startsWith(route));
     
-    if (profile?.role) {
-      userRole = profile.role;
-    } else {
-      userRole = 'ADMIN';
+    if (!isAllowedRoute) {
+      console.log('🚫 Access denied - pending payment:', pathname);
+      return NextResponse.redirect(new URL('/payment-pending', request.url));
     }
   }
-  
-  // Vérifier les permissions par rôle pour certaines routes
-  if (roleRoutes.admin.some(route => pathname.startsWith(route))) {
-    if (userRole !== 'ADMIN') {
-      return NextResponse.redirect(new URL('/unauthorized', request.url));
+
+  // 2. PAIEMENT ÉCHOUÉ / NON PAYÉ
+  if (subscriptionStatus === 'unpaid' || subscriptionStatus === 'past_due') {
+    // Autoriser uniquement la page de facturation
+    if (!pathname.startsWith('/settings/billing') && !pathname.startsWith('/api/')) {
+      console.log('🚫 Access denied - unpaid:', pathname);
+      return NextResponse.redirect(new URL('/settings/billing?status=payment_required', request.url));
     }
   }
-  
-  if (roleRoutes.manager.some(route => pathname.startsWith(route))) {
-    if (!['ADMIN', 'DIRECTEUR'].includes(userRole)) {
-      return NextResponse.redirect(new URL('/unauthorized', request.url));
+
+  // 3. ABONNEMENT ANNULÉ
+  if (subscriptionStatus === 'canceled') {
+    // Rediriger vers pricing pour réactiver
+    if (!pathname.startsWith('/settings/billing') && !pathname.startsWith('/pricing')) {
+      console.log('🚫 Access denied - canceled:', pathname);
+      return NextResponse.redirect(new URL('/pricing?status=reactivate_required', request.url));
     }
   }
-  
-  if (roleRoutes.operational.some(route => pathname.startsWith(route))) {
-    if (userRole === 'EXPLOITANT') {
-      return NextResponse.redirect(new URL('/unauthorized', request.url));
+
+  // 4. TRIAL EXPIRÉ
+  if (subscriptionStatus === 'trialing' && company.trial_ends_at) {
+    if (new Date(company.trial_ends_at) < new Date()) {
+      if (!pathname.startsWith('/settings/billing') && !pathname.startsWith('/pricing')) {
+        console.log('🚫 Trial expired');
+        return NextResponse.redirect(new URL('/settings/billing?trial_ended=true', request.url));
+      }
     }
   }
 
