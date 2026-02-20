@@ -147,6 +147,10 @@ export const createMaintenanceRequest = authActionClient
     
     const maintenance = result.data;
     
+    if (!maintenance) {
+      throw new Error('Erreur lors de la création de la demande: données manquantes');
+    }
+    
     // 3. Trouver les directeurs et envoyer emails
     const directors = await getCompanyDirectors(ctx.user.company_id);
     const requester = await getUserCompanyData(ctx.user.id);
@@ -261,7 +265,7 @@ export const validateMaintenanceRequest = authActionClient
     // 4. Email à l'agent de parc
     if (parsedInput.action === 'validate') {
       await sendEmail({
-        to: maintenance.requester.email,
+        to: maintenance.requester?.email || '',
         subject: `✅ Demande validée - Prenez RDV pour ${maintenance.vehicle.registration_number}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -285,7 +289,7 @@ export const validateMaintenanceRequest = authActionClient
     } else {
       // Email refus
       await sendEmail({
-        to: maintenance.requester.email,
+        to: maintenance.requester?.email || '',
         subject: `❌ Demande refusée - ${maintenance.vehicle.registration_number}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -378,7 +382,9 @@ export const scheduleMaintenanceRDV = authActionClient
       title: `🔧 ${maintenance.vehicle.registration_number} - ${maintenance.type}`,
       description: `${maintenance.description} | Garage: ${parsedInput.garageName}`,
       event_type: 'RDV_GARAGE',
-      attendees: [maintenance.requested_by],
+      attendees: maintenance.requested_by ? [maintenance.requested_by] : [],
+      status: 'SCHEDULED',
+      reminder_sent: false,
     });
     
     // 5. Historique
@@ -398,7 +404,7 @@ export const scheduleMaintenanceRDV = authActionClient
     
     for (const recipient of recipients) {
       await sendEmail({
-        to: recipient.email,
+        to: recipient?.email || '',
         subject: `📅 RDV confirmé : ${maintenance.vehicle.registration_number}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -492,7 +498,7 @@ export const completeMaintenance = authActionClient
     
     for (const recipient of recipients) {
       await sendEmail({
-        to: recipient.email,
+        to: recipient?.email || '',
         subject: `✅ Intervention terminée : ${maintenance.vehicle.registration_number}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -532,7 +538,7 @@ export const getMaintenanceRequests = authActionClient
     const supabase = createAdminClient();
     
     const { data, error } = await supabase
-      .from('maintenance_with_details')
+      .from('maintenance_with_details' as any)
       .select('*')
       .eq('company_id', ctx.user.company_id)
       .order('requested_at', { ascending: false });
@@ -550,7 +556,7 @@ export const getMaintenanceById = authActionClient
     const supabase = createAdminClient();
     
     const { data: maintenance, error } = await supabase
-      .from('maintenance_with_details')
+      .from('maintenance_with_details' as any)
       .select('*')
       .eq('id', parsedInput.id)
       .eq('company_id', ctx.user.company_id)
@@ -569,13 +575,13 @@ export const getMaintenanceById = authActionClient
     
     // Récupérer l'événement agenda
     const { data: agendaEvent } = await supabase
-      .from('agenda_with_details')
+      .from('agenda_with_details' as any)
       .select('*')
       .eq('maintenance_id', parsedInput.id)
       .eq('company_id', ctx.user.company_id)
       .maybeSingle();
     
-    return { success: true, data: { ...maintenance, history: history || [], agendaEvent } };
+    return { success: true, data: { ...(maintenance as any), history: history || [], agendaEvent } };
   });
 
 export const getAgendaEvents = authActionClient
@@ -587,7 +593,7 @@ export const getAgendaEvents = authActionClient
     const supabase = createAdminClient();
     
     let query = supabase
-      .from('agenda_with_details')
+      .from('agenda_with_details' as any)
       .select('*')
       .eq('company_id', ctx.user.company_id);
     

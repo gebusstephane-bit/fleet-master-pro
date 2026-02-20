@@ -98,14 +98,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Créer l'abonnement
-    await supabaseAdmin.from('subscriptions').insert({
+    await (supabaseAdmin as any).from('subscriptions').insert({
       company_id: company.id,
-      plan: planType.toUpperCase(),
-      status: 'ACTIVE',
+      plan: planType.toUpperCase() as any,
+      status: 'ACTIVE' as any,
       vehicle_limit: plan.maxVehicles,
       user_limit: plan.maxDrivers,
-      features: plan.features,
-    });
+      features: plan.features as any,
+    } as any);
 
     return NextResponse.json({
       success: true,

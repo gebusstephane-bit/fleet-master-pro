@@ -1,93 +1,70 @@
 /**
- * API Route de test - Bypass RLS
- * Vérifie les données avec le client admin
+ * API Route de test - Dashboard data
+ * Retourne les données dashboard pour la company de l'utilisateur connecté
  */
-
-import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  try {
-    const adminClient = createAdminClient();
+import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { withDebugProtection } from '@/lib/api/debug-protection';
 
-    // 1. Récupérer le company_id depuis le premier véhicule
-    const { data: firstVehicle, error: companyError } = await adminClient
-      .from('vehicles')
-      .select('company_id')
-      .limit(1)
-      .single();
+export const GET = withDebugProtection(async () => {
+  const supabase = await createClient();
 
-    if (companyError || !firstVehicle?.company_id) {
-      return NextResponse.json({
-        error: 'Aucun véhicule trouvé',
-        details: companyError?.message
-      }, { status: 404 });
-    }
-
-    const companyId = firstVehicle.company_id;
-
-    // 2. Compter les véhicules
-    const { count: vehiclesCount, error: vError } = await adminClient
-      .from('vehicles')
-      .select('*', { count: 'exact', head: true })
-      .eq('company_id', companyId);
-
-    // 3. Compter les chauffeurs
-    const { count: driversCount, error: dError } = await adminClient
-      .from('drivers')
-      .select('*', { count: 'exact', head: true })
-      .eq('company_id', companyId);
-
-    // 4. Compter les maintenances
-    const { count: maintCount, error: mError } = await adminClient
-      .from('maintenance_records')
-      .select('*', { count: 'exact', head: true })
-      .eq('company_id', companyId);
-
-    // 5. Compter les inspections
-    const { count: inspectCount, error: iError } = await adminClient
-      .from('inspections')
-      .select('*', { count: 'exact', head: true })
-      .eq('company_id', companyId);
-
-    // 6. Compter les prédictions IA
-    const { count: predCount, error: pError } = await adminClient
-      .from('ai_predictions')
-      .select('*', { count: 'exact', head: true });
-
-    // 7. Compter les activity_logs
-    const { count: actCount, error: aError } = await adminClient
-      .from('activity_logs')
-      .select('*', { count: 'exact', head: true })
-      .eq('company_id', companyId);
-
-    return NextResponse.json({
-      companyId,
-      data: {
-        vehicles: vehiclesCount || 0,
-        drivers: driversCount || 0,
-        maintenances: maintCount || 0,
-        inspections: inspectCount || 0,
-        predictions: predCount || 0,
-        activities: actCount || 0,
-      },
-      errors: {
-        vehicles: vError?.message,
-        drivers: dError?.message,
-        maintenances: mError?.message,
-        inspections: iError?.message,
-        predictions: pError?.message,
-        activities: aError?.message,
-      }
-    });
-
-  } catch (error) {
-    console.error('API test error:', error);
-    return NextResponse.json({
-      error: 'Erreur serveur',
-      details: (error as Error).message
-    }, { status: 500 });
+  // Récupérer l'utilisateur et sa company
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
-}
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('company_id')
+    .eq('id', user.id)
+    .single();
+
+  const companyId = profile?.company_id;
+
+  if (!companyId) {
+    return NextResponse.json({ error: 'No company found' }, { status: 404 });
+  }
+
+  // Compter les données de la company (respecte RLS)
+  const { count: vehiclesCount, error: vError } = await supabase
+    .from('vehicles')
+    .select('*', { count: 'exact', head: true })
+    .eq('company_id', companyId);
+
+  const { count: driversCount, error: dError } = await supabase
+    .from('drivers')
+    .select('*', { count: 'exact', head: true })
+    .eq('company_id', companyId);
+
+  const { count: maintCount, error: mError } = await supabase
+    .from('maintenance_records')
+    .select('*', { count: 'exact', head: true })
+    .eq('company_id', companyId);
+
+  const { count: inspectCount, error: iError } = await supabase
+    .from('inspections')
+    .select('*', { count: 'exact', head: true })
+    .eq('company_id', companyId);
+
+  return NextResponse.json({
+    companyId,
+    data: {
+      vehicles: vehiclesCount || 0,
+      drivers: driversCount || 0,
+      maintenances: maintCount || 0,
+      inspections: inspectCount || 0,
+    },
+    errors: {
+      vehicles: vError?.message,
+      drivers: dError?.message,
+      maintenances: mError?.message,
+      inspections: iError?.message,
+    },
+  });
+});

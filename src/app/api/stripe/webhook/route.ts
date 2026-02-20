@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { randomBytes } from 'crypto';
 // PlanType: 'ESSENTIAL' | 'PRO' | 'UNLIMITED'
 type PlanType = 'ESSENTIAL' | 'PRO' | 'UNLIMITED';
 
@@ -67,9 +68,22 @@ export async function POST(request: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as import('stripe').Stripe.Checkout.Session;
         
+        // Vérification d'idempotence : déjà traité ?
+        const stripeCustomerId = session.customer as string;
+        const { data: existingSub } = await supabase
+          .from('subscriptions')
+          .select('id, company_id')
+          .eq('stripe_customer_id', stripeCustomerId)
+          .maybeSingle();
+          
+        if (existingSub) {
+          console.log(`⚠️ Webhook déjà traité pour ${stripeCustomerId}, ignoré`);
+          break;
+        }
+        
         // Vérifier si c'est une inscription (pas un upgrade)
-        const isRegistration = session.metadata?.registration_pending === 'true' ||
-                              session.subscription?.metadata?.registration_pending === 'true';
+        const sessionMetadata = (session as any).metadata || (session as any).subscription?.metadata || {};
+        const isRegistration = sessionMetadata.registration_pending === 'true';
         
         if (!isRegistration) {
           // C'est un upgrade existant, gérer normalement
@@ -128,9 +142,9 @@ async function handleNewRegistration(
 ) {
   try {
     // Récupérer les métadonnées
-    const metadata = session.metadata || session.subscription?.metadata || {};
+    const metadata = (session as any).metadata || (session as any).subscription?.metadata || {};
     const plan = (metadata.plan_type as PlanType) || 'ESSENTIAL';
-    const email = metadata.email || session.customer_details?.email;
+    const email = metadata.email || (session as any).customer_details?.email;
     const companyName = metadata.company_name;
     const siret = metadata.siret || '';
     const firstName = metadata.first_name || '';
@@ -155,8 +169,8 @@ async function handleNewRegistration(
     }
 
     // 1. CRÉER L'UTILISATEUR SUPABASE AUTH
-    // Générer un mot de passe temporaire aléatoire
-    const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+    // Générer un mot de passe temporaire sécurisé avec crypto
+    const tempPassword = randomBytes(24).toString('hex'); // 48 caractères hexadécimaux
     
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
@@ -235,8 +249,8 @@ async function handleNewRegistration(
         stripe_price_id: subscription.items.data[0].price.id,
         plan: plan,
         status: 'ACTIVE',
-        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+        current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
         vehicle_limit: PLAN_LIMITS[plan]?.maxVehicles || 3,
         user_limit: PLAN_LIMITS[plan]?.maxDrivers || 2,
         features: PLAN_LIMITS[plan]?.features || [],
@@ -258,8 +272,8 @@ async function handleNewRegistration(
     await supabase.from('webhook_errors').insert({
       event_type: 'checkout.session.completed',
       error: JSON.stringify(error),
-      metadata: session.metadata,
-    });
+      metadata: (session as any).metadata,
+    } as any);
   }
 }
 
@@ -268,32 +282,32 @@ async function handleSubscriptionUpdate(
   session: import('stripe').Stripe.Checkout.Session
 ) {
   // Logique pour les upgrades existants
-  const companyId = session.metadata?.company_id;
-  const plan = session.metadata?.plan as PlanType;
+  const companyId = (session as any).metadata?.company_id;
+  const plan = (session as any).metadata?.plan as PlanType;
   
   if (!companyId || !plan) {
     console.error('Missing metadata for subscription update');
     return;
   }
 
-  const stripeSubscriptionId = session.subscription as string;
+  const stripeSubscriptionId = (session as any).subscription as string;
   const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-  await supabase.from('subscriptions').upsert({
+  await (supabase as any).from('subscriptions').upsert({
     company_id: companyId,
-    stripe_customer_id: session.customer as string,
+    stripe_customer_id: (session as any).customer as string,
     stripe_subscription_id: stripeSubscriptionId,
-    stripe_price_id: subscription.items.data[0].price.id,
+    stripe_price_id: (subscription as any).items.data[0].price.id,
     plan: plan,
-    status: 'ACTIVE',
-    current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-    current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+    status: 'ACTIVE' as any,
+    current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+    current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
     vehicle_limit: PLAN_LIMITS[plan]?.maxVehicles || 3,
     user_limit: PLAN_LIMITS[plan]?.maxDrivers || 2,
     features: PLAN_LIMITS[plan]?.features || [],
-  }, {
+  } as any, {
     onConflict: 'company_id'
-  });
+  } as any);
 
   // Mettre à jour le statut de l'entreprise
   await supabase.from('companies').update({
@@ -310,15 +324,15 @@ async function handlePaymentSuccess(
   supabase: ReturnType<typeof createAdminClient>,
   invoice: import('stripe').Stripe.Invoice
 ) {
-  const subscriptionId = invoice.subscription as string;
+  const subscriptionId = (invoice as any).subscription as string;
   
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   
-  await supabase.from('subscriptions').update({
-    status: 'ACTIVE',
-    current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-    current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-  }).eq('stripe_subscription_id', subscriptionId);
+  await (supabase as any).from('subscriptions').update({
+    status: 'ACTIVE' as any,
+    current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+    current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+  } as any).eq('stripe_subscription_id', subscriptionId);
 
   // Mettre à jour companies aussi
   const { data: sub } = await supabase
@@ -340,11 +354,11 @@ async function handlePaymentFailed(
   supabase: ReturnType<typeof createAdminClient>,
   invoice: import('stripe').Stripe.Invoice
 ) {
-  const subscriptionId = invoice.subscription as string;
+  const subscriptionId = (invoice as any).subscription as string;
   
-  await supabase.from('subscriptions').update({
-    status: 'PAST_DUE',
-  }).eq('stripe_subscription_id', subscriptionId);
+  await (supabase as any).from('subscriptions').update({
+    status: 'PAST_DUE' as any,
+  } as any).eq('stripe_subscription_id', subscriptionId);
 
   // Mettre à jour companies
   const { data: sub } = await supabase
@@ -367,12 +381,12 @@ async function handleSubscriptionCanceled(
   deletedSub: import('stripe').Stripe.Subscription
 ) {
   // L'abonnement est annulé - L'accès est bloqué jusqu'à réabonnement
-  await supabase.from('subscriptions').update({
-    status: 'CANCELED',
+  await (supabase as any).from('subscriptions').update({
+    status: 'CANCELED' as any,
     stripe_subscription_id: null,
     stripe_price_id: null,
     current_period_end: new Date().toISOString(),
-  }).eq('stripe_subscription_id', deletedSub.id);
+  } as any).eq('stripe_subscription_id', (deletedSub as any).id);
 
   // Mettre à jour companies - bloquer l'accès
   const { data: sub } = await supabase
@@ -394,7 +408,7 @@ async function handleSubscriptionUpdated(
   supabase: ReturnType<typeof createAdminClient>,
   updatedSub: import('stripe').Stripe.Subscription
 ) {
-  const priceId = updatedSub.items.data[0].price.id;
+  const priceId = (updatedSub as any).items.data[0].price.id;
   let plan: PlanType = 'ESSENTIAL';
   
   // Mapping des price IDs vers les plans
@@ -413,14 +427,14 @@ async function handleSubscriptionUpdated(
     .single();
 
   if (sub?.company_id) {
-    await supabase.from('subscriptions').update({
+    await (supabase as any).from('subscriptions').update({
       plan: plan,
       vehicle_limit: PLAN_LIMITS[plan].maxVehicles,
       user_limit: PLAN_LIMITS[plan].maxDrivers,
       features: PLAN_LIMITS[plan].features,
-      current_period_start: new Date(updatedSub.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(updatedSub.current_period_end * 1000).toISOString(),
-    }).eq('stripe_subscription_id', updatedSub.id);
+      current_period_start: new Date((updatedSub as any).current_period_start * 1000).toISOString(),
+      current_period_end: new Date((updatedSub as any).current_period_end * 1000).toISOString(),
+    } as any).eq('stripe_subscription_id', (updatedSub as any).id);
 
     await supabase.from('companies').update({
       subscription_plan: plan.toLowerCase(),

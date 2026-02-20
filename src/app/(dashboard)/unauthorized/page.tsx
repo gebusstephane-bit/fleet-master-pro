@@ -128,7 +128,7 @@ export default function UnauthorizedPage() {
                     <AccessItem granted>Tableau de bord</AccessItem>
                     <AccessItem granted>Gestion de son équipe</AccessItem>
                     <AccessItem granted>Validation maintenances</AccessItem>
-                    <AccessItem denied>Configuration système</AccessItem>
+                    <AccessItem granted={false}>Configuration système</AccessItem>
                   </>
                 )}
                 {userRole === 'AGENT_DE_PARC' && (
@@ -136,15 +136,15 @@ export default function UnauthorizedPage() {
                     <AccessItem granted>Inspections véhicules</AccessItem>
                     <AccessItem granted>Demandes de maintenance</AccessItem>
                     <AccessItem granted>Gestion carburants</AccessItem>
-                    <AccessItem denied>Gestion utilisateurs</AccessItem>
+                    <AccessItem granted={false}>Gestion utilisateurs</AccessItem>
                   </>
                 )}
                 {userRole === 'EXPLOITANT' && (
                   <>
                     <AccessItem granted>Ses tournées</AccessItem>
                     <AccessItem granted>Ses inspections</AccessItem>
-                    <AccessItem denied>Gestion flotte</AccessItem>
-                    <AccessItem denied>Administration</AccessItem>
+                    <AccessItem granted={false}>Gestion flotte</AccessItem>
+                    <AccessItem granted={false}>Administration</AccessItem>
                   </>
                 )}
               </div>

@@ -83,8 +83,8 @@ export default function RouteDetailPage() {
 
   // Calculer le trajet sur la carte
   useEffect(() => {
-    if (route?.route_stops?.length > 0) {
-      const stops = route.route_stops;
+    if ((route as any)?.route_stops?.length > 0) {
+      const stops = (route as any).route_stops;
       const coords: Array<[number, number]> = stops
         .filter((s: any) => s.latitude && s.longitude)
         .map((s: any) => [s.longitude, s.latitude]);
@@ -99,15 +99,15 @@ export default function RouteDetailPage() {
 
   // Calculer les heures d'arrivée estimées
   const estimatedArrivals = useMemo(() => {
-    if (!route?.route_stops?.length) return [];
+    if (!(route as any)?.route_stops?.length) return [];
     
-    const stops = route.route_stops;
-    const startTime = route.started_at 
-      ? format(parseISO(route.started_at), 'HH:mm')
+    const stops = (route as any).route_stops;
+    const startTime = (route as any).started_at 
+      ? format(parseISO((route as any).started_at), 'HH:mm')
       : '08:00';
     
     let currentMinutes = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1]);
-    const vehicleCategory = route.vehicles?.category || 'UTILITAIRE_MOYEN';
+    const vehicleCategory = (route as any).vehicles?.category || 'UTILITAIRE_MOYEN';
     const avgSpeed = calculateAverageSpeed(vehicleCategory);
     
     return stops.map((stop: any, index: number) => {
@@ -151,8 +151,8 @@ export default function RouteDetailPage() {
 
   // Calculer stats RSE
   const rseStats = useMemo(() => {
-    if (!route?.route_stops?.length) return null;
-    const vehicleCategory = route.vehicles?.category || 'UTILITAIRE_MOYEN';
+    if (!(route as any)?.route_stops?.length) return null;
+    const vehicleCategory = (route as any).vehicles?.category || 'UTILITAIRE_MOYEN';
     const heavy = isHeavyVehicle(vehicleCategory);
     
     if (!heavy) return null;
@@ -192,13 +192,13 @@ export default function RouteDetailPage() {
     );
   }
 
-  const status = statusConfig[route.status as keyof typeof statusConfig];
+  const status = statusConfig[(route as any).status as keyof typeof statusConfig];
   const StatusIcon = status.icon;
 
   const handleAction = () => {
-    if (route.status === 'PLANNED') {
+    if ((route as any).status === 'PLANNED') {
       startMutation.mutate(id);
-    } else if (route.status === 'IN_PROGRESS') {
+    } else if ((route as any).status === 'IN_PROGRESS') {
       completeMutation.mutate(id);
     }
   };
@@ -234,7 +234,7 @@ export default function RouteDetailPage() {
               <div>
                 <div className="flex items-center gap-3 flex-wrap">
                   <h1 className="text-2xl lg:text-3xl font-bold">
-                    {route.name}
+                    {(route as any).name}
                   </h1>
                   <Badge className={`${status.color} border`}>
                     <StatusIcon className="h-3 w-3 mr-1" />
@@ -244,11 +244,11 @@ export default function RouteDetailPage() {
                 <div className="flex items-center gap-4 mt-2 text-white/70 text-sm">
                   <span className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    {format(parseISO(route.route_date), 'dd MMMM yyyy', { locale: fr })}
+                    {format(parseISO((route as any).route_date), 'dd MMMM yyyy', { locale: fr })}
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    {format(parseISO(route.route_date), 'EEEE', { locale: fr })}
+                    {format(parseISO((route as any).route_date), 'EEEE', { locale: fr })}
                   </span>
                 </div>
               </div>
@@ -261,12 +261,12 @@ export default function RouteDetailPage() {
                     <Button 
                       onClick={handleAction}
                       disabled={startMutation.isPending || completeMutation.isPending}
-                      className={route.status === 'PLANNED' 
+                      className={(route as any).status === 'PLANNED' 
                         ? 'bg-green-500 hover:bg-green-600 text-white' 
                         : 'bg-blue-500 hover:bg-blue-600 text-white'
                       }
                     >
-                      {route.status === 'PLANNED' ? (
+                      {(route as any).status === 'PLANNED' ? (
                         <><Play className="h-4 w-4 mr-2" /> Démarrer</>
                       ) : (
                         <><CheckCircle2 className="h-4 w-4 mr-2" /> Terminer</>
@@ -278,10 +278,10 @@ export default function RouteDetailPage() {
                     className="border-white/20 text-white hover:bg-white/10"
                     onClick={() => {
                       setEditData({
-                        name: route.name,
-                        vehicleId: route.vehicle_id,
-                        driverId: route.driver_id,
-                        notes: route.notes,
+                        name: (route as any).name,
+                        vehicleId: (route as any).vehicle_id,
+                        driverId: (route as any).driver_id,
+                        notes: (route as any).notes,
                       });
                       setIsEditing(true);
                     }}
@@ -357,7 +357,7 @@ export default function RouteDetailPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {drivers?.map((d: any) => (
+                      {((drivers as unknown) as any[])?.map((d: any) => (
                         <SelectItem key={d.id} value={d.id}>
                           {d.first_name} {d.last_name}
                         </SelectItem>
@@ -383,31 +383,31 @@ export default function RouteDetailPage() {
         <StatCard
           icon={Car}
           label="Véhicule"
-          value={route.vehicles?.registration_number || '-'}
-          subValue={route.vehicles ? `${route.vehicles.brand} ${route.vehicles.model}` : undefined}
-          href={route.vehicles ? `/vehicles/${route.vehicle_id}` : undefined}
+          value={(route as any).vehicles?.registration_number || '-'}
+          subValue={(route as any).vehicles ? `${(route as any).vehicles.brand} ${(route as any).vehicles.model}` : undefined}
+          href={(route as any).vehicles ? `/vehicles/${(route as any).vehicle_id}` : undefined}
           color="blue"
         />
         <StatCard
           icon={User}
           label="Chauffeur"
-          value={route.drivers ? `${route.drivers.first_name} ${route.drivers.last_name}` : '-'}
-          subValue={route.drivers?.cqc_card ? 'CQC ✓' : undefined}
-          href={route.drivers ? `/drivers/${route.driver_id}` : undefined}
+          value={(route as any).drivers ? `${(route as any).drivers.first_name} ${(route as any).drivers.last_name}` : '-'}
+          subValue={(route as any).drivers?.cqc_card ? 'CQC ✓' : undefined}
+          href={(route as any).drivers ? `/drivers/${(route as any).driver_id}` : undefined}
           color="emerald"
         />
         <StatCard
           icon={Route}
           label="Distance"
-          value={route.total_distance ? `${route.total_distance} km` : '-'}
-          subValue={route.total_distance ? `~${Math.round((route.total_distance / 100) * 25)}€ carburant` : undefined}
+          value={(route as any).total_distance ? `${(route as any).total_distance} km` : '-'}
+          subValue={(route as any).total_distance ? `~${Math.round(((route as any).total_distance / 100) * 25)}€ carburant` : undefined}
           color="purple"
         />
         <StatCard
           icon={Timer}
           label="Durée estimée"
-          value={route.estimated_duration 
-            ? `${Math.floor(route.estimated_duration / 60)}h${route.estimated_duration % 60}min`
+          value={(route as any).estimated_duration 
+            ? `${Math.floor((route as any).estimated_duration / 60)}h${(route as any).estimated_duration % 60}min`
             : '-'
           }
           subValue={rseStats?.needsBreak ? '⚠️ Pause RSE requise' : undefined}
@@ -428,12 +428,12 @@ export default function RouteDetailPage() {
           <CardContent className="p-0">
             <div className="h-[400px]">
               <MapboxMap
-                center={route.route_stops?.[0] 
-                  ? [route.route_stops[0].longitude, route.route_stops[0].latitude]
+                center={(route as any).route_stops?.[0] 
+                  ? [(route as any).route_stops[0].longitude, (route as any).route_stops[0].latitude]
                   : [2.3522, 48.8566]
                 }
                 zoom={12}
-                markers={route.route_stops?.map((s: any, i: number) => ({
+                markers={(route as any).route_stops?.map((s: any, i: number) => ({
                   id: s.id,
                   lng: s.longitude,
                   lat: s.latitude,
@@ -454,7 +454,7 @@ export default function RouteDetailPage() {
                 <MapPin className="h-5 w-5 text-blue-500" />
                 Timeline des arrêts
               </span>
-              <Badge variant="secondary">{route.route_stops?.length || 0} stops</Badge>
+              <Badge variant="secondary">{(route as any).route_stops?.length || 0} stops</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -584,13 +584,13 @@ export default function RouteDetailPage() {
       )}
 
       {/* Notes */}
-      {route.notes && (
+      {(route as any).notes && (
         <Card className="bg-muted/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Notes</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-slate-600 whitespace-pre-wrap">{route.notes}</p>
+            <p className="text-slate-600 whitespace-pre-wrap">{(route as any).notes}</p>
           </CardContent>
         </Card>
       )}

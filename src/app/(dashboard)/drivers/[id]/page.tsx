@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import '@/app/(dashboard)/detail-pages-premium.css';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,10 +29,10 @@ import { formatDate, cn } from '@/lib/utils';
 import { differenceInDays } from 'date-fns';
 
 const statusConfig = {
-  active: { label: 'Actif', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  inactive: { label: 'Inactif', color: 'bg-slate-100 text-slate-700 border-slate-200' },
-  on_leave: { label: 'En congé', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  terminated: { label: 'Terminé', color: 'bg-red-100 text-red-700 border-red-200' },
+  active: { label: 'Actif', color: 'detail-badge-active' },
+  inactive: { label: 'Inactif', color: 'detail-badge-inactive' },
+  on_leave: { label: 'En congé', color: 'detail-badge-maintenance' },
+  terminated: { label: 'Terminé', color: 'detail-badge-critical' },
 };
 
 const cqcCategoryLabels: Record<string, string> = {
@@ -62,26 +63,26 @@ export default function DriverDetailPage() {
     );
   }
 
-  const status = statusConfig[driver.status as keyof typeof statusConfig] || statusConfig.inactive;
+  const status = statusConfig[(driver as any).status as keyof typeof statusConfig] || statusConfig.inactive;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Header Premium */}
+      <div className="detail-header">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="h-10 w-10" asChild>
+          <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-cyan-500/10" asChild>
             <Link href="/drivers">
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-5 w-5 text-cyan-400" />
             </Link>
           </Button>
           <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">
-              {driver.first_name?.[0]}{driver.last_name?.[0]}
+            <div className="h-16 w-16 detail-avatar text-2xl">
+              {(driver as any).first_name?.[0]}{(driver as any).last_name?.[0]}
             </div>
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                  {driver.first_name} {driver.last_name}
+                  {(driver as any).first_name} {(driver as any).last_name}
                 </h1>
                 <Badge className={status.color} variant="outline">
                   {status.label}
@@ -89,7 +90,7 @@ export default function DriverDetailPage() {
               </div>
               <p className="text-gray-400 flex items-center gap-2 mt-1">
                 <Mail className="h-4 w-4" />
-                {driver.email}
+                {(driver as any).email}
               </p>
             </div>
           </div>
@@ -112,23 +113,23 @@ export default function DriverDetailPage() {
           <CardContent className="space-y-4">
             <InfoItem 
               label="Téléphone" 
-              value={driver.phone}
+              value={(driver as any).phone || undefined}
               icon={<Phone className="h-4 w-4 text-blue-500" />}
             />
             <InfoItem 
               label="Email" 
-              value={driver.email}
+              value={(driver as any).email || undefined}
               icon={<Mail className="h-4 w-4 text-blue-500" />}
             />
             <InfoItem 
               label="Date d'embauche" 
-              value={driver.hire_date ? formatDate(driver.hire_date) : 'Non renseignée'}
+              value={(driver as any).hire_date ? formatDate((driver as any).hire_date) : undefined}
               icon={<Calendar className="h-4 w-4 text-blue-500" />}
             />
-            {driver.address && (
+            {(driver as any).address && (
               <InfoItem 
                 label="Adresse" 
-                value={`${driver.address}${driver.city ? `, ${driver.city}` : ''}`}
+                value={`${(driver as any).address}${(driver as any).city ? `, ${(driver as any).city}` : ''}`}
                 icon={<MapPin className="h-4 w-4 text-blue-500" />}
               />
             )}
@@ -149,18 +150,18 @@ export default function DriverDetailPage() {
                 </div>
                 <div>
                   <p className="font-medium">Permis de conduire</p>
-                  <p className="text-sm text-gray-400">{driver.license_number}</p>
+                  <p className="text-sm text-gray-400">{(driver as any).license_number}</p>
                 </div>
               </div>
-              <LicenseExpiryAlert expiryDate={driver.license_expiry} />
+              <LicenseExpiryAlert expiryDate={(driver as any).license_expiry} />
             </div>
 
             {/* CQC */}
-            {driver.cqc_card_number ? (
+            {(driver as any).cqc_card_number ? (
               <CQCCard 
-                number={driver.cqc_card_number}
-                expiryDate={driver.cqc_expiry_date}
-                category={driver.cqc_category}
+                number={(driver as any).cqc_card_number}
+                expiryDate={(driver as any).cqc_expiry_date}
+                category={(driver as any).cqc_category}
               />
             ) : (
               <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
@@ -180,7 +181,7 @@ export default function DriverDetailPage() {
       </div>
 
       {/* Véhicule assigné */}
-      {driver.vehicles && (
+      {(driver as any).vehicles && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -190,16 +191,16 @@ export default function DriverDetailPage() {
           </CardHeader>
           <CardContent>
             <Link 
-              href={`/vehicles/${driver.vehicles.id}`}
+              href={`/vehicles/${(driver as any).vehicles.id}`}
               className="flex items-center gap-4 p-4 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
             >
               <div className="h-12 w-12 rounded-xl bg-blue-500 flex items-center justify-center text-white">
                 <Car className="h-6 w-6" />
               </div>
               <div className="flex-1">
-                <p className="font-medium text-lg">{driver.vehicles.registration_number}</p>
+                <p className="font-medium text-lg">{(driver as any).vehicles.registration_number}</p>
                 <p className="text-sm text-gray-400">
-                  {driver.vehicles.brand} {driver.vehicles.model} • {driver.vehicles.year}
+                  {(driver as any).vehicles.brand} {(driver as any).vehicles.model} • {(driver as any).vehicles.year}
                 </p>
               </div>
               <Button variant="outline" size="sm">Voir la fiche</Button>
@@ -220,13 +221,13 @@ export default function DriverDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <ScoreCard 
               label="Sécurité"
-              value={driver.safety_score || 0}
+              value={(driver as any).safety_score || 0}
               max={100}
               color="emerald"
             />
             <ScoreCard 
               label="Éco-conduite"
-              value={driver.fuel_efficiency_score || 0}
+              value={(driver as any).fuel_efficiency_score || 0}
               max={100}
               color="blue"
             />
@@ -243,7 +244,7 @@ export default function DriverDetailPage() {
   );
 }
 
-function InfoItem({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
+function InfoItem({ label, value, icon }: { label: string; value: string | undefined; icon?: React.ReactNode }) {
   return (
     <div className="flex items-start gap-3">
       {icon && <div className="mt-0.5">{icon}</div>}

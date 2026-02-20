@@ -73,11 +73,11 @@ export default function EditRoutePage() {
   // Charger les données
   useEffect(() => {
     if (route) {
-      setName(route.name);
-      setVehicleId(route.vehicle_id);
-      setDriverId(route.driver_id);
-      setNotes(route.notes || '');
-      setStops(route.route_stops?.map((s: any) => ({
+      setName((route as any).name);
+      setVehicleId((route as any).vehicle_id || '');
+      setDriverId((route as any).driver_id || '');
+      setNotes((route as any).notes || '');
+      setStops(((route as any).route_stops as any[])?.map((s: any) => ({
         id: s.id,
         address: s.address,
         latitude: s.latitude,
@@ -148,7 +148,7 @@ export default function EditRoutePage() {
       vehicleId,
       driverId,
       notes,
-      stops: stops.map((s, index) => ({
+      stops: (stops as any[]).map((s, index) => ({
         ...s,
         orderIndex: index,
         priority: s.priority === 'HIGH' ? 3 : s.priority === 'LOW' ? 1 : 2,
@@ -177,7 +177,7 @@ export default function EditRoutePage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Modifier la tournée</h1>
-            <p className="text-slate-500">{route?.name}</p>
+            <p className="text-slate-500">{(route as any)?.name}</p>
           </div>
         </div>
         <Button 
@@ -226,7 +226,7 @@ export default function EditRoutePage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {drivers?.map((d: any) => (
+                      {((drivers as unknown) as any[])?.map((d: any) => (
                         <SelectItem key={d.id} value={d.id}>
                           {d.first_name} {d.last_name}
                         </SelectItem>

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import '@/app/(dashboard)/detail-pages-premium.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +24,7 @@ import { AssignmentSuggestions } from '@/components/routes/assignment-suggestion
 import { RSETimeline } from '@/components/routes/rse-timeline';
 import { DepotConfig } from '@/components/routes/depot-config';
 import { RouteStop } from '@/lib/schemas/routes';
-import { optimizeRouteV3, OptimizedRoute, formatDuration, estimateFuelCost, isHeavyVehicle, calculateAverageSpeed } from '@/lib/routing/optimizer-v3';
+import { optimizeRouteV3, OptimizedRoute, formatDuration, estimateFuelCost, isHeavyVehicle, calculateAverageSpeed } from '@/lib/routing/route-optimizer';
 import { RouteConstraints, DEFAULT_CONSTRAINTS } from '@/lib/routing/constraints';
 import { getSpeedDetails } from '@/lib/routing/vehicle-speeds';
 import { toast } from 'sonner';
@@ -57,10 +58,10 @@ export default function NewRoutePage() {
   const [optimizationResult, setOptimizationResult] = useState<OptimizedRoute | null>(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
 
-  const selectedVehicle = vehicles?.find((v: any) => v.id === vehicleId);
-  const selectedDriver = drivers?.find((d: any) => d.id === driverId);
+  const selectedVehicle = ((vehicles as unknown) as any[])?.find((v: any) => v.id === vehicleId);
+  const selectedDriver = ((drivers as unknown) as any[])?.find((d: any) => d.id === driverId);
   
-  const vehicleCategory = selectedVehicle?.category || 'UTILITAIRE_MOYEN';
+  const vehicleCategory = (selectedVehicle as any)?.category || 'UTILITAIRE_MOYEN';
   const vehicleSpeedInfo = getSpeedDetails(vehicleCategory);
   const isHeavy = isHeavyVehicle(vehicleCategory);
 
@@ -305,7 +306,7 @@ export default function NewRoutePage() {
           {vehicles && drivers && stops.length >= 2 && (
             <AssignmentSuggestions
               vehicles={vehicles}
-              drivers={drivers}
+              drivers={drivers as any}
               stops={stops}
               constraints={constraints}
               depot={{ latitude: depot.latitude, longitude: depot.longitude }}
@@ -340,7 +341,7 @@ export default function NewRoutePage() {
                 <Select value={driverId} onValueChange={setDriverId}>
                   <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                   <SelectContent>
-                    {drivers?.map((d: any) => (
+                    {((drivers as unknown) as any[])?.map((d: any) => (
                       <SelectItem key={d.id} value={d.id}>
                         {d.first_name} {d.last_name}
                       </SelectItem>

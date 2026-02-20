@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getUsers, getUserById, createUser, updateUser, toggleUserStatus, deleteUser, updateNotificationPreferences, type CreateUserData, type UpdateUserData } from '@/actions/users';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 export interface User {
   id: string;
@@ -37,7 +37,7 @@ export function useUsers(companyId?: string) {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
+
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -47,17 +47,13 @@ export function useUsers(companyId?: string) {
     
     if (result.error) {
       setError(result.error);
-      toast({
-        title: 'Erreur',
-        description: result.error,
-        variant: 'destructive',
-      });
+      toast.error(result.error);
     } else if (result.data) {
       setUsers(result.data as User[]);
     }
     
     setIsLoading(false);
-  }, [companyId, toast]);
+  }, [companyId]);
 
   useEffect(() => {
     fetchUsers();
@@ -77,7 +73,7 @@ export function useUser(userId: string | null) {
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
+  // toast importé directement depuis sonner
 
   const fetchUser = useCallback(async () => {
     if (!userId) {
@@ -92,20 +88,18 @@ export function useUser(userId: string | null) {
     
     if (result.error) {
       setError(result.error);
-      toast({
-        title: 'Erreur',
-        description: result.error,
-        variant: 'destructive',
-      });
+      toast.error(result.error);
     } else if (result.data) {
       setUser(result.data as User);
+      // @ts-ignore
       if (result.data.user_notification_preferences) {
+        // @ts-ignore
         setPreferences(result.data.user_notification_preferences[0] as NotificationPreferences);
       }
     }
     
     setIsLoading(false);
-  }, [userId, toast]);
+  }, [userId]);
 
   useEffect(() => {
     fetchUser();
@@ -123,7 +117,7 @@ export function useUser(userId: string | null) {
 // Hook pour créer un utilisateur
 export function useCreateUser() {
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  // Utilise toast importé depuis sonner
 
   const create = async (data: CreateUserData, creatorId: string) => {
     setIsLoading(true);
@@ -131,19 +125,12 @@ export function useCreateUser() {
     const result = await createUser(data, creatorId);
     
     if (result.error) {
-      toast({
-        title: 'Erreur',
-        description: result.error,
-        variant: 'destructive',
-      });
+      toast.error(result.error);
       setIsLoading(false);
       return { success: false, error: result.error };
     }
     
-    toast({
-      title: 'Succès',
-      description: 'Utilisateur créé avec succès',
-    });
+    toast.success('Utilisateur créé avec succès');
     
     setIsLoading(false);
     return { success: true, data: result.data };
@@ -155,7 +142,7 @@ export function useCreateUser() {
 // Hook pour mettre à jour un utilisateur
 export function useUpdateUser() {
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  // Utilise toast importé depuis sonner
 
   const update = async (data: UpdateUserData, updaterId: string) => {
     setIsLoading(true);
@@ -163,19 +150,12 @@ export function useUpdateUser() {
     const result = await updateUser(data, updaterId);
     
     if (result.error) {
-      toast({
-        title: 'Erreur',
-        description: result.error,
-        variant: 'destructive',
-      });
+      toast.error(result.error);
       setIsLoading(false);
       return { success: false, error: result.error };
     }
     
-    toast({
-      title: 'Succès',
-      description: 'Utilisateur mis à jour avec succès',
-    });
+    toast.success('Utilisateur mis à jour avec succès');
     
     setIsLoading(false);
     return { success: true, data: result.data };
@@ -187,7 +167,7 @@ export function useUpdateUser() {
 // Hook pour activer/désactiver un utilisateur
 export function useToggleUserStatus() {
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  // Utilise toast importé depuis sonner
 
   const toggle = async (userId: string, isActive: boolean, actorId: string) => {
     setIsLoading(true);
@@ -195,19 +175,12 @@ export function useToggleUserStatus() {
     const result = await toggleUserStatus(userId, isActive, actorId);
     
     if (result.error) {
-      toast({
-        title: 'Erreur',
-        description: result.error,
-        variant: 'destructive',
-      });
+      toast.error(result.error);
       setIsLoading(false);
       return { success: false, error: result.error };
     }
     
-    toast({
-      title: 'Succès',
-      description: isActive ? 'Utilisateur activé' : 'Utilisateur désactivé',
-    });
+    toast.success(isActive ? 'Utilisateur activé' : 'Utilisateur désactivé');
     
     setIsLoading(false);
     return { success: true };
@@ -219,7 +192,7 @@ export function useToggleUserStatus() {
 // Hook pour supprimer un utilisateur
 export function useDeleteUser() {
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  // Utilise toast importé depuis sonner
 
   const remove = async (userId: string, actorId: string) => {
     setIsLoading(true);
@@ -227,19 +200,12 @@ export function useDeleteUser() {
     const result = await deleteUser(userId, actorId);
     
     if (result.error) {
-      toast({
-        title: 'Erreur',
-        description: result.error,
-        variant: 'destructive',
-      });
+      toast.error(result.error);
       setIsLoading(false);
       return { success: false, error: result.error };
     }
     
-    toast({
-      title: 'Succès',
-      description: 'Utilisateur supprimé avec succès',
-    });
+    toast.success('Utilisateur supprimé avec succès');
     
     setIsLoading(false);
     return { success: true };
@@ -251,7 +217,7 @@ export function useDeleteUser() {
 // Hook pour mettre à jour les préférences de notifications
 export function useUpdateNotificationPreferences() {
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  // Utilise toast importé depuis sonner
 
   const update = async (userId: string, preferences: Partial<NotificationPreferences>) => {
     setIsLoading(true);
@@ -259,19 +225,12 @@ export function useUpdateNotificationPreferences() {
     const result = await updateNotificationPreferences(userId, preferences);
     
     if (result.error) {
-      toast({
-        title: 'Erreur',
-        description: result.error,
-        variant: 'destructive',
-      });
+      toast.error(result.error);
       setIsLoading(false);
       return { success: false, error: result.error };
     }
     
-    toast({
-      title: 'Succès',
-      description: 'Préférences mises à jour',
-    });
+    toast.success('Préférences mises à jour');
     
     setIsLoading(false);
     return { success: true, data: result.data };

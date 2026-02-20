@@ -52,7 +52,7 @@ export const checkSubscriptionLimits = authActionClient
     
     // Récupérer l'abonnement avec les compteurs
     const { data: sub } = await supabase
-      .from('company_subscription')
+      .from('company_subscription' as any)
       .select('*')
       .eq('company_id', ctx.user.company_id)
       .single();
@@ -64,14 +64,14 @@ export const checkSubscriptionLimits = authActionClient
     return {
       success: true,
       data: {
-        plan: sub.plan,
-        vehicleLimit: sub.vehicle_limit,
-        vehicleCount: sub.current_vehicle_count,
-        canAddVehicle: sub.can_add_vehicle,
-        userLimit: sub.user_limit,
-        userCount: sub.current_user_count,
-        canAddUser: sub.can_add_user,
-        periodEnd: sub.current_period_end,
+        plan: (sub as any).plan,
+        vehicleLimit: (sub as any).vehicle_limit,
+        vehicleCount: (sub as any).current_vehicle_count,
+        canAddVehicle: (sub as any).can_add_vehicle,
+        userLimit: (sub as any).user_limit,
+        userCount: (sub as any).current_user_count,
+        canAddUser: (sub as any).can_add_user,
+        periodEnd: (sub as any).current_period_end,
       }
     };
   });
@@ -113,7 +113,7 @@ export const createCheckoutSession = authActionClient
         metadata: {
           company_id: company.id,
         },
-      });
+      } as any);
       
       customerId = customer.id;
       
@@ -203,7 +203,7 @@ export const requestEnterpriseQuote = authActionClient
       title: 'Demande de devis Unlimited',
       message: `Demande envoyée par ${company.name}`,
       read: false,
-    });
+    } as any);
     
     revalidatePath('/settings/billing');
     

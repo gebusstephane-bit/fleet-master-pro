@@ -35,6 +35,7 @@ export function FuelTrendChart({ data }: FuelTrendChartProps) {
             <YAxis tick={{ fontSize: 12 }} />
             <Tooltip 
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              // @ts-ignore
               formatter={(value: number, name: string) => [
                 name === 'cost' ? `${value.toFixed(0)}€` : `${value.toFixed(0)}L`,
                 name === 'cost' ? 'Coût' : 'Volume'

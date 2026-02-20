@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, parseISO } from 'date-fns';
@@ -78,7 +78,7 @@ export function VehicleForm({
   const [vehicleType, setVehicleType] = useState<VehicleType | ''>(defaultValues?.type || '');
   
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as Resolver<FormData>,
     defaultValues: {
       registration_number: '',
       brand: '',

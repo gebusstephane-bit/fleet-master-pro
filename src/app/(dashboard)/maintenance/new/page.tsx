@@ -149,9 +149,9 @@ function NewMaintenanceContent() {
                       <SelectItem key={key} value={key}>
                         <div className="flex items-center gap-2">
                           <span>{config.label}</span>
-                          {config.defaultIntervalKm && (
+                          {(config as any).defaultIntervalKm && (
                             <Badge variant="secondary" className="text-xs">
-                              Tous les {config.defaultIntervalKm.toLocaleString('fr-FR')} km
+                              Tous les {(config as any).defaultIntervalKm.toLocaleString('fr-FR')} km
                             </Badge>
                           )}
                         </div>
@@ -307,10 +307,10 @@ function NewMaintenanceContent() {
                   <p className="text-sm text-muted-foreground">
                     {selectedVehicle.brand} {selectedVehicle.model} • {selectedVehicle.mileage?.toLocaleString('fr-FR')} km
                   </p>
-                  {(selectedVehicle.next_service_due || selectedVehicle.next_service_mileage) && (
+                  {((selectedVehicle as any).next_service_due || (selectedVehicle as any).next_service_mileage) && (
                     <p className="text-sm text-amber-600 mt-1">
-                      Prochain entretien: {selectedVehicle.next_service_due && format(new Date(selectedVehicle.next_service_due), 'dd/MM/yyyy')} 
-                      {selectedVehicle.next_service_mileage && `ou ${selectedVehicle.next_service_mileage.toLocaleString('fr-FR')} km`}
+                      Prochain entretien: {(selectedVehicle as any).next_service_due && format(new Date((selectedVehicle as any).next_service_due), 'dd/MM/yyyy')} 
+                      {(selectedVehicle as any).next_service_mileage && `ou ${(selectedVehicle as any).next_service_mileage.toLocaleString('fr-FR')} km`}
                     </p>
                   )}
                 </div>

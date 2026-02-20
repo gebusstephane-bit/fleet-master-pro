@@ -58,12 +58,12 @@ export default function EditVehiclePage() {
               brand: vehicle.brand,
               model: vehicle.model,
               year: vehicle.year,
-              type: vehicle.type,
-              fuel_type: vehicle.fuel_type,
+              type: vehicle.type as any,
+              fuel_type: vehicle.fuel_type as any,
               color: vehicle.color,
               mileage: vehicle.mileage,
               vin: vehicle.vin || undefined,
-              status: vehicle.status,
+              status: vehicle.status as any,
             }}
             onSubmit={async (data) => {
               await updateMutation.mutateAsync({ ...data, id });

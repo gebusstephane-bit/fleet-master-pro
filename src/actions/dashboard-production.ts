@@ -133,9 +133,9 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
 
     const vehicleStats = {
       total: vehicles?.length || 0,
-      active: vehicles?.filter(v => v.status === 'active').length || 0,
-      maintenance: vehicles?.filter(v => v.status === 'maintenance').length || 0,
-      inactive: vehicles?.filter(v => v.status === 'inactive' || v.status === 'retired').length || 0,
+      active: vehicles?.filter(v => v.status === 'active' || v.status === 'ACTIF').length || 0,
+      maintenance: vehicles?.filter(v => v.status === 'maintenance' || v.status === 'EN_MAINTENANCE').length || 0,
+      inactive: vehicles?.filter(v => ['inactive', 'retired', 'INACTIF', 'HORS_SERVICE'].includes(v.status)).length || 0,
     };
 
     // KPIs Chauffeurs
@@ -150,7 +150,7 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
 
     const driverStats = {
       total: drivers?.length || 0,
-      active: drivers?.filter(d => d.status === 'active').length || 0,
+      active: drivers?.filter(d => d.status === 'active' || d.status === 'ACTIF').length || 0,
     };
 
     // KPIs Maintenances - UTILISE scheduled_date
@@ -159,10 +159,10 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
 
     const { data: urgentMaintenances, error: urgentError } = await adminClient
       .from('maintenance_records')
-      .select('id, scheduled_date, status')
+      .select('id, rdv_date, status')
       .eq('company_id', companyId)
-      .lte('scheduled_date', sevenDaysFromNow.toISOString().split('T')[0])
-      .in('status', ['scheduled', 'in_progress']);
+      .lte('rdv_date', sevenDaysFromNow.toISOString().split('T')[0])
+      .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS']);
 
     if (urgentError) {
       logger.error('getDashboardKPIs: ERREUR MAINTENANCES URGENTES', { error: urgentError.message });
@@ -172,9 +172,9 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
       .from('maintenance_records')
       .select('id')
       .eq('company_id', companyId)
-      .gt('scheduled_date', sevenDaysFromNow.toISOString().split('T')[0])
-      .lte('scheduled_date', thirtyDaysFromNow.toISOString().split('T')[0])
-      .eq('status', 'scheduled');
+      .gt('rdv_date', sevenDaysFromNow.toISOString().split('T')[0])
+      .lte('rdv_date', thirtyDaysFromNow.toISOString().split('T')[0])
+      .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS']);
 
     if (upcomingError) {
       logger.error('getDashboardKPIs: ERREUR MAINTENANCES A VENIR', { error: upcomingError.message });
@@ -184,7 +184,7 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
       .from('maintenance_records')
       .select('id')
       .eq('company_id', companyId)
-      .eq('status', 'in_progress');
+      .eq('status', 'EN_COURS');
 
     if (inProgressError) {
       logger.error('getDashboardKPIs: ERREUR MAINTENANCES EN COURS', { error: inProgressError.message });
@@ -256,7 +256,7 @@ export async function getMaintenanceAlerts(): Promise<{ data?: MaintenanceAlert[
         id,
         vehicle_id,
         type,
-        scheduled_date,
+        rdv_date,
         status,
         vehicles:vehicle_id (
           registration_number,
@@ -265,9 +265,8 @@ export async function getMaintenanceAlerts(): Promise<{ data?: MaintenanceAlert[
         )
       `)
       .eq('company_id', companyId)
-      .lte('scheduled_date', thirtyDaysFromNow.toISOString().split('T')[0])
-      .in('status', ['scheduled', 'in_progress'])
-      .order('scheduled_date', { ascending: true })
+      .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS'])
+      .order('rdv_date', { ascending: true })
       .limit(10);
 
     if (error) {
@@ -276,22 +275,23 @@ export async function getMaintenanceAlerts(): Promise<{ data?: MaintenanceAlert[
     }
 
     const alerts: MaintenanceAlert[] = (maintenances || []).map(m => {
-      const dueDate = new Date(m.scheduled_date);
+      const rdvDate = (m as any).rdv_date;
+      const dueDate = rdvDate ? new Date(rdvDate) : new Date();
       const daysUntil = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       let priority: 'critical' | 'high' | 'medium' = 'medium';
       if (daysUntil < 0) priority = 'critical';
       else if (daysUntil <= 3) priority = 'critical';
       else if (daysUntil <= 7) priority = 'high';
 
-      const vehicle = m.vehicles as any;
-      
+      const vehicle = (m as any).vehicles;
+
       return {
         id: m.id,
         vehicle_id: m.vehicle_id,
         vehicle_name: vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.registration_number})` : 'Véhicule inconnu',
-        service_type: translateMaintenanceType(m.type),
-        due_date: m.scheduled_date,
+        service_type: translateMaintenanceType(m.type as string),
+        due_date: rdvDate || '',
         days_until: daysUntil,
         priority,
       };
@@ -382,7 +382,7 @@ export async function getScheduledAppointments(): Promise<{ data?: ScheduledAppo
         id,
         vehicle_id,
         type,
-        scheduled_date,
+        rdv_date,
         description,
         vehicles:vehicle_id (
           registration_number,
@@ -391,10 +391,10 @@ export async function getScheduledAppointments(): Promise<{ data?: ScheduledAppo
         )
       `)
       .eq('company_id', companyId)
-      .gte('scheduled_date', now.toISOString().split('T')[0])
-      .lte('scheduled_date', sixtyDaysFromNow.toISOString().split('T')[0])
-      .eq('status', 'scheduled')
-      .order('scheduled_date', { ascending: true })
+      .gte('rdv_date', now.toISOString().split('T')[0])
+      .lte('rdv_date', sixtyDaysFromNow.toISOString().split('T')[0])
+      .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS'])
+      .order('rdv_date', { ascending: true })
       .limit(10);
 
     if (error) {
@@ -403,17 +403,18 @@ export async function getScheduledAppointments(): Promise<{ data?: ScheduledAppo
     }
 
     const appointments: ScheduledAppointment[] = (maintenances || []).map(m => {
-      const serviceDate = new Date(m.scheduled_date);
+      const rdvDate = (m as any).rdv_date;
+      const serviceDate = rdvDate ? new Date(rdvDate) : new Date();
       const daysUntil = Math.ceil((serviceDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      const vehicle = m.vehicles as any;
+      const vehicle = (m as any).vehicles;
 
       return {
         id: m.id,
         vehicle_id: m.vehicle_id,
         vehicle_name: vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.registration_number})` : 'Véhicule inconnu',
-        service_type: translateMaintenanceType(m.type),
-        service_date: m.scheduled_date,
-        description: m.description || '',
+        service_type: translateMaintenanceType(m.type as string),
+        service_date: rdvDate || '',
+        description: (m as any).description || '',
         days_until: daysUntil,
       };
     });

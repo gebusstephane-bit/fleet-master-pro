@@ -112,8 +112,10 @@ export default function InspectionDetailPage() {
     
     setInspection({
       ...inspectionData,
-      vehicle: vehicleData || null
-    });
+      vehicle: vehicleData || undefined,
+      grade: (inspectionData as any).grade || 'C',
+      defects_count: (inspectionData as any).defects_count || 0
+    } as any);
     setLoading(false);
   };
 

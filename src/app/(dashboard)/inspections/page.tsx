@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
+import '@/app/(dashboard)/detail-pages-premium.css';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,18 +39,18 @@ interface Inspection {
 }
 
 const statusConfig = {
-  COMPLETED: { label: 'Terminé', color: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle2 },
-  ISSUES_FOUND: { label: 'Anomalies', color: 'bg-amber-100 text-amber-800 border-amber-200', icon: AlertTriangle },
-  CRITICAL_ISSUES: { label: 'Critique', color: 'bg-red-100 text-red-800 border-red-200', icon: XCircle },
-  PENDING: { label: 'En attente', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: CheckCircle2 },
-  REFUSEE: { label: 'Refusé', color: 'bg-slate-100 text-slate-800 border-slate-200', icon: XCircle },
+  COMPLETED: { label: 'Terminé', color: 'detail-badge-completed', icon: CheckCircle2 },
+  ISSUES_FOUND: { label: 'Anomalies', color: 'detail-badge-maintenance', icon: AlertTriangle },
+  CRITICAL_ISSUES: { label: 'Critique', color: 'detail-badge-critical', icon: XCircle },
+  PENDING: { label: 'En attente', color: 'detail-badge-active', icon: CheckCircle2 },
+  REFUSEE: { label: 'Refusé', color: 'detail-badge-inactive', icon: XCircle },
 };
 
 const gradeColors: Record<string, string> = {
-  A: 'text-green-600 bg-green-50',
-  B: 'text-yellow-600 bg-yellow-50',
-  C: 'text-orange-600 bg-orange-50',
-  D: 'text-red-600 bg-red-50',
+  A: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+  B: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  C: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
+  D: 'text-red-400 bg-red-500/10 border-red-500/20',
 };
 
 // Composant qui utilise useSearchParams
@@ -74,7 +75,7 @@ function InspectionsContent() {
 
   useEffect(() => {
     const fetchInspections = async () => {
-      const result = await getInspectionsSafe(user?.company_id);
+      const result = await getInspectionsSafe(user?.company_id) as any;
       
       if (!result.error && result.data) {
         setInspections(result.data);
@@ -148,36 +149,36 @@ function InspectionsContent() {
         </Alert>
       )}
 
-      {/* Stats */}
+      {/* Stats Premium */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+        <Card className="detail-card">
           <CardHeader className="pb-2">
-            <CardDescription>Total ce mois</CardDescription>
-            <CardTitle className="text-2xl">{stats.total}</CardTitle>
+            <CardDescription className="text-slate-400">Total ce mois</CardDescription>
+            <CardTitle className="text-2xl text-white">{stats.total}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="detail-card">
           <CardHeader className="pb-2">
-            <CardDescription>Contrôles OK</CardDescription>
-            <CardTitle className="text-2xl text-green-600">{stats.completed}</CardTitle>
+            <CardDescription className="text-slate-400">Contrôles OK</CardDescription>
+            <CardTitle className="text-2xl text-emerald-400">{stats.completed}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="detail-card">
           <CardHeader className="pb-2">
-            <CardDescription>Anomalies</CardDescription>
-            <CardTitle className="text-2xl text-amber-600">{stats.issues}</CardTitle>
+            <CardDescription className="text-slate-400">Anomalies</CardDescription>
+            <CardTitle className="text-2xl text-amber-400">{stats.issues}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="detail-card">
           <CardHeader className="pb-2">
-            <CardDescription>Critiques</CardDescription>
-            <CardTitle className="text-2xl text-red-600">{stats.critical}</CardTitle>
+            <CardDescription className="text-slate-400">Critiques</CardDescription>
+            <CardTitle className="text-2xl text-red-400">{stats.critical}</CardTitle>
           </CardHeader>
         </Card>
       </div>
 
-      {/* Filtres */}
-      <Card>
+      {/* Filtres Premium */}
+      <Card className="detail-card">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">

@@ -2,8 +2,9 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { withDebugProtection } from '@/lib/api/debug-protection';
 
-export async function GET() {
+export const GET = withDebugProtection(async () => {
   try {
     // Test 1: Créer client
     console.log('Creating client...');
@@ -25,11 +26,11 @@ export async function GET() {
     console.log('Creating admin client...');
     const adminClient = createAdminClient();
     
-    // Test 4: Query profile
+    // Test 4: Query profile (limité aux infos de base)
     console.log('Querying profile...');
     const { data: profile, error: profileError } = await adminClient
       .from('profiles')
-      .select('*')
+      .select('id, email, first_name, last_name, role, company_id')
       .eq('id', user.id)
       .single();
     
@@ -47,7 +48,6 @@ export async function GET() {
     return NextResponse.json({ 
       error: 'Exception', 
       details: error.message,
-      stack: error.stack,
     }, { status: 500 });
   }
-}
+});

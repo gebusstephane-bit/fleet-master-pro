@@ -58,20 +58,20 @@ export function CompleteMaintenanceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
             Intervention terminée
           </DialogTitle>
-          <DialogDescription>
-            Finaliser l&apos;intervention pour <strong>{vehicleRegistration}</strong>
+          <DialogDescription className="text-slate-400">
+            Finaliser l&apos;intervention pour <span className="text-cyan-400 font-semibold">{vehicleRegistration}</span>
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Coût final */}
           <div className="space-y-2">
-            <Label htmlFor="finalCost">
-              <Euro className="h-4 w-4 inline mr-1" />
+            <Label htmlFor="finalCost" className="text-slate-200">
+              <Euro className="h-4 w-4 inline mr-1 text-cyan-500" />
               Coût final (€) *
             </Label>
             <Input
@@ -83,12 +83,13 @@ export function CompleteMaintenanceDialog({
               onChange={(e) => setFormData({ ...formData, finalCost: e.target.value })}
               placeholder="0.00"
               required
+              className="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-500"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="completionNotes">
-              <FileText className="h-4 w-4 inline mr-1" />
+            <Label htmlFor="completionNotes" className="text-slate-200">
+              <FileText className="h-4 w-4 inline mr-1 text-cyan-500" />
               Notes de clôture
             </Label>
             <Textarea
@@ -97,16 +98,18 @@ export function CompleteMaintenanceDialog({
               onChange={(e) => setFormData({ ...formData, completionNotes: e.target.value })}
               placeholder="Travaux effectués, pièces changées, observations..."
               rows={4}
+              className="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-500 resize-none"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="invoiceDocument">URL de la facture</Label>
+            <Label htmlFor="invoiceDocument" className="text-slate-200">URL de la facture</Label>
             <Input
               id="invoiceDocument"
               value={formData.invoiceDocument}
               onChange={(e) => setFormData({ ...formData, invoiceDocument: e.target.value })}
               placeholder="https://..."
+              className="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-500"
             />
           </div>
 
@@ -116,14 +119,14 @@ export function CompleteMaintenanceDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={loading}
-              className="flex-1"
+              className="flex-1 bg-slate-900/50 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
             >
               Annuler
             </Button>
             <Button
               type="submit"
               disabled={loading || !formData.finalCost}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white"
             >
               {loading ? 'Enregistrement...' : 'Marquer comme terminée'}
             </Button>

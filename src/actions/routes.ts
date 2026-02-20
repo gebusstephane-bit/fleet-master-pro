@@ -35,7 +35,7 @@ export const createRoute = authActionClient
     // Insérer la tournée
     const { data: route, error: routeError } = await supabase
       .from('routes')
-      .insert(dbRouteData)
+      .insert(dbRouteData as any)
       .select()
       .single();
     
@@ -72,7 +72,7 @@ export const createRoute = authActionClient
       
       const { error: stopsError } = await supabase
         .from('route_stops')
-        .insert(stopsToInsert);
+        .insert(stopsToInsert as any);
       
       if (stopsError) {
         console.error('Stops insert error:', stopsError);
@@ -176,7 +176,7 @@ export const startRoute = authActionClient
     const { data, error } = await supabase
       .from('routes')
       .update({ 
-        status: 'IN_PROGRESS',
+        status: 'in_progress',
         started_at: new Date().toISOString()
       })
       .eq('id', parsedInput.id)
@@ -201,7 +201,7 @@ export const completeRoute = authActionClient
     const { data, error } = await supabase
       .from('routes')
       .update({ 
-        status: 'COMPLETED',
+        status: 'completed',
         completed_at: new Date().toISOString()
       })
       .eq('id', parsedInput.id)

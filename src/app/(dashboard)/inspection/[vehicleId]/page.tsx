@@ -204,8 +204,8 @@ export default function InspectionPage() {
         vehicleId,
         mileage: parseInt(mileage) || 0,
         fuelLevel,
-        adblueLevel: isPL(vehicle.type) ? adblueLevel : undefined,
-        gnrLevel: isPLFrigo(vehicle.type) ? gnrLevel : undefined,
+        adblueLevel: isPL((vehicle as any)?.type) ? adblueLevel : undefined,
+        gnrLevel: isPLFrigo((vehicle as any)?.type) ? gnrLevel : undefined,
         cleanlinessExterior: 3,
         cleanlinessInterior: 3,
         compartmentC1Temp: undefined,
@@ -281,7 +281,7 @@ export default function InspectionPage() {
             <div>
               <h1 className="text-3xl font-bold text-slate-900">Contrôle technique</h1>
               <p className="text-slate-500 mt-1">
-                {vehicle.registration_number} • {vehicle.brand} {vehicle.model}
+                {(vehicle as any)?.registration_number || ''} • {(vehicle as any)?.brand || ''} {(vehicle as any)?.model || ''}
               </p>
             </div>
             <div className="text-right">
@@ -341,7 +341,7 @@ export default function InspectionPage() {
                       <Label>Kilométrage *</Label>
                       <Input
                         type="number"
-                        placeholder={vehicle.mileage?.toString()}
+                        placeholder={(vehicle as any)?.mileage?.toString()}
                         value={mileage}
                         onChange={(e) => setMileage(e.target.value)}
                         className="text-lg"
@@ -379,7 +379,7 @@ export default function InspectionPage() {
                     </div>
 
                     {/* AdBlue - PL et PL Frigo uniquement */}
-                    {isPL(vehicle.type) && (
+                    {isPL((vehicle as any)?.type) && (
                       <div className="space-y-2 pt-4 border-t">
                         <Label className="flex items-center gap-2">
                           <Fuel className="h-4 w-4 text-blue-500" />
@@ -402,7 +402,7 @@ export default function InspectionPage() {
                     )}
 
                     {/* GNR - PL Frigo uniquement */}
-                    {isPLFrigo(vehicle.type) && (
+                    {isPLFrigo((vehicle as any)?.type) && (
                       <div className="space-y-2 pt-4 border-t">
                         <Label className="flex items-center gap-2">
                           <Fuel className="h-4 w-4 text-green-500" />

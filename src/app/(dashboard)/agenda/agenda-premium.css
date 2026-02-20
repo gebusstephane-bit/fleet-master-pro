@@ -1,0 +1,208 @@
+/**
+ * Agenda Premium Styles - Glassmorphism Theme
+ * 
+ * CSS uniquement - Aucune logique JavaScript
+ * Override react-big-calendar avec glassmorphism
+ */
+
+/* Container principal transparent */
+.agenda-premium .rbc-calendar {
+  background: transparent;
+  border-radius: 16px;
+}
+
+/* Header mois/semaine/jour - Glass effect */
+.agenda-premium .rbc-header {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(6, 182, 212, 0.15);
+  padding: 12px 8px;
+  font-weight: 600;
+  color: #e2e8f0;
+  text-transform: capitalize;
+}
+
+.agenda-premium .rbc-header + .rbc-header {
+  border-left: 1px solid rgba(6, 182, 212, 0.1);
+}
+
+/* Cellules du calendrier - Transparent avec hover */
+.agenda-premium .rbc-month-view,
+.agenda-premium .rbc-time-view {
+  background: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(6, 182, 212, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.agenda-premium .rbc-day-bg {
+  background: rgba(15, 23, 42, 0.2);
+  transition: all 0.2s ease;
+}
+
+.agenda-premium .rbc-day-bg:hover {
+  background: rgba(6, 182, 212, 0.08);
+}
+
+.agenda-premium .rbc-day-bg.rbc-today {
+  background: rgba(6, 182, 212, 0.15);
+  box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.1);
+}
+
+/* Numéro de jour */
+.agenda-premium .rbc-date-cell {
+  color: #94a3b8;
+  padding: 8px;
+  font-weight: 500;
+}
+
+.agenda-premium .rbc-date-cell.rbc-now {
+  color: #06b6d4;
+  font-weight: 700;
+}
+
+.agenda-premium .rbc-date-cell.rbc-now::after {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  background: #06b6d4;
+  border-radius: 50%;
+  margin-left: 4px;
+  box-shadow: 0 0 8px #06b6d4;
+}
+
+/* Événements - Glassmorphism */
+.agenda-premium .rbc-event {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.9) 0%, rgba(59, 130, 246, 0.9) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
+  transition: all 0.2s ease;
+}
+
+.agenda-premium .rbc-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(6, 182, 212, 0.35);
+}
+
+/* Événement terminé - Vert */
+.agenda-premium .rbc-event.event-completed {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.9) 0%, rgba(5, 150, 105, 0.9) 100%);
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+/* Événement retour prévu - Orange */
+.agenda-premium .rbc-event.event-return {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.9) 0%, rgba(217, 119, 6, 0.9) 100%);
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+/* Événement rappel - Violet */
+.agenda-premium .rbc-event.event-reminder {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9) 0%, rgba(124, 58, 237, 0.9) 100%);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+/* Événement annulé - Rouge */
+.agenda-premium .rbc-event.event-cancelled {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.7) 0%, rgba(220, 38, 38, 0.7) 100%);
+  border-color: rgba(239, 68, 68, 0.3);
+  opacity: 0.7;
+  text-decoration: line-through;
+}
+
+/* Jours hors mois - Plus transparents */
+.agenda-premium .rbc-off-range-bg {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.agenda-premium .rbc-off-range {
+  color: #64748b;
+  opacity: 0.5;
+}
+
+/* Week view - Time slots */
+.agenda-premium .rbc-time-content,
+.agenda-premium .rbc-time-header-content {
+  background: rgba(15, 23, 42, 0.2);
+}
+
+.agenda-premium .rbc-time-slot {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.agenda-premium .rbc-current-time-indicator {
+  background: #06b6d4;
+  height: 2px;
+  box-shadow: 0 0 8px #06b6d4;
+}
+
+/* Bouton "+ X autres" */
+.agenda-premium .rbc-show-more {
+  color: #06b6d4;
+  background: rgba(6, 182, 212, 0.1);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.agenda-premium .rbc-show-more:hover {
+  background: rgba(6, 182, 212, 0.2);
+}
+
+/* Agenda/List view */
+.agenda-premium .rbc-agenda-view table.rbc-agenda-table {
+  background: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  border: 1px solid rgba(6, 182, 212, 0.1);
+}
+
+.agenda-premium .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+  border-bottom: 1px solid rgba(6, 182, 212, 0.1);
+  padding: 12px;
+}
+
+.agenda-premium .rbc-agenda-view table.rbc-agenda-table tbody > tr:hover {
+  background: rgba(6, 182, 212, 0.05);
+}
+
+/* Toolbar */
+.agenda-premium .rbc-toolbar {
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(6, 182, 212, 0.15);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+/* Scrollbar personnalisée */
+.agenda-premium ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.agenda-premium ::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 4px;
+}
+
+.agenda-premium ::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.3);
+  border-radius: 4px;
+}
+
+.agenda-premium ::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.5);
+}

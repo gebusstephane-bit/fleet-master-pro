@@ -1,11 +1,18 @@
+/**
+ * Hook useVehicles - VERSION UNIFIÉE (comme useRoutes)
+ * Utilise le même pattern que useRoutes qui fonctionne
+ */
+
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { useUserContext } from '@/components/providers/user-provider';
-import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 import { createVehicle, deleteVehicle as deleteVehicleAction } from '@/actions/vehicles';
+import { cacheTimes } from '@/lib/query-config';
+import { toast } from 'sonner';
+import { safeQuery } from '@/lib/supabase/client-safe';
 
 // Types
 export interface Vehicle {
@@ -33,93 +40,108 @@ export interface Vehicle {
   };
 }
 
-// Fonction pour créer le client Supabase
-function getSupabase() {
-  return getSupabaseClient();
+export interface VehicleWithDriver extends Vehicle {
+  drivers?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email?: string;
+  } | null | undefined;
 }
 
-// Hook pour récupérer tous les véhicules de l'entreprise
-export function useVehicles(companyId?: string) {
+// Clés de cache
+const vehicleKeys = {
+  all: ['vehicles'] as const,
+  lists: (companyId: string) => [...vehicleKeys.all, 'list', companyId] as const,
+  detail: (id: string) => [...vehicleKeys.all, 'detail', id] as const,
+};
+
+// Hook principal - MEME PATTERN QUE useRoutes
+export function useVehicles(options?: { enabled?: boolean }) {
   const { user } = useUserContext();
-  const effectiveCompanyId = companyId || user?.company_id;
+  const companyId = user?.company_id;
   
   return useQuery({
-    queryKey: ['vehicles', effectiveCompanyId],
+    queryKey: vehicleKeys.lists(companyId || ''),
     queryFn: async () => {
-      logger.info('useVehicles: Fetching with company_id', { companyId: effectiveCompanyId });
+      console.log('[useVehicles] Fetching with companyId:', companyId?.slice(0, 8));
       
-      if (!effectiveCompanyId) {
-        logger.warn('No companyId available');
+      if (!companyId) {
+        console.warn('[useVehicles] No companyId available');
         return [];
       }
       
-      const supabase = getSupabase();
-      
-      // Methode 1: Avec la fonction RPC si elle existe
-      try {
-        const { data: rpcData, error: rpcError } = await supabase
-          .rpc('get_company_vehicles', { p_company_id: effectiveCompanyId });
-        
-        if (!rpcError && rpcData) {
-          logger.info('Vehicles fetched via RPC', { count: rpcData.length });
-          return rpcData as Vehicle[];
-        }
-      } catch (e) {
-        logger.info('RPC not available, trying direct query');
-      }
-      
-      // Methode 2: Requete directe
+      // Tentative 1 : Requête directe (comme useRoutes)
+      const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from('vehicles')
-        .select('*')
-        .eq('company_id', effectiveCompanyId)
+        .select(`
+          *,
+          drivers:assigned_driver_id (
+            id,
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq('company_id', companyId)
         .order('created_at', { ascending: false });
       
-      if (error) {
-        logger.error('Error fetching vehicles', error);
-        
-        // Si erreur de recursion, essayer sans filtre (fallback)
-        if (error.message?.includes('infinite recursion') || error.code === '42P17') {
-          logger.warn('RLS recursion detected, trying fallback...');
-          
-          const { data: allData, error: allError } = await supabase
-            .from('vehicles')
-            .select('*')
-            .order('created_at', { ascending: false });
-          
-          if (!allError && allData) {
-            // Filtrer manuellement
-            const filtered = allData.filter(v => v.company_id === effectiveCompanyId);
-            logger.info('Fallback: Found vehicles', { count: filtered.length });
-            return filtered as Vehicle[];
-          }
-        }
-        
-        throw new Error(error.message);
+      if (!error) {
+        console.log('[useVehicles] Direct query SUCCESS:', data?.length, 'records');
+        return (data || []) as VehicleWithDriver[];
       }
       
-      logger.info('Fetched vehicles', { count: data?.length || 0 });
-      return (data || []) as Vehicle[];
+      // Tentative 2 : Fallback avec safeQuery si RLS error
+      console.warn('[useVehicles] Direct query failed:', error.code, error.message?.slice(0, 50));
+      
+      if (error.message?.includes('infinite recursion') || error.code === '42P17') {
+        console.warn('[useVehicles] RLS recursion, trying safeQuery fallback...');
+        
+        const { data: vehiclesData, error: vehiclesError, debug } = await safeQuery<Vehicle>('vehicles', companyId, {
+          orderBy: { column: 'created_at', ascending: false },
+          limit: 1000,
+        });
+        
+        console.log('[useVehicles] safeQuery result:', { 
+          count: vehiclesData?.length, 
+          error: vehiclesError?.message?.slice(0, 50),
+          debug 
+        });
+        
+        if (vehiclesError) {
+          throw new Error(vehiclesError.message);
+        }
+        
+        return vehiclesData || [];
+      }
+      
+      throw new Error(error.message);
     },
-    enabled: !!effectiveCompanyId,
+    enabled: options?.enabled !== false && !!companyId,
     retry: 1,
     retryDelay: 1000,
+    ...cacheTimes.vehicles,
   });
 }
 
-// Hook pour récupérer un véhicule spécifique
-export function useVehicle(vehicleId: string) {
+// Hook détail
+export function useVehicle(vehicleId: string, options?: any) {
+  const { user } = useUserContext();
+  const companyId = user?.company_id;
+  
   return useQuery({
-    queryKey: ['vehicle', vehicleId],
+    queryKey: vehicleKeys.detail(vehicleId),
     queryFn: async () => {
-      if (!vehicleId) return null;
+      if (!vehicleId || !companyId) return null;
       
-      const supabase = getSupabase();
+      const supabase = getSupabaseClient();
       
       const { data, error } = await supabase
         .from('vehicles')
         .select('*')
         .eq('id', vehicleId)
+        .eq('company_id', companyId)
         .single();
       
       if (error) {
@@ -130,51 +152,44 @@ export function useVehicle(vehicleId: string) {
       
       return data as Vehicle;
     },
-    enabled: !!vehicleId,
+    enabled: !!vehicleId && !!companyId,
+    ...cacheTimes.vehicles,
+    ...options,
   });
 }
 
-// Hook pour créer un véhicule
+// Hook création
 export function useCreateVehicle() {
   const queryClient = useQueryClient();
-  const { user } = useUserContext();
-  const { toast } = useToast();
   
   return useMutation({
-    mutationFn: async (vehicle: Omit<Vehicle, 'id' | 'created_at' | 'updated_at' | 'qr_code_data' | 'company_id'>) => {
+    mutationFn: async (vehicle: any) => {
       const result = await createVehicle(vehicle);
       
-      if (!result.success) {
-        throw new Error(result.error || 'Erreur lors de la création');
+      if (!(result as any)?.success) {
+        throw new Error((result as any)?.error || 'Erreur création');
       }
       
-      return result.data;
+      return (result as any).data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles', user?.company_id] });
-      toast({
-        title: 'Succès',
-        description: 'Véhicule créé avec succès',
-      });
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.all });
+      toast.success('Véhicule créé avec succès');
     },
     onError: (error: any) => {
       logger.error('Error creating vehicle', error);
-      toast({
-        title: 'Erreur',
-        description: error.message || 'Impossible de créer le véhicule',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Impossible de créer le véhicule');
     },
   });
 }
 
-// Hook pour mettre à jour un véhicule
+// Hook mise à jour
 export function useUpdateVehicle() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, ...data }: Partial<Vehicle> & { id: string }) => {
-      const supabase = getSupabase();
+    mutationFn: async ({ id, ...data }: any) => {
+      const supabase = getSupabaseClient();
       
       const { data: updated, error } = await supabase
         .from('vehicles')
@@ -191,44 +206,39 @@ export function useUpdateVehicle() {
       return updated;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['vehicle', variables.id] });
-      if (variables.company_id) {
-        queryClient.invalidateQueries({ queryKey: ['vehicles', variables.company_id] });
-      }
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.all });
+      toast.success('Véhicule mis à jour');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Erreur mise à jour');
     },
   });
 }
 
-// Hook pour supprimer un véhicule
+// Hook suppression
 export function useDeleteVehicle() {
   const queryClient = useQueryClient();
-  const { user } = useUserContext();
-  const { toast } = useToast();
   
   return useMutation({
-    mutationFn: async ({ id }: { id: string; companyId: string }) => {
+    mutationFn: async ({ id }: { id: string }) => {
       const result = await deleteVehicleAction(id);
       
-      if (!result.success) {
-        throw new Error(result.error || 'Erreur lors de la suppression');
+      if (!(result as any)?.success) {
+        throw new Error((result as any)?.error || 'Erreur suppression');
       }
       
       return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles', user?.company_id] });
-      toast({
-        title: 'Succès',
-        description: 'Véhicule supprimé avec succès',
-      });
+      queryClient.invalidateQueries({ queryKey: vehicleKeys.all });
+      toast.success('Véhicule supprimé');
     },
     onError: (error: any) => {
       logger.error('Error deleting vehicle', error);
-      toast({
-        title: 'Erreur',
-        description: error.message || 'Impossible de supprimer le véhicule',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Impossible de supprimer');
     },
   });
 }
+
+export type { VehicleWithDriver };

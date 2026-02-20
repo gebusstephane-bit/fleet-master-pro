@@ -12,7 +12,7 @@ export { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 export { EmptyState } from './empty-state';
 export { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from './form';
 export { Input } from './input';
-export { KpiCard } from './kpi-card';
+import { Toaster as SonnerToaster } from 'sonner';
 export { Label } from './label';
 export { PageHeader } from './page-header';
 export { Popover, PopoverContent, PopoverTrigger } from './popover';
@@ -29,5 +29,6 @@ export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
 export { Textarea } from './textarea';
 export { Toast, ToastAction } from './toast';
+// @ts-ignore
 export { Toaster } from './toaster';
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';

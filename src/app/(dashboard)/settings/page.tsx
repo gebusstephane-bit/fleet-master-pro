@@ -2,16 +2,19 @@
 
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { 
-  Users, 
-  Building2, 
-  Bell, 
-  Shield, 
+import {
+  Users,
+  Building2,
+  Bell,
+  Shield,
   ChevronRight,
   UserCog,
   Mail,
   Key,
-  Paintbrush
+  Paintbrush,
+  Siren,
+  History as HistoryIcon,
+  Webhook,
 } from 'lucide-react';
 import { useUserContext } from '@/components/providers/user-provider';
 import { useUserPermissions, type User } from '@/hooks/use-users';
@@ -74,6 +77,14 @@ export default function SettingsPage() {
       roles: ['ADMIN'],
     },
     {
+      title: 'API & Webhooks',
+      description: 'Clés API et webhooks sortants pour vos systèmes TMS/ERP',
+      icon: <Webhook className="h-6 w-6 text-cyan-600" />,
+      href: '/settings/webhooks',
+      roles: ['ADMIN'],
+      badge: 'API v1',
+    },
+    {
       title: 'Personnalisation',
       description: 'Thème, langue, format des dates',
       icon: <Paintbrush className="h-6 w-6 text-pink-600" />,
@@ -86,6 +97,20 @@ export default function SettingsPage() {
       icon: <Mail className="h-6 w-6 text-indigo-600" />,
       href: '/settings/emails',
       roles: ['ADMIN'],
+    },
+    {
+      title: 'SOS & Dépannage',
+      description: 'Configurer vos prestataires et contrats d\'urgence',
+      icon: <Siren className="h-6 w-6 text-red-600" />,
+      href: '/settings/sos',
+      roles: ['ADMIN', 'DIRECTEUR'],
+    },
+    {
+      title: 'Historique d\'activité',
+      description: 'Journal des actions effectuées sur votre flotte',
+      icon: <HistoryIcon className="h-6 w-6 text-cyan-600" />,
+      href: '/settings/activity',
+      roles: ['ADMIN', 'DIRECTEUR'],
     },
   ];
   

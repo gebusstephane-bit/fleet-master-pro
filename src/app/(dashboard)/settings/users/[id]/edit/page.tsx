@@ -29,7 +29,7 @@ import {
   AlertTriangle,
   Mail,
   Phone,
-  User,
+  User as UserIcon,
   Bell,
   Clock,
   Save
@@ -184,7 +184,7 @@ export default function EditUserPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="general">
-            <User className="h-4 w-4 mr-2" />
+            <UserIcon className="h-4 w-4 mr-2" />
             Informations
           </TabsTrigger>
           <TabsTrigger value="notifications">
@@ -199,7 +199,7 @@ export default function EditUserPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
+                  <UserIcon className="h-5 w-5" />
                   Informations personnelles
                 </CardTitle>
               </CardHeader>

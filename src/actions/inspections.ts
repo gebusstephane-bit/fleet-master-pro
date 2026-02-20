@@ -95,6 +95,7 @@ export async function createInspection(data: InspectionData) {
       .insert({
         vehicle_id: data.vehicleId,
         company_id: vehicle.company_id,
+        inspection_date: new Date().toISOString(),
         mileage: data.mileage,
         fuel_level: data.fuelLevel,
         adblue_level: data.adblueLevel,
@@ -113,11 +114,9 @@ export async function createInspection(data: InspectionData) {
         location: data.location,
         created_by: user.id,
         score: score,
-        grade: grade,
-        defects_count: data.reportedDefects.length,
-        status: data.reportedDefects.some(d => d.severity === 'CRITIQUE') 
+        status: data.reportedDefects?.some((d: any) => d.severity === 'CRITIQUE') 
           ? 'CRITICAL_ISSUES' 
-          : data.reportedDefects.length > 0 
+          : data.reportedDefects?.length > 0 
             ? 'ISSUES_FOUND' 
             : 'COMPLETED',
       })
@@ -250,7 +249,7 @@ export async function findVehicleByPlate(plateNumber: string) {
 
   // Utiliser la fonction RPC qui gere la normalisation
   const { data, error } = await supabase
-    .rpc('search_vehicle_by_plate', { search_term: plateNumber });
+    .rpc('search_vehicle_by_plate' as any, { search_term: plateNumber });
 
   if (error) {
     console.error('Error searching vehicle:', error);

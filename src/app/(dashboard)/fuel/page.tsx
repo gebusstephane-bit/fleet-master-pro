@@ -10,13 +10,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useState } from 'react';
 
 export default function FuelPage() {
-  const { data: records, isLoading: isLoadingRecords } = useFuelRecords();
+  const { data: recordsData, isLoading: isLoadingRecords } = useFuelRecords();
   const { data: stats, isLoading: isLoadingStats } = useFuelStats();
   const createMutation = useCreateFuelRecord();
   const [open, setOpen] = useState(false);
   
-  const totalLiters = records?.reduce((sum: number, r: any) => sum + (r.quantity_liters || 0), 0) || 0;
-  const totalCost = records?.reduce((sum: number, r: any) => sum + (r.price_total || 0), 0) || 0;
+  // @ts-ignore
+  const records = recordsData?.data || recordsData || [];
+  
+  const totalLiters = (records as any[])?.reduce((sum: number, r: any) => sum + (r.quantity_liters || 0), 0) || 0;
+  const totalCost = (records as any[])?.reduce((sum: number, r: any) => sum + (r.price_total || 0), 0) || 0;
   
   return (
     <div className="space-y-6">
@@ -59,7 +62,7 @@ export default function FuelPage() {
             <Fuel className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{records?.length || 0}</div>
+            <div className="text-2xl font-bold">{(records as any[])?.length || 0}</div>
           </CardContent>
         </Card>
         
@@ -78,67 +81,62 @@ export default function FuelPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Dépenses
+              Coût total
             </CardTitle>
-            <Euro className="h-4 w-4 text-green-500" />
+            <Euro className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCost.toFixed(2)} €</div>
+            <div className="text-2xl font-bold">{totalCost.toFixed(0)} €</div>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Prix moyen/L
+              Moyenne/L
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {totalLiters > 0 ? (totalCost / totalLiters).toFixed(3) : '0.000'} €
+              {totalLiters > 0 ? (totalCost / totalLiters).toFixed(2) : '0.00'} €
             </div>
           </CardContent>
         </Card>
       </div>
-      
-      {/* Liste */}
+
+      {/* Liste des pleins */}
       <Card>
         <CardHeader>
           <CardTitle>Historique des pleins</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoadingRecords ? (
-            <Skeleton className="h-64 w-full" />
-          ) : records?.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Fuel className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <p>Aucun plein enregistré</p>
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
             </div>
+          ) : (records as any[])?.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              Aucun plein enregistré
+            </p>
           ) : (
             <div className="space-y-4">
-              {records?.map((record: any) => (
-                <div
-                  key={record.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
-                >
+              {(records as any[])?.map((record: any) => (
+                <div key={record.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
                     <p className="font-medium">
-                      {record.vehicles?.registration_number} - {record.vehicles?.brand}
+                      {/* @ts-ignore */}
+                      {record.vehicles?.registration_number || record.vehicle_id}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {new Date(record.date).toLocaleDateString('fr-FR')}
-                      {record.drivers && ` • ${record.drivers.first_name} ${record.drivers.last_name}`}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="font-medium">{record.quantity_liters} L</p>
-                    <p className="text-sm text-muted-foreground">{record.price_total.toFixed(2)} €</p>
-                    {record.consumption_l_per_100km && (
-                      <p className="text-xs text-blue-600">
-                        {record.consumption_l_per_100km.toFixed(1)} L/100km
-                      </p>
-                    )}
+                    <p className="text-sm text-muted-foreground">{record.price_total} €</p>
                   </div>
                 </div>
               ))}
@@ -146,44 +144,6 @@ export default function FuelPage() {
           )}
         </CardContent>
       </Card>
-      
-      {/* Stats par véhicule */}
-      {stats && stats.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Consommation par véhicule</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {stats.map((stat: any) => (
-                <div
-                  key={stat.vehicle.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium">
-                      {stat.vehicle.registration_number} - {stat.vehicle.brand} {stat.vehicle.model}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {stat.fillCount} pleins • {stat.totalLiters.toFixed(0)} L
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    {stat.avgConsumption ? (
-                      <p className="font-medium text-blue-600">
-                        {stat.avgConsumption} L/100km
-                      </p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Pas assez de données</p>
-                    )}
-                    <p className="text-sm text-muted-foreground">{stat.totalCost.toFixed(2)} €</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

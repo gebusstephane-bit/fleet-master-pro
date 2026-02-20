@@ -39,7 +39,7 @@ export function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section ref={ref} className="py-24 bg-white">
+    <section ref={ref} className="py-24 bg-[#09090b]">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <motion.div
@@ -48,13 +48,13 @@ export function FAQ() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <span className="inline-block text-sm font-semibold text-blue-600 uppercase tracking-wider mb-4">
+          <span className="inline-block text-sm font-semibold text-blue-400 uppercase tracking-wider mb-4">
             FAQ
           </span>
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white">
             Questions fréquentes
           </h2>
-          <p className="mt-4 text-lg text-gray-600">
+          <p className="mt-4 text-lg text-[#a1a1aa]">
             Vous avez d&apos;autres questions ? Contactez-nous à hello@fleetmaster.pro
           </p>
         </motion.div>
@@ -67,18 +67,18 @@ export function FAQ() {
               initial={{ opacity: 0, y: 20 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.4, delay: index * 0.05 }}
-              className="border border-gray-200 rounded-xl overflow-hidden"
+              className="border border-white/[0.08] rounded-xl overflow-hidden"
             >
               <button
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                className="w-full flex items-center justify-between p-6 text-left hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between p-6 text-left hover:bg-white/[0.02] transition-colors"
               >
-                <span className="font-semibold text-gray-900 pr-8">
+                <span className="font-semibold text-white pr-8">
                   {faq.question}
                 </span>
                 <ChevronDown
                   className={cn(
-                    "h-5 w-5 text-gray-500 flex-shrink-0 transition-transform duration-200",
+                    "h-5 w-5 text-[#71717a] flex-shrink-0 transition-transform duration-200",
                     openIndex === index && "rotate-180"
                   )}
                 />
@@ -91,7 +91,7 @@ export function FAQ() {
                   transition={{ duration: 0.2 }}
                   className="px-6 pb-6"
                 >
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-[#a1a1aa] leading-relaxed">
                     {faq.answer}
                   </p>
                 </motion.div>

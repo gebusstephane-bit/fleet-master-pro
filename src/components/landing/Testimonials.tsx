@@ -37,7 +37,7 @@ export function Testimonials() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section ref={ref} className="py-24 bg-white">
+    <section ref={ref} className="py-24 bg-[#09090b]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <motion.div
@@ -46,14 +46,14 @@ export function Testimonials() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <span className="inline-block text-sm font-semibold text-blue-600 uppercase tracking-wider mb-4">
+          <span className="inline-block text-sm font-semibold text-blue-400 uppercase tracking-wider mb-4">
             Témoignages
           </span>
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white">
             Ils ont transformé leur flotte
           </h2>
-          <p className="mt-4 text-lg text-gray-600">
-            Note moyenne : <span className="font-semibold text-gray-900">4.8/5</span> sur Trustpilot
+          <p className="mt-4 text-lg text-[#a1a1aa]">
+            Note moyenne : <span className="font-semibold text-white">4.8/5</span> sur Trustpilot
           </p>
         </motion.div>
 
@@ -65,10 +65,10 @@ export function Testimonials() {
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="relative bg-gray-50 rounded-2xl p-8"
+              className="relative bg-[#18181b]/60 backdrop-blur-sm rounded-2xl p-8 border border-white/[0.08]"
             >
               {/* Quote icon */}
-              <Quote className="absolute top-6 right-6 h-8 w-8 text-gray-200" />
+              <Quote className="absolute top-6 right-6 h-8 w-8 text-white/[0.06]" />
 
               {/* Stars */}
               <div className="flex gap-1 mb-4">
@@ -78,7 +78,7 @@ export function Testimonials() {
               </div>
 
               {/* Content */}
-              <p className="text-gray-700 mb-6 leading-relaxed">
+              <p className="text-[#a1a1aa] mb-6 leading-relaxed">
                 &ldquo;{testimonial.content}&rdquo;
               </p>
 
@@ -88,8 +88,8 @@ export function Testimonials() {
                   {testimonial.image}
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">{testimonial.name}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-semibold text-white">{testimonial.name}</p>
+                  <p className="text-sm text-[#71717a]">
                     {testimonial.role}, {testimonial.company}
                   </p>
                 </div>

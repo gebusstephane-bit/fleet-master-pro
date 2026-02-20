@@ -64,8 +64,8 @@ export async function createMaintenanceSimple(data: CreateMaintenanceData, userI
         entity_id: maintenance.id,
         entity_name: vehicle.registration_number,
         description: `Maintenance créée : ${data.type}`,
-      });
-    } catch (logError) {
+      } as any);
+    } catch (logError: any) {
       // On ignore l'erreur de logging
       logger.warn('Activity log failed', logError);
     }

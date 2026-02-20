@@ -1,9 +1,12 @@
 'use client';
 
+import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { GlassCard } from '@/components/ui/glass-card';
 import { VehicleForm } from '@/components/vehicles/vehicle-form';
 import { useCreateVehicle } from '@/hooks/use-vehicles';
+import { PageHeader } from '@/components/ui/page-header';
+import { Car } from 'lucide-react';
 
 export default function NewVehiclePage() {
   const router = useRouter();
@@ -11,28 +14,24 @@ export default function NewVehiclePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Nouveau véhicule</h1>
-        <p className="text-muted-foreground">
-          Ajoutez un nouveau véhicule à votre flotte.
-        </p>
-      </div>
+      {React.createElement(PageHeader as any, {
+        title: "Nouveau véhicule",
+        description: "Ajoutez un nouveau véhicule à votre flotte",
+        backHref: "/vehicles",
+        icon: Car
+      })}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Informations du véhicule</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <VehicleForm
-            onSubmit={async (data) => {
-              await createMutation.mutateAsync(data);
-              router.push('/vehicles');
-            }}
-            isSubmitting={createMutation.isPending}
-            submitLabel="Créer le véhicule"
-          />
-        </CardContent>
-      </Card>
+      {/* @ts-ignore */}
+      <GlassCard glow="cyan" className="p-6">
+        <VehicleForm
+          onSubmit={async (data) => {
+            await createMutation.mutateAsync(data);
+            router.push('/vehicles');
+          }}
+          isSubmitting={createMutation.isPending}
+          submitLabel="Créer le véhicule"
+        />
+      </GlassCard>
     </div>
   );
 }

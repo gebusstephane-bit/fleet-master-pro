@@ -7,13 +7,14 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
+import { isSuperadminEmail } from '@/lib/superadmin';
 
 // Vérification SuperAdmin
 async function verifySuperAdmin() {
   const supabase = createAdminClient();
   const { data: { session } } = await supabase.auth.getSession();
   
-  if (!session || session.user.email !== 'contact@fleet-master.fr') {
+  if (!session || !isSuperadminEmail(session.user.email)) {
     throw new Error('Unauthorized');
   }
   
@@ -179,7 +180,7 @@ export async function updateTicketStatus(ticketId: string, status: string) {
   
   const { error } = await supabase
     .from('support_tickets')
-    .update({ status, updated_at: new Date().toISOString() })
+    .update({ status: status as any, updated_at: new Date().toISOString() })
     .eq('id', ticketId);
 
   if (error) throw error;

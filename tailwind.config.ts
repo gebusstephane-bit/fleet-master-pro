@@ -33,15 +33,26 @@ const config: Config = {
           DEFAULT: "rgba(255,255,255,0.1)",
           hover: "rgba(255,255,255,0.2)",
         },
-        // Brand Colors
+        // Brand Colors - Cyan/Blue/Orange Theme
         brand: {
+          cyan: "#06b6d4",
+          "cyan-glow": "rgba(6,182,212,0.3)",
           blue: "#3b82f6",
-          "blue-glow": "rgba(59,130,246,0.15)",
+          "blue-glow": "rgba(59,130,246,0.3)",
+          orange: "#f97316",
+          "orange-glow": "rgba(249,115,22,0.3)",
           emerald: "#10b981",
           "emerald-glow": "rgba(16,185,129,0.15)",
           amber: "#f59e0b",
           red: "#ef4444",
           violet: "#8b5cf6",
+        },
+        // New Navy Theme Colors
+        navy: {
+          950: "#0a0f1a",
+          900: "#0f172a",
+          800: "#1e293b",
+          700: "#334155",
         },
         // shadcn compatibility
         card: {
@@ -76,8 +87,8 @@ const config: Config = {
         input: "rgba(255,255,255,0.1)",
       },
       fontFamily: {
-        sans: ["Inter", "Geist", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "SF Mono", "monospace"],
+        sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "JetBrains Mono", "SF Mono", "monospace"],
       },
       borderRadius: {
         lg: "0.75rem",
@@ -87,14 +98,19 @@ const config: Config = {
         "2xl": "1.5rem",
       },
       boxShadow: {
-        // Glow effects
-        "glow-blue": "0 0 20px rgba(59,130,246,0.15)",
+        // Glow effects - Cyan/Blue/Orange theme
+        "glow-cyan": "0 0 20px rgba(6,182,212,0.3)",
+        "glow-cyan-lg": "0 0 40px rgba(6,182,212,0.4)",
+        "glow-blue": "0 0 20px rgba(59,130,246,0.3)",
+        "glow-blue-lg": "0 0 40px rgba(59,130,246,0.4)",
+        "glow-orange": "0 0 20px rgba(249,115,22,0.3)",
+        "glow-orange-lg": "0 0 40px rgba(249,115,22,0.4)",
         "glow-emerald": "0 0 20px rgba(16,185,129,0.15)",
         "glow-red": "0 0 20px rgba(239,68,68,0.15)",
         "glow-amber": "0 0 20px rgba(245,158,11,0.15)",
         // Glass shadows
-        glass: "0 8px 32px rgba(0,0,0,0.4)",
-        "glass-lg": "0 16px 48px rgba(0,0,0,0.5)",
+        glass: "0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(6,182,212,0.05)",
+        "glass-lg": "0 16px 48px rgba(0,0,0,0.5), 0 0 30px rgba(6,182,212,0.1)",
         // Card shadows
         card: "0 4px 6px -1px rgba(0,0,0,0.3), 0 2px 4px -2px rgba(0,0,0,0.3)",
         "card-hover": "0 20px 25px -5px rgba(0,0,0,0.4), 0 8px 10px -6px rgba(0,0,0,0.4)",
@@ -105,8 +121,13 @@ const config: Config = {
       animation: {
         // Shimmer for skeletons
         shimmer: "shimmer 2s linear infinite",
+        // Shimmer slide for buttons
+        "shimmer-slide": "shimmer-slide 2s infinite",
         // Pulse glow
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        // Float animation
+        float: "float 6s ease-in-out infinite",
+        "float-delayed": "float 6s ease-in-out infinite 3s",
         // Slide up
         "slide-up": "slide-up 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
         // Fade in
@@ -119,15 +140,27 @@ const config: Config = {
         "spin-slow": "spin 3s linear infinite",
         // Progress
         progress: "progress 1s ease-out forwards",
+        // Gradient shift
+        "gradient-shift": "gradient-shift 8s ease infinite",
+        // Glow pulse
+        "glow-pulse": "glow-pulse 2s ease-in-out infinite",
       },
       keyframes: {
         shimmer: {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        "shimmer-slide": {
+          "0%": { left: "-100%" },
+          "100%": { left: "100%" },
+        },
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 20px rgba(59,130,246,0.15)" },
-          "50%": { boxShadow: "0 0 30px rgba(59,130,246,0.25)" },
+          "0%, 100%": { boxShadow: "0 0 20px rgba(6,182,212,0.3)" },
+          "50%": { boxShadow: "0 0 40px rgba(6,182,212,0.6)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-10px)" },
         },
         "slide-up": {
           "0%": { opacity: "0", transform: "translateY(20px)" },
@@ -144,6 +177,15 @@ const config: Config = {
         "bounce-subtle": {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-4px)" },
+        },
+        "gradient-shift": {
+          "0%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+          "100%": { backgroundPosition: "0% 50%" },
+        },
+        "glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 20px rgba(6,182,212,0.3)" },
+          "50%": { boxShadow: "0 0 40px rgba(6,182,212,0.6)" },
         },
         progress: {
           "0%": { width: "0%" },

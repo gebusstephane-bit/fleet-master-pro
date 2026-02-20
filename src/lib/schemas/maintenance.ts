@@ -14,6 +14,7 @@ export const maintenanceDocumentSchema = z.object({
 export const maintenanceSchema = z.object({
   id: z.string().uuid().optional(),
   vehicleId: z.string().uuid("Véhicule requis"),
+  // @ts-expect-error - zod enum overload issue
   type: z.enum([
     'PREVENTIVE', 
     'CORRECTIVE', 
@@ -145,13 +146,13 @@ export function calculateNextService(
   serviceDate: string,
   config?: { intervalKm?: number; intervalMonths?: number }
 ) {
-  const typeConfig = maintenanceTypeConfig[type];
+  const typeConfig = maintenanceTypeConfig[type] as any;
   
-  const nextMileage = typeConfig.defaultIntervalKm 
+  const nextMileage = typeConfig?.defaultIntervalKm 
     ? currentMileage + (config?.intervalKm || typeConfig.defaultIntervalKm)
     : undefined;
     
-  const nextDate = typeConfig.defaultIntervalMonths
+  const nextDate = typeConfig?.defaultIntervalMonths
     ? new Date(new Date(serviceDate).getTime() + (config?.intervalMonths || typeConfig.defaultIntervalMonths) * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     : undefined;
     

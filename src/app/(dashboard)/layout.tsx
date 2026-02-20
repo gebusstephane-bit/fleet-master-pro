@@ -6,6 +6,7 @@ import { Inter } from "next/font/google";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { MainContent } from "@/components/layout/main-content";
 import { ClientLayout } from "./ClientLayout";
 import { getUserWithCompany } from "@/lib/supabase/server";
 
@@ -33,15 +34,13 @@ export default async function DashboardLayout({
   }
 
   return (
-    <ClientLayout user={user}>
-      <div className={`${inter.variable} font-sans min-h-screen bg-[#09090b]`}>
-        <Sidebar user={user} />
-        <Header user={user} />
-        <main className="pt-16 pl-20 min-h-screen bg-[#09090b] relative z-10">
-          <div className="p-6">
-            {children}
-          </div>
-        </main>
+    <ClientLayout user={user as any}>
+      <div className={`${inter.variable} font-sans min-h-screen bg-[#0a0f1a] relative`}>
+        <Sidebar user={user as any} />
+        <Header user={user as any} />
+        <MainContent>
+          {children}
+        </MainContent>
       </div>
     </ClientLayout>
   );

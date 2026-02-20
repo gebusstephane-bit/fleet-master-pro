@@ -34,7 +34,7 @@ const footerLinks = {
 
 export function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-300">
+    <footer className="bg-[#09090b] text-[#a1a1aa] border-t border-white/[0.06]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           {/* Logo & description */}
@@ -60,19 +60,19 @@ export function Footer() {
               </svg>
               <span className="text-lg font-bold text-white">FleetMaster</span>
             </Link>
-            <p className="text-gray-400 text-sm mb-6 max-w-xs">
+            <p className="text-[#71717a] text-sm mb-6 max-w-xs">
               La plateforme de gestion de flotte qui anticipe les pannes et réduit vos coûts.
             </p>
             <div className="flex gap-4">
               <a
                 href="#"
-                className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors"
+                className="w-10 h-10 rounded-full bg-[#27272a] flex items-center justify-center hover:bg-[#3f3f46] transition-colors"
               >
                 <Linkedin className="h-5 w-5" />
               </a>
               <a
                 href="#"
-                className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors"
+                className="w-10 h-10 rounded-full bg-[#27272a] flex items-center justify-center hover:bg-[#3f3f46] transition-colors"
               >
                 <Twitter className="h-5 w-5" />
               </a>
@@ -121,8 +121,8 @@ export function Footer() {
         </div>
 
         {/* Bottom */}
-        <div className="mt-12 pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-gray-500">
+        <div className="mt-12 pt-8 border-t border-white/[0.08] flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-sm text-[#71717a]">
             © {new Date().getFullYear()} FleetMaster. Tous droits réservés.
           </p>
           <div className="flex gap-6">
@@ -130,7 +130,7 @@ export function Footer() {
               <Link
                 key={link.name}
                 href={link.href}
-                className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+                className="text-sm text-[#71717a] hover:text-white transition-colors"
               >
                 {link.name}
               </Link>

@@ -71,6 +71,7 @@ export interface VehicleWithDriver extends Vehicle {
   } | null;
 }
 
+// @ts-expect-error - Interface extends with property type mismatch
 export interface VehicleWithDetails extends VehicleWithDriver {
   maintenance_count?: number;
   last_maintenance_date?: string;

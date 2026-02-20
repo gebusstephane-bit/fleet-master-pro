@@ -10,7 +10,7 @@ export async function getDashboardStats() {
     const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
     
     if (authError || !authUser) {
-      logger.error('getDashboardStats: Utilisateur non authentifié', authError);
+      logger.error('getDashboardStats: Utilisateur non authentifié', authError || undefined);
       return { success: false, error: 'Non authentifié' };
     }
     
@@ -24,7 +24,7 @@ export async function getDashboardStats() {
       .single();
     
     if (userError || !userData?.company_id) {
-      logger.error('getDashboardStats: Pas de company_id', userError);
+      logger.error('getDashboardStats: Pas de company_id', userError || undefined);
       return { success: false, error: 'Entreprise non trouvée' };
     }
     
@@ -64,7 +64,7 @@ export async function getDashboardStats() {
     
     const { data: fuel } = await supabase
       .from('fuel_records')
-      .select('cost')
+      .select('price_total')
       .eq('company_id', companyId)
       .gte('date', startOfMonth.toISOString());
     
@@ -72,9 +72,9 @@ export async function getDashboardStats() {
       .from('maintenance_records')
       .select('cost')
       .eq('company_id', companyId)
-      .gte('service_date', startOfMonth.toISOString());
+      .gte('created_at', startOfMonth.toISOString());
     
-    const totalFuel = fuel?.reduce((s, r) => s + (r.cost || 0), 0) || 0;
+    const totalFuel = fuel?.reduce((s, r) => s + (r.price_total || 0), 0) || 0;
     const totalMaint = maintenance?.reduce((s, r) => s + (r.cost || 0), 0) || 0;
     
     logger.info('getDashboardStats: Données chargées', {
@@ -98,7 +98,7 @@ export async function getDashboardStats() {
         },
         routes: {
           today: routes?.length || 0,
-          ongoing: routes?.filter(r => r.status === 'in_progress').length || 0
+          ongoing: routes?.filter(r => r.status === 'in_progress' || r.status === 'EN_COURS').length || 0
         },
         costs: {
           fuel: totalFuel,

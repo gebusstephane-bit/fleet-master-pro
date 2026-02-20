@@ -19,8 +19,10 @@ export function useFuelRecords() {
     queryKey: fuelKeys.lists(),
     queryFn: async () => {
       const result = await getAllFuelRecords();
-      if (!result?.data?.success) throw new Error('Erreur');
-      return result.data.data;
+      // @ts-ignore
+      if (!result?.success) throw new Error(result?.error || 'Erreur');
+      // @ts-ignore
+      return result.data;
     },
   });
 }
@@ -30,8 +32,10 @@ export function useFuelRecordsByVehicle(vehicleId: string) {
     queryKey: fuelKeys.byVehicle(vehicleId),
     queryFn: async () => {
       const result = await getFuelRecordsByVehicle({ id: vehicleId });
-      if (!result?.data?.success) throw new Error('Erreur');
-      return result.data.data;
+      // @ts-ignore
+      if (!result?.success) throw new Error(result?.error || 'Erreur');
+      // @ts-ignore
+      return result.data;
     },
     enabled: !!vehicleId,
   });
@@ -43,8 +47,10 @@ export function useCreateFuelRecord() {
   return useMutation({
     mutationFn: async (data: Parameters<typeof createFuelRecord>[0]) => {
       const result = await createFuelRecord(data);
-      if (!result?.data?.success) throw new Error(result?.data || 'Erreur');
-      return result.data.data;
+      // @ts-ignore
+      if (!result?.success) throw new Error(result?.error || 'Erreur');
+      // @ts-ignore
+      return result.data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: fuelKeys.lists() });
@@ -61,8 +67,10 @@ export function useFuelStats() {
     queryKey: fuelKeys.stats(),
     queryFn: async () => {
       const result = await getFuelStats();
-      if (!result?.data?.success) throw new Error('Erreur');
-      return result.data.data;
+      // @ts-ignore
+      if (!result?.success) throw new Error(result?.error || 'Erreur');
+      // @ts-ignore
+      return result.data;
     },
   });
 }

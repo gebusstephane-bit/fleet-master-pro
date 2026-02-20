@@ -22,6 +22,7 @@ import {
   ClipboardCheck,
   Brain
 } from 'lucide-react';
+import '@/app/(dashboard)/detail-pages-premium.css';
 import { useVehicle } from '@/hooks/use-vehicles';
 import { useMaintenancesByVehicle } from '@/hooks/use-maintenance';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -45,10 +46,10 @@ const VehicleMap = dynamic(() => import('@/components/vehicles/detail/vehicle-ma
 });
 
 const statusConfig = {
-  active: { label: 'Actif', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  inactive: { label: 'Inactif', color: 'bg-gray-500/20 text-slate-700 border-slate-200' },
-  maintenance: { label: 'En maintenance', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  retired: { label: 'Retiré', color: 'bg-red-100 text-red-700 border-red-200' },
+  active: { label: 'Actif', color: 'detail-badge-active' },
+  inactive: { label: 'Inactif', color: 'detail-badge-inactive' },
+  maintenance: { label: 'En maintenance', color: 'detail-badge-maintenance' },
+  retired: { label: 'Retiré', color: 'detail-badge-critical' },
 };
 
 const typeLabels: Record<string, string> = {
@@ -93,12 +94,12 @@ export default function VehicleDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="h-10 w-10" asChild>
+      {/* Header Premium */}
+      <div className="detail-header">
+        <div className="detail-header-title">
+          <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-cyan-500/10" asChild>
             <Link href="/vehicles">
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-5 w-5 text-cyan-400" />
             </Link>
           </Button>
           <div>
@@ -106,14 +107,14 @@ export default function VehicleDetailPage() {
               <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
                 {vehicle.registration_number}
               </h1>
-              <Badge className={status.color} variant="outline">
+              <Badge className={`${status.color} detail-header-badge`} variant="outline">
                 {status.label}
               </Badge>
             </div>
-            <p className="text-gray-400">{vehicle.brand} {vehicle.model} • {vehicle.year}</p>
+            <p className="text-slate-400">{vehicle.brand} {vehicle.model} • {vehicle.year}</p>
           </div>
         </div>
-        <Button asChild>
+        <Button asChild className="detail-btn-primary">
           <Link href={`/vehicles/${id}/edit`}>
             <Edit className="h-4 w-4 mr-2" />
             Modifier
@@ -124,10 +125,10 @@ export default function VehicleDetailPage() {
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Colonne 1 : Carte */}
-        <Card className="lg:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-blue-500" />
+        <Card className="lg:col-span-1 detail-card">
+          <CardHeader className="detail-card-header">
+            <CardTitle className="detail-card-title">
+              <MapPin className="h-5 w-5" />
               Position
             </CardTitle>
           </CardHeader>
@@ -145,18 +146,21 @@ export default function VehicleDetailPage() {
         </Card>
 
         {/* Colonne 2 : Infos */}
-        <Card className="lg:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Informations</CardTitle>
+        <Card className="lg:col-span-1 detail-card">
+          <CardHeader className="detail-card-header">
+            <CardTitle className="detail-card-title">
+              <FileText className="h-5 w-5" />
+              Informations
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="detail-card-content space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <InfoItem label="Marque" value={vehicle.brand} />
               <InfoItem label="Modèle" value={vehicle.model} />
-              <InfoItem label="Année" value={vehicle.year} />
-              <InfoItem label="Type" value={typeLabels[vehicle.type] || vehicle.type} />
-              <InfoItem label="Carburant" value={fuelLabels[vehicle.fuel_type] || vehicle.fuel_type} />
-              <InfoItem label="Couleur" value={vehicle.color} />
+              <InfoItem label="Année" value={String(vehicle.year)} />
+              <InfoItem label="Type" value={typeLabels[vehicle.type as any] || vehicle.type} />
+              <InfoItem label="Carburant" value={fuelLabels[vehicle.fuel_type as any] || vehicle.fuel_type} />
+              <InfoItem label="Couleur" value={vehicle.color || ''} />
             </div>
             
             <div className="pt-4 border-t">
@@ -247,8 +251,8 @@ export default function VehicleDetailPage() {
                 </div>
               ) : (
                 <VehicleMaintenanceTimeline 
-                  maintenances={maintenances || []} 
-                  vehicleId={id}
+                  maintenances={(maintenances || []) as any} 
+                  vehicleId={id as any}
                 />
               )}
             </CardContent>

@@ -84,9 +84,9 @@ export default function BillingPage() {
                 Plan actuel : {currentPlan.name}
               </CardTitle>
               <CardDescription>
-                {subscription?.status === 'TRIALING' 
-                  ? `Essai gratuit jusqu'au ${new Date(subscription.trial_ends_at).toLocaleDateString('fr-FR')}`
-                  : `Renouvellement le ${new Date(subscription?.current_period_end).toLocaleDateString('fr-FR')}`
+                {(subscription as any)?.status === 'TRIALING' 
+                  ? `Essai gratuit jusqu'au ${new Date((subscription as any).trial_ends_at).toLocaleDateString('fr-FR')}`
+                  : `Renouvellement le ${new Date((subscription as any)?.current_period_end).toLocaleDateString('fr-FR')}`
                 }
               </CardDescription>
             </div>
@@ -163,7 +163,7 @@ export default function BillingPage() {
                 <p className="font-medium text-amber-800">Confirmer l'annulation ?</p>
                 <p className="text-sm text-amber-700 mt-1">
                   Vous resterez sur le plan {currentPlan.name} jusqu'au 
-                  {new Date(subscription?.current_period_end).toLocaleDateString('fr-FR')}, 
+                  {new Date((subscription as any)?.current_period_end).toLocaleDateString('fr-FR')}, 
                   puis perdrez l'accès au dashboard.
                 </p>
                 <div className="flex gap-3 mt-4">
@@ -238,7 +238,7 @@ export default function BillingPage() {
                     ) : canUpgrade ? (
                       <Button 
                         className="w-full"
-                        onClick={() => createCheckout.mutate({ plan: dbPlanName, yearly: false })}
+                        onClick={() => createCheckout.mutate({ plan: dbPlanName as any, yearly: false })}
                         disabled={createCheckout.isPending}
                       >
                         {createCheckout.isPending ? (

@@ -13,10 +13,11 @@ import {
   LogOut,
   Settings,
   Sun,
-  Moon,
+  Menu,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { cn } from "@/lib/utils";
+import { useSidebar } from "./sidebar-context";
 
 function DigitalClock() {
   const [time, setTime] = useState(new Date());
@@ -30,10 +31,10 @@ function DigitalClock() {
   const minutes = time.getMinutes().toString().padStart(2, "0");
 
   return (
-    <div className="flex items-center gap-1 font-mono text-base font-semibold tracking-wider text-[#a1a1aa]">
-      <span className="text-[#fafafa]">{hours}</span>
-      <span className="animate-pulse">:</span>
-      <span className="text-[#fafafa]">{minutes}</span>
+    <div className="flex items-center gap-1 font-mono text-base font-semibold tracking-wider text-slate-500">
+      <span className="text-cyan-400">{hours}</span>
+      <span className="animate-pulse text-cyan-500">:</span>
+      <span className="text-cyan-400">{minutes}</span>
     </div>
   );
 }
@@ -68,7 +69,7 @@ function Breadcrumbs() {
             animate={{ opacity: 1, x: 0 }}
             className={cn(
               "font-medium",
-              index === segments.length - 1 ? "text-[#fafafa]" : "text-[#71717a]"
+              index === segments.length - 1 ? "text-cyan-400" : "text-slate-500"
             )}
           >
             {getLabel(segment)}
@@ -97,6 +98,7 @@ interface HeaderProps {
 export function Header({ user }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const queryClient = useQueryClient();
+  const { isExpanded, setMobileOpen } = useSidebar();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -122,15 +124,23 @@ export function Header({ user }: HeaderProps) {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className={cn(
-          "fixed left-20 right-0 top-0 z-50 transition-all duration-300",
+          "fixed right-0 top-0 z-30 transition-all duration-300",
+          isExpanded ? "md:left-64" : "md:left-20",
+          "left-0",
           scrolled
-            ? "border-b border-white/[0.08] bg-[#09090b]/90 backdrop-blur-2xl"
-            : "bg-[#09090b]"
+            ? "border-b border-cyan-500/10 bg-[#0a0f1a]/80 backdrop-blur-2xl"
+            : "bg-[#0a0f1a]/50"
         )}
       >
         <div className="flex h-16 items-center justify-between px-6">
-          {/* Left: Breadcrumbs */}
-          <div className="flex items-center gap-6">
+          {/* Left: Mobile menu button + Breadcrumbs */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="md:hidden flex h-9 w-9 items-center justify-center rounded-lg text-[#a1a1aa] hover:text-white hover:bg-cyan-500/10 hover:border-cyan-500/20 border border-transparent transition-colors"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
             <Breadcrumbs />
           </div>
 
@@ -139,8 +149,8 @@ export function Header({ user }: HeaderProps) {
             <div
               className={cn(
                 "flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm cursor-pointer",
-                "bg-[#18181b] border border-white/[0.08]",
-                "text-[#71717a] hover:text-[#a1a1aa] hover:border-white/[0.15]",
+                "bg-[#0f172a]/60 border border-cyan-500/20",
+                "text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.1)]",
                 "transition-all duration-200"
               )}
               onClick={() => {
@@ -166,18 +176,18 @@ export function Header({ user }: HeaderProps) {
 
             {/* Notifications */}
             <button 
-              className="relative rounded-xl p-2.5 text-[#a1a1aa] transition-all hover:bg-[#27272a] hover:text-white active:scale-95"
+              className="relative rounded-xl p-2.5 text-[#a1a1aa] transition-all hover:bg-cyan-500/10 hover:text-cyan-400 active:scale-95"
               onClick={() => window.location.href = '/alerts'}
             >
               <Bell className="h-5 w-5" strokeWidth={1.5} />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-[#09090b]">
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-[#0a0f1a]">
                 <span className="absolute inset-0 rounded-full bg-amber-500 animate-ping" />
               </span>
             </button>
 
             {/* Theme Toggle */}
             <button 
-              className="rounded-xl p-2.5 text-[#a1a1aa] transition-all hover:bg-[#27272a] hover:text-white active:scale-95"
+              className="rounded-xl p-2.5 text-[#a1a1aa] transition-all hover:bg-cyan-500/10 hover:text-cyan-400 active:scale-95"
               onClick={() => {
                 document.documentElement.classList.toggle('light');
               }}
@@ -202,17 +212,17 @@ export function Header({ user }: HeaderProps) {
               </button>
 
               {/* Dropdown */}
-              <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-white/[0.08] bg-[#18181b] shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-cyan-500/15 bg-[#0f172a]/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_20px_rgba(6,182,212,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                 <div className="p-2">
                   <div className="px-3 py-2 border-b border-white/[0.08] mb-2">
                     <p className="text-sm font-medium text-white">{companyName}</p>
                     <p className="text-xs text-[#71717a]">Plan {planName}</p>
                   </div>
-                  <a href="/settings/profile" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#a1a1aa] hover:bg-[#27272a] hover:text-white transition-colors">
+                  <a href="/settings/profile" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#a1a1aa] hover:bg-cyan-500/10 hover:text-cyan-300 transition-colors">
                     <User className="h-4 w-4" />
                     <span className="text-sm">Mon profil</span>
                   </a>
-                  <a href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#a1a1aa] hover:bg-[#27272a] hover:text-white transition-colors">
+                  <a href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#a1a1aa] hover:bg-cyan-500/10 hover:text-cyan-300 transition-colors">
                     <Settings className="h-4 w-4" />
                     <span className="text-sm">Paramètres</span>
                   </a>

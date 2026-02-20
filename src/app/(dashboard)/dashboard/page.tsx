@@ -1,7 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { useDashboardStats } from "@/hooks/use-dashboard";
+import { motion, type Variants } from "framer-motion";
+import { useDashboardStats, useDashboardAnalytics } from "@/hooks/use-dashboard";
+import { useVehicles } from "@/hooks/use-vehicles";
+import { AnalyticsSection } from "@/components/dashboard/analytics-section";
 import { useUser } from "@/hooks/use-user";
 import { useMaintenanceAlerts } from "@/hooks/use-maintenance";
 import {
@@ -13,14 +15,14 @@ import {
   TrendingUp,
   Activity,
   Zap,
-  Loader2,
 } from "lucide-react";
+import { DashboardSkeleton } from "@/components/ui/skeletons";
 import { GlassCard, MetricCard } from "@/components/ui/glass-card";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { cn } from "@/lib/utils";
 
 // Animation variants
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -31,7 +33,7 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
@@ -43,102 +45,48 @@ const itemVariants = {
   },
 };
 
-// Mock data pour les maintenances et alertes (en attendant les vraies données)
-const upcomingMaintenance = [
-  {
-    vehicle: "Renault Master",
-    plate: "AB-123-CD",
-    type: "Vidange",
-    date: "Demain",
-    priority: "normal",
-  },
-  {
-    vehicle: "Mercedes Sprinter",
-    plate: "EF-456-GH",
-    type: "Freins",
-    date: "Dans 2 jours",
-    priority: "high",
-  },
-  {
-    vehicle: "Iveco Daily",
-    plate: "IJ-789-KL",
-    type: "Pneus",
-    date: "Dans 3 jours",
-    priority: "normal",
-  },
-];
-
-const alerts = [
-  {
-    type: "warning",
-    message: "CT expirant dans 15 jours",
-    vehicle: "Renault Master (AB-123-CD)",
-  },
-  {
-    type: "danger",
-    message: "Kilométrage dépassé",
-    vehicle: "Mercedes Sprinter (EF-456-GH)",
-  },
-  {
-    type: "info",
-    message: "Nouveau conducteur assigné",
-    vehicle: "Iveco Daily (IJ-789-KL)",
-  },
-];
 
 export default function DashboardPage() {
   const { data: stats, isLoading, error } = useDashboardStats();
+  const { data: analytics, isLoading: isAnalyticsLoading } = useDashboardAnalytics();
+  const { data: vehicles = [], isLoading: isVehiclesLoading } = useVehicles();
   const { data: user } = useUser();
   const { data: alertsData } = useMaintenanceAlerts();
   
   const userName = user?.first_name || user?.email?.split('@')[0] || "Utilisateur";
   const upcomingMaintenance = alertsData || [];
 
-  // Calculer les tendances (mock pour l'instant)
   const kpiData = stats ? [
     {
       title: "Véhicules",
       value: stats.vehicles.total,
       subtitle: `${stats.vehicles.active} Actifs`,
-      trend: "+2",
-      trendUp: true,
       icon: Car,
     },
     {
       title: "Chauffeurs",
       value: stats.drivers.total,
       subtitle: `${stats.drivers.active} Disponibles`,
-      trend: "+1",
-      trendUp: true,
       icon: Users,
     },
     {
       title: "Maintenances",
       value: upcomingMaintenance.length,
       subtitle: "À venir",
-      trend: upcomingMaintenance.length > 0 ? "+" + upcomingMaintenance.length : "0",
-      trendUp: upcomingMaintenance.length > 0,
+      trend: upcomingMaintenance.length > 0 ? `${upcomingMaintenance.length} en attente` : undefined,
+      trendUp: false,
       icon: Wrench,
     },
     {
       title: "Tournées",
       value: stats.routes.today,
       subtitle: `${stats.routes.ongoing} En cours`,
-      trend: "+3",
-      trendUp: true,
       icon: ClipboardCheck,
     },
   ] : [];
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
-          <p className="text-[#a1a1aa]">Chargement du dashboard...</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {
@@ -147,10 +95,10 @@ export default function DashboardPage() {
         <GlassCard className="p-8 text-center">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">Erreur de chargement</h2>
-          <p className="text-[#a1a1aa]">Impossible de charger les données du dashboard.</p>
+          <p className="text-slate-400">Impossible de charger les données du dashboard.</p>
           <button 
             onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+            className="mt-4 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] text-white rounded-lg transition-all"
           >
             Réessayer
           </button>
@@ -171,7 +119,7 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold text-white">
           Bonjour, <span className="text-gradient-blue">{userName}</span>
         </h1>
-        <p className="mt-1 text-[#a1a1aa]">
+        <p className="mt-1 text-slate-400">
           Voici un aperçu de votre flotte aujourd&apos;hui
         </p>
       </motion.div>
@@ -203,7 +151,7 @@ export default function DashboardPage() {
                 <h2 className="text-lg font-semibold text-white">
                   Maintenances à venir
                 </h2>
-                <p className="text-sm text-[#71717a]">
+                <p className="text-sm text-slate-500">
                   {upcomingMaintenance.length} interventions programmées
                 </p>
               </div>
@@ -214,7 +162,7 @@ export default function DashboardPage() {
 
             <div className="space-y-3">
               {upcomingMaintenance.length === 0 ? (
-                <div className="text-center py-8 text-[#71717a]">
+                <div className="text-center py-8 text-slate-500">
                   Aucune maintenance à venir
                 </div>
               ) : (
@@ -224,7 +172,7 @@ export default function DashboardPage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.5 + index * 0.1 }}
-                    className="flex items-center gap-4 p-4 rounded-xl bg-[#27272a]/50 border border-white/[0.04] hover:bg-[#27272a] transition-colors"
+                    className="flex items-center gap-4 p-4 rounded-xl bg-[#0f172a]/40 border border-cyan-500/10 hover:bg-[#0f172a]/60 hover:border-cyan-500/20 transition-all"
                   >
                     <div className={cn(
                       "h-10 w-1 rounded-full",
@@ -232,9 +180,9 @@ export default function DashboardPage() {
                     )} />
                     <div className="flex-1">
                       <div className="font-medium text-white">{item.vehicleName}</div>
-                      <div className="text-sm text-[#71717a]">{item.type === "MILEAGE_DUE" ? "Entretien kilométrage" : "Entretien périodique"}</div>
+                      <div className="text-sm text-slate-500">{item.type === "MILEAGE_DUE" ? "Entretien kilométrage" : "Entretien périodique"}</div>
                     </div>
-                    <div className="px-3 py-1 rounded-full bg-[#3f3f46] text-sm text-[#a1a1aa]">
+                    <div className="px-3 py-1 rounded-full bg-[#0f172a]/80 border border-cyan-500/20 text-sm text-cyan-400/70">
                       {item.dueMileage ? `${item.remainingKm} km` : item.dueDate}
                     </div>
                   </motion.div>
@@ -253,7 +201,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-white">Alertes</h2>
-                <p className="text-sm text-[#71717a]">
+                <p className="text-sm text-slate-500">
                   {alertsData?.length || 0} notifications
                 </p>
               </div>
@@ -261,7 +209,7 @@ export default function DashboardPage() {
 
             <div className="space-y-3">
               {alertsData?.length === 0 ? (
-                <div className="text-center py-8 text-[#71717a]">
+                <div className="text-center py-8 text-slate-500">
                   Aucune alerte
                 </div>
               ) : (
@@ -311,19 +259,19 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {stats?.costs?.total > 0 ? (
+            {(stats?.costs?.total || 0) > 0 ? (
               <div className="space-y-4">
-                <div className="flex justify-between items-center p-3 bg-[#27272a]/50 rounded-lg">
-                  <span className="text-[#a1a1aa]">Carburant</span>
-                  <span className="text-white font-medium">{stats.costs.fuel.toLocaleString('fr-FR')} €</span>
+                <div className="flex justify-between items-center p-3 bg-[#0f172a]/40 border border-cyan-500/10 rounded-lg">
+                  <span className="text-slate-400">Carburant</span>
+                  <span className="text-white font-medium">{(stats?.costs?.fuel || 0).toLocaleString('fr-FR')} €</span>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-[#27272a]/50 rounded-lg">
-                  <span className="text-[#a1a1aa]">Maintenance</span>
-                  <span className="text-white font-medium">{stats.costs.maintenance.toLocaleString('fr-FR')} €</span>
+                <div className="flex justify-between items-center p-3 bg-[#0f172a]/40 border border-cyan-500/10 rounded-lg">
+                  <span className="text-slate-400">Maintenance</span>
+                  <span className="text-white font-medium">{(stats?.costs?.maintenance || 0).toLocaleString('fr-FR')} €</span>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-blue-500/20 rounded-lg">
-                  <span className="text-blue-400">Total</span>
-                  <span className="text-white font-bold">{stats.costs.total.toLocaleString('fr-FR')} €</span>
+                <div className="flex justify-between items-center p-3 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/20 rounded-lg">
+                  <span className="text-cyan-400">Total</span>
+                  <span className="text-white font-bold">{(stats?.costs?.total || 0).toLocaleString('fr-FR')} €</span>
                 </div>
               </div>
             ) : (
@@ -340,14 +288,14 @@ export default function DashboardPage() {
         <motion.div variants={itemVariants} className="col-span-12 lg:col-span-6">
           <GlassCard className="h-full p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-[#27272a]">
-                <Zap className="h-5 w-5 text-[#a1a1aa]" />
+              <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                <Zap className="h-5 w-5 text-cyan-400" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-white">
                   Actions rapides
                 </h2>
-                <p className="text-sm text-[#71717a]">Accès direct</p>
+                <p className="text-sm text-slate-500">Accès direct</p>
               </div>
             </div>
 
@@ -368,21 +316,21 @@ export default function DashboardPage() {
                   transition={{ delay: 0.9 + index * 0.1 }}
                   className={cn(
                     "flex flex-col items-center gap-3 p-6 rounded-xl",
-                    "bg-[#27272a]/50 border border-white/[0.04]",
-                    "hover:bg-[#27272a] hover:border-white/[0.08]",
+                    "bg-[#0f172a]/40 border border-cyan-500/10",
+                    "hover:bg-[#0f172a]/60 hover:border-cyan-500/20 hover:shadow-[0_0_20px_rgba(6,182,212,0.1)]",
                     "transition-all duration-200 cursor-pointer"
                   )}
                 >
                   <div className={cn(
                     "p-3 rounded-xl",
-                    action.color === "blue" && "bg-blue-500/20 text-blue-400",
-                    action.color === "emerald" && "bg-emerald-500/20 text-emerald-400",
-                    action.color === "amber" && "bg-amber-500/20 text-amber-400",
-                    action.color === "violet" && "bg-violet-500/20 text-violet-400"
+                    action.color === "blue" && "bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.4)]",
+                    action.color === "emerald" && "bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]",
+                    action.color === "amber" && "bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.4)]",
+                    action.color === "violet" && "bg-gradient-to-br from-violet-500 to-purple-500 text-white shadow-[0_0_15px_rgba(139,92,246,0.4)]"
                   )}>
                     <action.icon className="h-6 w-6" strokeWidth={1.5} />
                   </div>
-                  <span className="text-sm font-medium text-[#a1a1aa]">
+                  <span className="text-sm font-medium text-slate-400 group-hover:text-cyan-300 transition-colors">
                     {action.label}
                   </span>
                 </motion.a>
@@ -391,6 +339,13 @@ export default function DashboardPage() {
           </GlassCard>
         </motion.div>
       </div>
+
+      {/* Analytics Section - Graphiques Recharts */}
+      <AnalyticsSection
+        analytics={analytics}
+        vehicles={vehicles}
+        isLoading={isAnalyticsLoading || isVehiclesLoading}
+      />
     </motion.div>
   );
 }

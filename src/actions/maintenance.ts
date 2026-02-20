@@ -52,7 +52,7 @@ export const createMaintenance = authActionClient
       .from('maintenance_records')
       .insert({
         vehicle_id: vehicleId,
-        type: typeToDb[maintenanceData.type] || 'repair',
+        type: (typeToDb[maintenanceData.type] || 'repair') as string,
         description: maintenanceData.description,
         cost: maintenanceData.cost || 0,
         mileage_at_service: maintenanceData.mileageAtService || 0,
@@ -60,7 +60,7 @@ export const createMaintenance = authActionClient
         next_service_date: nextServiceDue || null,
         performed_by: maintenanceData.garage || null,
         status: 'completed',
-      })
+      } as any)
       .select()
       .single();
     
@@ -113,7 +113,7 @@ export const getMaintenancesByVehicle = authActionClient
     const supabase = createAdminClient();
     
     const { data, error } = await supabase
-      .from('maintenance_with_details')
+      .from('maintenance_with_details' as any)
       .select('*')
       .eq('vehicle_id', parsedInput.vehicleId)
       .order('requested_at', { ascending: false });
@@ -161,8 +161,8 @@ export const updateMaintenance = authActionClient
       .update({
         ...updates,
         vehicle_id: vehicleId,
-        parts_replaced: partsReplaced,
-      })
+        parts_replaced: partsReplaced as any,
+      } as any)
       .eq('id', id)
       .eq('company_id', ctx.user.company_id)
       .select()
@@ -206,7 +206,7 @@ export const getMaintenanceAlerts = authActionClient
       .from('vehicles')
       .select('id, registration_number, brand, model, mileage, next_service_due, next_service_mileage')
       .eq('company_id', ctx.user.company_id)
-      .eq('status', 'ACTIVE');
+      .eq('status', 'active');
     
     if (error) {
       throw new Error(`Erreur récupération véhicules: ${error.message}`);

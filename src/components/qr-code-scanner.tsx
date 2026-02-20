@@ -80,6 +80,7 @@ export function QRCodeScanner({ onScan, onError }: QRCodeScannerProps) {
           fps: 10,
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1,
+          // @ts-ignore
           formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
         },
         (decodedText) => {

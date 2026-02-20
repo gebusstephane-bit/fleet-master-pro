@@ -34,7 +34,7 @@ export function ProblemSolution() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section ref={ref} className="py-24 bg-white">
+    <section ref={ref} className="py-24 bg-[#09090b]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <motion.div
@@ -43,11 +43,11 @@ export function ProblemSolution() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white">
             Fini les cauchemars de gestion
           </h2>
-          <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
-            Les transporteurs perdent en moyenne 47h par mois sur des tâches administratives. 
+          <p className="mt-4 text-lg text-[#a1a1aa] max-w-2xl mx-auto">
+            Les transporteurs perdent en moyenne 47h par mois sur des tâches administratives.
             Reprenez le contrôle.
           </p>
         </motion.div>
@@ -61,31 +61,31 @@ export function ProblemSolution() {
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               whileHover={{ y: -4 }}
-              className="group relative rounded-2xl border border-gray-200 bg-white p-8 shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-300"
+              className="group relative rounded-2xl border border-white/[0.08] bg-[#18181b]/60 backdrop-blur-sm p-8 hover:border-white/[0.15] hover:shadow-[0_0_30px_rgba(59,130,246,0.1)] transition-all duration-300"
             >
               {/* Icon */}
-              <div className="w-12 h-12 rounded-xl bg-gray-50 group-hover:bg-blue-50 flex items-center justify-center mb-6 transition-colors">
-                <item.icon className="h-6 w-6 text-gray-600 group-hover:text-blue-600 transition-colors" />
+              <div className="w-12 h-12 rounded-xl bg-[#27272a] group-hover:bg-blue-500/20 flex items-center justify-center mb-6 transition-colors">
+                <item.icon className="h-6 w-6 text-[#a1a1aa] group-hover:text-blue-400 transition-colors" />
               </div>
 
               {/* Stat highlight */}
               <div className="mb-4">
-                <span className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <span className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
                   {item.stat}
                 </span>
               </div>
 
               {/* Content */}
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              <h3 className="text-xl font-semibold text-white mb-2">
                 {item.title}
               </h3>
-              <p className="text-gray-500 text-sm mb-4">
+              <p className="text-[#71717a] text-sm mb-4">
                 {item.description}
               </p>
 
               {/* Solution highlight */}
-              <div className="pt-4 border-t border-gray-100">
-                <p className="text-sm font-medium text-blue-600">
+              <div className="pt-4 border-t border-white/[0.06]">
+                <p className="text-sm font-medium text-blue-400">
                   ✓ {item.solution}
                 </p>
               </div>

@@ -34,7 +34,7 @@ export async function getTestData() {
     const { data: vehicles, error: vErr } = await supabaseAdmin
       .from('vehicles')
       .select('id, company_id, registration_number, status')
-      .eq('company_id', userCompanyId);
+      .eq('company_id', userCompanyId || '');
     
     return {
       success: true,

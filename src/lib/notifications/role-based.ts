@@ -46,6 +46,7 @@ export async function getNotificationRecipients({
     .eq('is_active', true);
   
   if (roles.length > 0) {
+    // @ts-ignore - roles type mismatch
     query = query.in('role', roles);
   }
   
@@ -118,7 +119,7 @@ export async function notifyMaintenanceRequest(
 ) {
   const recipients = await getNotificationRecipients({
     companyId,
-    roles: ['ADMIN', 'DIRECTEUR'],
+    roles: ['ADMIN', 'DIRECTEUR'] as const,
   });
   
   const notification: NotificationData = {

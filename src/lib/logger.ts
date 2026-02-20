@@ -10,7 +10,7 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 interface LogContext {
   userId?: string;
-  companyId?: string;
+  companyId?: string | null;
   path?: string;
   action?: string;
   [key: string]: unknown;
@@ -87,8 +87,12 @@ class Logger {
     this.log('warn', message, context);
   }
 
-  error(message: string, error?: Error, context?: LogContext): void {
-    this.log('error', message, context, error);
+  error(message: string, errorOrContext?: Error | LogContext, context?: LogContext): void {
+    if (errorOrContext instanceof Error) {
+      this.log('error', message, context, errorOrContext);
+    } else {
+      this.log('error', message, errorOrContext, undefined);
+    }
   }
 
   // Logger spécifique pour les actions utilisateur

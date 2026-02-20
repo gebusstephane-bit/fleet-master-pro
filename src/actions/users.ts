@@ -71,13 +71,13 @@ export async function getUsers(companyId?: string) {
         return { error: 'Profil non trouvé', data: null };
       }
       
-      targetCompanyId = profile.company_id;
+      targetCompanyId = profile.company_id || undefined;
     }
     
     const { data, error } = await adminSupabase
       .from('profiles')
       .select('*')
-      .eq('company_id', targetCompanyId)
+      .eq('company_id', targetCompanyId || '')
       .order('created_at', { ascending: false });
     
     if (error) {

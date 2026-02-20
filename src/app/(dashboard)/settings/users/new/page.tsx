@@ -27,14 +27,14 @@ import {
   AlertTriangle,
   Mail,
   Phone,
-  User,
+  User as UserIcon,
   Lock,
   Eye,
   EyeOff
 } from 'lucide-react';
 import { useUserContext } from '@/components/providers/user-provider';
 import { useCreateUser, useUserPermissions, type User } from '@/hooks/use-users';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 const roleDescriptions: Record<string, { title: string; description: string; permissions: string[] }> = {
   ADMIN: {
@@ -84,7 +84,7 @@ const roleDescriptions: Record<string, { title: string; description: string; per
 
 export default function CreateUserPage() {
   const router = useRouter();
-  const { toast } = useToast();
+
   const { user: currentUser } = useUserContext();
   const { create, isLoading } = useCreateUser();
   const permissions = useUserPermissions(currentUser as User);
@@ -152,8 +152,7 @@ export default function CreateUserPage() {
     }, currentUser.id);
 
     if (result.success) {
-      toast({
-        title: '✅ Utilisateur créé',
+      toast.success('Utilisateur créé', {
         description: `${formData.first_name} ${formData.last_name} a été ajouté avec succès.`,
       });
       router.push('/settings/users');
@@ -193,7 +192,7 @@ export default function CreateUserPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
+              <UserIcon className="h-5 w-5" />
               Informations personnelles
             </CardTitle>
             <CardDescription>

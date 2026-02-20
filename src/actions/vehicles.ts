@@ -38,7 +38,7 @@ export async function createVehicle(data: CreateVehicleData) {
       .single();
     
     if (profileError || !profile?.company_id) {
-      logger.error('createVehicle: Profil non trouvé', profileError);
+      logger.error('createVehicle: Profil non trouvé', profileError || undefined);
       return { success: false, error: 'Profil ou entreprise non trouvé' };
     }
     
@@ -67,7 +67,7 @@ export async function createVehicle(data: CreateVehicleData) {
         year: data.year,
         color: data.color,
         qr_code_data: `fleetmaster://vehicle/${vehicleId}`,
-      })
+      } as any)
       .select()
       .single();
     
@@ -110,7 +110,7 @@ export async function createVehicle(data: CreateVehicleData) {
         });
     } catch (predError) {
       // On ignore l'erreur de prédiction - le véhicule est déjà créé
-      logger.warn('createVehicle: Prédiction non créée', predError);
+      logger.warn('createVehicle: Prédiction non créée', predError as any);
     }
     
     revalidatePath('/vehicles');
@@ -160,7 +160,7 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
       .update({
         ...data,
         updated_at: new Date().toISOString()
-      })
+      } as any)
       .eq('id', id)
       .select()
       .single();

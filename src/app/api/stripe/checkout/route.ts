@@ -79,12 +79,12 @@ export async function POST(request: NextRequest) {
     if (!customerId) {
       // Créer un customer Stripe
       const customer = await stripe.customers.create({
-        email: company.email,
-        name: company.name,
+        email: company.email || '',
+        name: company.name || '',
         metadata: {
           company_id: companyId,
         },
-      });
+      } as any);
 
       customerId = customer.id;
 
@@ -108,25 +108,25 @@ export async function POST(request: NextRequest) {
 
     // Créer la session de checkout
     const session = await stripe.checkout.sessions.create({
-      customer: customerId,
+      customer: customerId as any,
       line_items: [
         {
-          price: priceId,
+          price: priceId as any,
           quantity: 1,
         },
       ],
-      mode: 'subscription',
+      mode: 'subscription' as any,
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?success=true&plan=${normalizedPlan}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
       subscription_data: {
         metadata: {
           company_id: companyId,
           plan_type: normalizedPlan,
-        },
+        } as any,
         trial_period_days: 14,
-      },
+      } as any,
       allow_promotion_codes: true,
-    });
+    } as any);
 
     return NextResponse.json({ url: session.url });
 

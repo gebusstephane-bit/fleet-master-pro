@@ -9,6 +9,7 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { getSuperadminEmail, isSuperadminEmail } from '@/lib/superadmin';
 
 // Routes publiques (pas de vérification)
 const publicRoutes = [
@@ -34,9 +35,6 @@ const pendingPaymentAllowedRoutes = [
   '/payment-pending',
 ];
 
-// SUPERADMIN
-const SUPERADMIN_EMAIL = 'contact@fleet-master.fr';
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -58,9 +56,14 @@ export async function middleware(request: NextRequest) {
     );
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.email?.toLowerCase() !== SUPERADMIN_EMAIL.toLowerCase()) {
+    
+    // Utiliser l'utilitaire centralisé pour la vérification
+    if (!user || !isSuperadminEmail(user.email)) {
+      console.log('❌ Middleware: Accès SuperAdmin refusé pour', user?.email);
       return NextResponse.redirect(new URL('/404', request.url));
     }
+    
+    console.log('✅ Middleware: Accès SuperAdmin accordé à', user.email);
     return response;
   }
 
@@ -112,10 +115,10 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Vérifier le statut de l'abonnement
+  // Vérifier le statut de l'entreprise (onboarding + abonnement)
   const { data: company } = await supabase
     .from('companies')
-    .select('subscription_status, subscription_plan, trial_ends_at')
+    .select('subscription_status, subscription_plan, trial_ends_at, onboarding_completed')
     .eq('id', profile.company_id)
     .single();
 
@@ -164,6 +167,19 @@ export async function middleware(request: NextRequest) {
         console.log('🚫 Trial expired');
         return NextResponse.redirect(new URL('/settings/billing?trial_ended=true', request.url));
       }
+    }
+  }
+
+  // ============================================
+  // 📋 VÉRIFICATION ONBOARDING
+  // ============================================
+  if (company.onboarding_completed === false) {
+    // Autoriser uniquement les routes onboarding et API onboarding
+    const isOnboardingRoute = pathname.startsWith('/onboarding') || pathname.startsWith('/api/onboarding');
+    
+    if (!isOnboardingRoute) {
+      console.log('📋 Redirect to onboarding:', pathname);
+      return NextResponse.redirect(new URL('/onboarding', request.url));
     }
   }
 

@@ -10,9 +10,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { SuperAdminSidebar } from '@/components/superadmin/sidebar';
 import { SuperAdminHeader } from '@/components/superadmin/header';
-
-// Email SuperAdmin hardcoded
-const SUPERADMIN_EMAIL = 'contact@fleet-master.fr';
+import { getSuperadminEmail, isSuperadminEmail } from '@/lib/superadmin';
 
 export const metadata = {
   title: 'SuperAdmin | Fleet Master Pro',
@@ -41,8 +39,8 @@ export default async function SuperAdminLayout({
     redirect('/404');
   }
 
-  // Vérification email hardcodé (insensible à la casse)
-  if (user.email?.toLowerCase() !== SUPERADMIN_EMAIL.toLowerCase()) {
+  // Utiliser l'utilitaire centralisé pour la vérification email (insensible à la casse)
+  if (!isSuperadminEmail(user.email)) {
     console.log('❌ Layout: Email non autorisé:', user.email);
     redirect('/404');
   }
@@ -64,7 +62,7 @@ export default async function SuperAdminLayout({
         {/* Main content */}
         <div className="flex-1 flex flex-col ml-64">
           {/* Passer juste l'email (string sérialisable) */}
-          <SuperAdminHeader email={user.email} />
+          <SuperAdminHeader email={user.email || ''} />
           
           <main className="flex-1 p-8 overflow-auto">
             <div className="max-w-7xl mx-auto">

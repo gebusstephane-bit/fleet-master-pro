@@ -85,20 +85,20 @@ export function ScheduleRDVDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <CalendarIcon className="h-5 w-5 text-cyan-500" />
             Prendre rendez-vous
           </DialogTitle>
-          <DialogDescription>
-            Planifier l&apos;intervention pour le véhicule <strong>{vehicleRegistration}</strong>
+          <DialogDescription className="text-slate-400">
+            Planifier l&apos;intervention pour le véhicule <span className="text-cyan-400 font-semibold">{vehicleRegistration}</span>
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Garage */}
           <div className="space-y-2">
-            <Label htmlFor="garageName">
-              <Building className="h-4 w-4 inline mr-1" />
+            <Label htmlFor="garageName" className="text-slate-200">
+              <Building className="h-4 w-4 inline mr-1 text-cyan-500" />
               Nom du garage *
             </Label>
             <Input
@@ -107,9 +107,10 @@ export function ScheduleRDVDialog({
               onChange={(e) => setFormData({ ...formData, garageName: e.target.value })}
               placeholder="Ex: Garage Dupont"
               required
+              className="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-500"
             />
             {hasPreFilledGarage && (
-              <p className="text-xs text-emerald-600 flex items-center gap-1">
+              <p className="text-xs text-emerald-400 flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" />
                 Garage suggéré lors de la création de la demande
               </p>
@@ -117,8 +118,8 @@ export function ScheduleRDVDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="garageAddress">
-              <MapPin className="h-4 w-4 inline mr-1" />
+            <Label htmlFor="garageAddress" className="text-slate-200">
+              <MapPin className="h-4 w-4 inline mr-1 text-cyan-500" />
               Adresse *
             </Label>
             <Textarea
@@ -128,12 +129,13 @@ export function ScheduleRDVDialog({
               placeholder="Adresse complète du garage"
               required
               rows={2}
+              className="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-500 resize-none"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="garagePhone">
-              <Phone className="h-4 w-4 inline mr-1" />
+            <Label htmlFor="garagePhone" className="text-slate-200">
+              <Phone className="h-4 w-4 inline mr-1 text-cyan-500" />
               Téléphone
             </Label>
             <Input
@@ -141,41 +143,43 @@ export function ScheduleRDVDialog({
               value={formData.garagePhone}
               onChange={(e) => setFormData({ ...formData, garagePhone: e.target.value })}
               placeholder="01 23 45 67 89"
+              className="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-500"
             />
           </div>
 
           {/* Date et heure */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Date *</Label>
+              <Label className="text-slate-200">Date *</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !date && 'text-muted-foreground'
+                      'w-full justify-start text-left font-normal bg-slate-900/50 border-slate-700 text-slate-100 hover:bg-slate-800 hover:text-slate-200',
+                      !date && 'text-slate-500'
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <CalendarIcon className="mr-2 h-4 w-4 text-cyan-500" />
                     {date ? format(date, 'dd MMM yyyy', { locale: fr }) : 'Choisir'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0 bg-[#0f172a] border-slate-700">
                   <Calendar
                     mode="single"
                     selected={date}
                     onSelect={setDate}
                     disabled={(date) => date < new Date()}
                     initialFocus
+                    className="bg-[#0f172a] text-slate-100"
                   />
                 </PopoverContent>
               </Popover>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="rdvTime">
-                <Clock className="h-4 w-4 inline mr-1" />
+              <Label htmlFor="rdvTime" className="text-slate-200">
+                <Clock className="h-4 w-4 inline mr-1 text-cyan-500" />
                 Heure *
               </Label>
               <Input
@@ -184,13 +188,14 @@ export function ScheduleRDVDialog({
                 value={formData.rdvTime}
                 onChange={(e) => setFormData({ ...formData, rdvTime: e.target.value })}
                 required
+                className="bg-slate-900/50 border-slate-700 text-slate-100"
               />
             </div>
           </div>
 
           {/* Durée estimée en jours/heures */}
           <div className="space-y-2">
-            <Label>Durée estimée</Label>
+            <Label className="text-slate-200">Durée estimée</Label>
             <div className="flex gap-2">
               <div className="flex-1">
                 <Input
@@ -199,8 +204,9 @@ export function ScheduleRDVDialog({
                   max={30}
                   value={formData.estimatedDays}
                   onChange={(e) => setFormData({ ...formData, estimatedDays: parseInt(e.target.value) || 0 })}
+                  className="bg-slate-900/50 border-slate-700 text-slate-100"
                 />
-                <p className="text-xs text-gray-400 mt-1">Jours</p>
+                <p className="text-xs text-slate-500 mt-1">Jours</p>
               </div>
               <div className="flex-1">
                 <Input
@@ -209,12 +215,13 @@ export function ScheduleRDVDialog({
                   max={23}
                   value={formData.estimatedHours}
                   onChange={(e) => setFormData({ ...formData, estimatedHours: parseInt(e.target.value) || 0 })}
+                  className="bg-slate-900/50 border-slate-700 text-slate-100"
                 />
-                <p className="text-xs text-gray-400 mt-1">Heures</p>
+                <p className="text-xs text-slate-500 mt-1">Heures</p>
               </div>
             </div>
             {(formData.estimatedDays > 0 || formData.estimatedHours > 0) && (
-              <p className="text-sm text-blue-600">
+              <p className="text-sm text-cyan-400">
                 Durée totale: {formData.estimatedDays > 0 && `${formData.estimatedDays} jour${formData.estimatedDays > 1 ? 's' : ''}`}
                 {formData.estimatedDays > 0 && formData.estimatedHours > 0 && ' et '}
                 {formData.estimatedHours > 0 && `${formData.estimatedHours} heure${formData.estimatedHours > 1 ? 's' : ''}`}
@@ -223,13 +230,14 @@ export function ScheduleRDVDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes" className="text-slate-200">Notes</Label>
             <Textarea
               id="notes"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="Informations complémentaires..."
               rows={2}
+              className="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-500 resize-none"
             />
           </div>
 
@@ -239,14 +247,14 @@ export function ScheduleRDVDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={loading}
-              className="flex-1"
+              className="flex-1 bg-slate-900/50 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
             >
               Annuler
             </Button>
             <Button
               type="submit"
               disabled={loading || !date || !formData.garageName || !formData.garageAddress}
-              className="flex-1"
+              className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white"
             >
               {loading ? 'Confirmation...' : 'Confirmer le RDV'}
             </Button>

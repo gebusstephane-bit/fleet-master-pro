@@ -28,7 +28,7 @@ export async function GET() {
       predicted_failure_type: string;
     }> = {};
 
-    predictions?.forEach(p => {
+    predictions?.forEach((p: any) => {
       if (!latestByVehicle[p.vehicle_id]) {
         latestByVehicle[p.vehicle_id] = p;
       }

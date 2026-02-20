@@ -21,6 +21,12 @@ interface DeleteDialogProps {
   description?: string;
 }
 
+export function DeleteVehicleDialog({
+  ...props
+}: DeleteDialogProps) {
+  return <DeleteDialog {...props} />;
+}
+
 export function DeleteDialog({
   open,
   onOpenChange,

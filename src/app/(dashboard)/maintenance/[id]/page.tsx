@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import '@/app/(dashboard)/detail-pages-premium.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -140,20 +141,20 @@ export default function MaintenanceDetailPage() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header Premium */}
+      <div className="detail-header">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" className="detail-btn-secondary" asChild>
             <Link href="/maintenance">
               <ArrowLeft className="h-4 w-4 mr-1" />
               Retour
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Intervention {maintenance.vehicle_registration}
+            <h1 className="text-3xl font-bold tracking-tight text-white">
+              Intervention <span className="text-cyan-400">{maintenance.vehicle_registration}</span>
             </h1>
-            <p className="text-gray-400">
+            <p className="text-slate-400">
               Créée le {format(new Date(maintenance.requested_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}
             </p>
           </div>
@@ -210,12 +211,14 @@ export default function MaintenanceDetailPage() {
         </div>
       </div>
 
-      {/* Timeline */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Workflow</CardTitle>
+      {/* Timeline Premium */}
+      <Card className="detail-card">
+        <CardHeader className="detail-card-header">
+          <CardTitle className="detail-card-title">
+            Workflow
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="detail-card-content">
           <MaintenanceTimeline 
             currentStatus={maintenance.status} 
             history={maintenance.history || []} 
@@ -224,19 +227,19 @@ export default function MaintenanceDetailPage() {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Infos intervention */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        {/* Infos intervention Premium */}
+        <Card className="detail-card">
+          <CardHeader className="detail-card-header">
+            <CardTitle className="detail-card-title">
               <Wrench className="h-5 w-5" />
               Détails de l&apos;intervention
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="detail-card-content space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-400">Type</p>
-                <MaintenanceTypeBadge type={maintenance.type} />
+                <MaintenanceTypeBadge type={maintenance.type as any} />
               </div>
               <div>
                 <p className="text-sm text-gray-400">Statut</p>

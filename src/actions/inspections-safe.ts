@@ -90,7 +90,7 @@ export async function createInspectionSafe(data: InspectionData) {
         grade: grade,
         defects_count: data.reportedDefects.length,
         status: status,
-      })
+      } as any)
       .select()
       .single();
 
@@ -161,8 +161,9 @@ export async function validateInspection(inspectionId: string) {
       return { error: 'Cette inspection a déjà été traitée', data: null };
     }
 
-    const newStatus = inspection.reported_defects?.length > 0 
-      ? (inspection.reported_defects.some((d: any) => d.severity === 'CRITIQUE') ? 'CRITICAL_ISSUES' : 'ISSUES_FOUND')
+    const defects = Array.isArray(inspection.reported_defects) ? inspection.reported_defects : [];
+    const newStatus = defects.length > 0 
+      ? (defects.some((d: any) => d.severity === 'CRITIQUE') ? 'CRITICAL_ISSUES' : 'ISSUES_FOUND')
       : 'COMPLETED';
 
     const { error } = await supabase
@@ -259,7 +260,7 @@ export async function getInspectionsSafe(companyId?: string) {
     }
 
     // Requête 2: Récupérer les véhicules liés
-    const vehicleIds = [...new Set(inspections.map(i => i.vehicle_id))];
+    const vehicleIds = Array.from(new Set(inspections.map(i => i.vehicle_id)));
     
     const { data: vehicles, error: vehiclesError } = await supabase
       .from('vehicles')

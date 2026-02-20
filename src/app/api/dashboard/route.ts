@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       userData = userData2 as any;
     }
     
-    const companyId = userData.company_id;
+    const companyId = (userData as any).company_id;
     console.log("API Dashboard: Company ID =", companyId);
     
     const results = {
@@ -75,8 +75,8 @@ export async function GET(request: NextRequest) {
     if (vError) {
       console.error("API Dashboard: Erreur véhicules:", vError);
     } else {
-      results.vehicles.total = vehicles?.length || 0;
-      results.vehicles.active = vehicles?.filter(v => v.status === "active").length || 0;
+      (results as any).vehicles.total = vehicles?.length || 0;
+      (results as any).vehicles.active = vehicles?.filter(v => v.status === "active").length || 0;
       console.log("API Dashboard: Véhicules =", results.vehicles.total);
     }
     
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     if (dError) {
       console.error("API Dashboard: Erreur chauffeurs:", dError);
     } else {
-      results.drivers = drivers?.length || 0;
+      (results as any).drivers = drivers?.length || 0;
       console.log("API Dashboard: Chauffeurs =", results.drivers);
     }
     
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
     if (aError) {
       console.error("API Dashboard: Erreur alertes:", aError);
     } else {
-      results.alerts = alerts?.length || 0;
+      (results as any).alerts = alerts?.length || 0;
     }
     
     // Tournées aujourd'hui
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     if (rError) {
       console.error("API Dashboard: Erreur routes:", rError);
     } else {
-      results.routes = routes?.length || 0;
+      (results as any).routes = routes?.length || 0;
     }
     
     console.log("API Dashboard: Résultat =", results);

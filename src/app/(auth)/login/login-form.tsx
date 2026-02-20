@@ -10,7 +10,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase/client';
@@ -89,37 +89,37 @@ export function LoginForm() {
 
   if (redirecting) {
     return (
-      <Card className="w-full">
-        <CardContent className="pt-6">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-lg font-medium">Connexion réussie !</p>
-            <p className="text-sm text-muted-foreground">Redirection vers le dashboard...</p>
-            <p className="text-xs text-muted-foreground mt-2">{redirect}</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="w-full backdrop-blur-xl bg-[#0f172a]/60 rounded-2xl border border-cyan-500/20 p-8 text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-cyan-400" />
+        <p className="text-lg font-medium text-white">Connexion réussie !</p>
+        <p className="text-sm text-slate-400">Redirection vers le dashboard...</p>
+        <p className="text-xs text-slate-500 mt-2">{redirect}</p>
+      </div>
     );
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl text-center">Connexion</CardTitle>
-        <CardDescription className="text-center">
+    <div className="w-full backdrop-blur-xl bg-[#0f172a]/60 rounded-2xl border border-cyan-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_20px_rgba(6,182,212,0.1)] p-8">
+      <CardHeader className="space-y-1 pb-4">
+        <CardTitle className="text-2xl text-center">
+          <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-orange-400 bg-clip-text text-transparent">
+            Connexion
+          </span>
+        </CardTitle>
+        <CardDescription className="text-center text-slate-400">
           Entrez vos identifiants pour accéder à votre compte
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {error && (
-            <Alert variant="destructive">
+            <Alert className="bg-red-500/10 border-red-500/30 text-red-400">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-cyan-300">Email</Label>
             <Input
               id="email"
               type="email"
@@ -129,12 +129,12 @@ export function LoginForm() {
               {...register('email')}
             />
             {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+              <p className="text-sm text-red-400">{errors.email.message}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Mot de passe</Label>
+            <Label htmlFor="password" className="text-blue-300">Mot de passe</Label>
             <Input
               id="password"
               type="password"
@@ -144,11 +144,11 @@ export function LoginForm() {
               {...register('password')}
             />
             {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
+              <p className="text-sm text-red-400">{errors.password.message}</p>
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] border-0" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -159,19 +159,19 @@ export function LoginForm() {
             )}
           </Button>
 
-          <div className="text-sm text-center space-y-2">
-            <Link href="/forgot-password" className="text-primary hover:underline block">
+          <div className="text-sm text-center space-y-2 pt-2">
+            <Link href="/forgot-password" className="text-cyan-400 hover:text-cyan-300 hover:underline block transition-colors">
               Mot de passe oublié ?
             </Link>
-            <p>
+            <p className="text-slate-400">
               Pas encore de compte ?{' '}
-              <Link href="/register" className="text-primary hover:underline">
+              <Link href="/register" className="text-orange-400 hover:text-orange-300 hover:underline transition-colors">
                 Créer un compte
               </Link>
             </p>
           </div>
         </form>
       </CardContent>
-    </Card>
+    </div>
   );
 }

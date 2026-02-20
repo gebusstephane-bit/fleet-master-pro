@@ -9,7 +9,7 @@ const secretKey = process.env.STRIPE_SECRET_KEY;
 
 // Si pas de clé Stripe, on crée un mock pour permettre le build
 export const stripe = secretKey
-  ? new Stripe(secretKey, { apiVersion: '2024-12-18.acacia' })
+  ? new Stripe(secretKey, { apiVersion: '2024-12-18.acacia' as any })
   : ({
       customers: {
         create: async () => {

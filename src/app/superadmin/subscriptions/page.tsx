@@ -12,7 +12,26 @@ export const metadata = {
   title: 'Abonnements | SuperAdmin',
 };
 
-async function getSubscriptions() {
+interface Subscription {
+  id: string;
+  company_id: string;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  stripe_price_id: string | null;
+  plan: string;
+  status: string;
+  current_period_start: string;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean | null;
+  created_at: string;
+  updated_at: string;
+  companies?: {
+    name: string;
+    email: string;
+  } | null;
+}
+
+async function getSubscriptions(): Promise<Subscription[]> {
   const supabase = createAdminClient();
 
   const { data, error } = await supabase
@@ -28,7 +47,8 @@ async function getSubscriptions() {
     return [];
   }
 
-  return data || [];
+  // @ts-ignore
+  return (data || []) as Subscription[];
 }
 
 export default async function SubscriptionsPage() {
@@ -36,15 +56,15 @@ export default async function SubscriptionsPage() {
 
   // Stats
   const totalMrr = subscriptions
-    .filter(s => s.status === 'ACTIVE')
-    .reduce((acc, s) => {
+    .filter((s: any) => s.status === 'ACTIVE')
+    .reduce((acc: number, s: any) => {
       const price = s.plan === 'PRO' ? 49 : s.plan === 'BASIC' ? 29 : 0;
       return acc + price;
     }, 0);
 
-  const activeCount = subscriptions.filter(s => s.status === 'ACTIVE').length;
-  const trialCount = subscriptions.filter(s => s.status === 'TRIALING').length;
-  const pastDueCount = subscriptions.filter(s => s.status === 'PAST_DUE').length;
+  const activeCount = subscriptions.filter((s: any) => s.status === 'ACTIVE').length;
+  const trialCount = subscriptions.filter((s: any) => s.status === 'TRIALING').length;
+  const pastDueCount = subscriptions.filter((s: any) => s.status === 'PAST_DUE').length;
 
   return (
     <div className="space-y-8">
@@ -99,7 +119,7 @@ export default async function SubscriptionsPage() {
       </div>
 
       {/* Subscriptions Table */}
-      <SubscriptionsTable subscriptions={subscriptions} />
+      <SubscriptionsTable subscriptions={subscriptions as any} />
     </div>
   );
 }

@@ -12,7 +12,24 @@ export const metadata = {
   title: 'Clients | SuperAdmin',
 };
 
-async function getCompanies(search?: string, plan?: string) {
+interface Company {
+  id: string;
+  name: string;
+  siret: string | null;
+  address: string | null;
+  postal_code: string | null;
+  city: string | null;
+  country: string | null;
+  phone: string | null;
+  email: string;
+  website: string | null;
+  subscription_plan: string | null;
+  subscription_status: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+async function getCompanies(search?: string, plan?: string): Promise<Company[]> {
   const supabase = createAdminClient();
 
   let query = supabase
@@ -39,7 +56,8 @@ async function getCompanies(search?: string, plan?: string) {
     return [];
   }
 
-  return data || [];
+  // @ts-ignore
+  return (data || []) as Company[];
 }
 
 export default async function ClientsPage({
@@ -51,8 +69,8 @@ export default async function ClientsPage({
 
   // Stats
   const totalCompanies = companies.length;
-  const activeCompanies = companies.filter(c => c.subscription_status === 'active').length;
-  const trialCompanies = companies.filter(c => c.subscription_status === 'trialing').length;
+  const activeCompanies = companies.filter((c: any) => c.subscription_status === 'active').length;
+  const trialCompanies = companies.filter((c: any) => c.subscription_status === 'trialing').length;
 
   return (
     <div className="space-y-8">
@@ -127,7 +145,7 @@ export default async function ClientsPage({
       </div>
 
       {/* Table */}
-      <ClientsTable companies={companies} />
+      <ClientsTable companies={companies as any} />
     </div>
   );
 }

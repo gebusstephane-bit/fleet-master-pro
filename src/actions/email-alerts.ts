@@ -5,9 +5,19 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email/client';
 import { 
   maintenanceAlertTemplate, 
-  maintenanceAlertText,
-  type MaintenanceAlertData 
+  maintenanceAlertText
 } from '@/lib/email/templates/maintenance-alert';
+
+interface MaintenanceAlertData {
+  vehicleName: string;
+  alertType: 'OVERDUE' | 'MILEAGE_DUE' | 'DATE_DUE';
+  severity: 'CRITICAL' | 'WARNING' | 'INFO';
+  message: string;
+  dueMileage?: number;
+  currentMileage?: number;
+  dueDate?: string;
+  companyName: string;
+}
 
 /**
  * Envoyer les alertes maintenance par email
@@ -33,7 +43,7 @@ export const sendMaintenanceAlerts = authActionClient
       .from('vehicles')
       .select('id, registration_number, brand, model, mileage, next_service_due, next_service_mileage')
       .eq('company_id', ctx.user.company_id)
-      .eq('status', 'ACTIVE');
+      .eq('status', 'active');
     
     const alerts: MaintenanceAlertData[] = [];
     const today = new Date();
@@ -51,7 +61,7 @@ export const sendMaintenanceAlerts = authActionClient
             : `Entretien préventif dans ${remainingKm} km`,
           dueMileage: vehicle.next_service_mileage,
           currentMileage: vehicle.mileage,
-          companyName: ctx.user.company?.name || 'Votre entreprise',
+          companyName: 'Votre entreprise',
         });
       }
       
@@ -69,7 +79,7 @@ export const sendMaintenanceAlerts = authActionClient
               ? `Entretien date dépassée de ${Math.abs(daysUntil)} jours`
               : `Entretien préventif dans ${daysUntil} jours`,
             dueDate: vehicle.next_service_due,
-            companyName: ctx.user.company?.name || 'Votre entreprise',
+            companyName: 'Votre entreprise',
           });
         }
       }

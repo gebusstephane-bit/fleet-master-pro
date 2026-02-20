@@ -125,7 +125,7 @@ export async function GET() {
       .limit(10);
 
     const alerts = (maintenanceAlerts || []).map(m => {
-      const dueDate = new Date(m.rdv_date);
+      const dueDate = new Date(m.rdv_date as any);
       const daysUntil = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
       let priority: 'critical' | 'high' | 'medium' = 'medium';
       if (daysUntil <= 3) priority = 'critical';
@@ -135,12 +135,12 @@ export async function GET() {
         id: m.id,
         vehicle_id: m.vehicle_id,
         vehicle_name: vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.registration_number})` : 'Véhicule inconnu',
-        service_type: translateMaintenanceType(m.type),
+        service_type: translateMaintenanceType(m.type as any),
         due_date: m.rdv_date,
         days_until: daysUntil,
         priority,
         garage: m.garage_name,
-      };
+      } as any;
     });
 
     // 7. RDV programmés (60 prochains jours)
@@ -169,20 +169,20 @@ export async function GET() {
       .limit(10);
 
     const appointments = (appointmentsData || []).map(m => {
-      const serviceDate = new Date(m.rdv_date);
+      const serviceDate = new Date(m.rdv_date as any);
       const daysUntil = Math.ceil((serviceDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
       const vehicle = m.vehicles as any;
       return {
         id: m.id,
         vehicle_id: m.vehicle_id,
         vehicle_name: vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.registration_number})` : 'Véhicule inconnu',
-        service_type: translateMaintenanceType(m.type),
+        service_type: translateMaintenanceType(m.type as any),
         service_date: m.rdv_date,
         service_time: m.rdv_time,
         description: m.description || '',
         garage: m.garage_name,
         days_until: daysUntil,
-      };
+      } as any;
     });
 
     // 8. Véhicules à risque IA

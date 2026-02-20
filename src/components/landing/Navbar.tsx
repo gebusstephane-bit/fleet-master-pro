@@ -33,14 +33,14 @@ export function Navbar() {
         transition={{ duration: 0.6 }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled
-            ? "bg-white/80 backdrop-blur-xl shadow-sm border-b border-gray-200/50"
+            ? "bg-[#09090b]/80 backdrop-blur-xl shadow-lg border-b border-white/[0.06]"
             : "bg-transparent"
         }`}
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Logo variant="auto" size="md" />
+            <Logo variant="light" size="md" />
 
             {/* Desktop nav */}
             <nav className="hidden md:flex items-center gap-8">
@@ -48,9 +48,7 @@ export function Navbar() {
                 <Link
                   key={link.name}
                   href={link.href}
-                  className={`text-sm font-medium transition-colors hover:text-blue-600 ${
-                    isScrolled ? "text-gray-600" : "text-gray-600"
-                  }`}
+                  className="text-sm font-medium text-[#a1a1aa] transition-colors hover:text-white"
                 >
                   {link.name}
                 </Link>
@@ -61,16 +59,14 @@ export function Navbar() {
             <div className="hidden md:flex items-center gap-4">
               <Link
                 href="/login"
-                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
-                  isScrolled ? "text-gray-600" : "text-gray-600"
-                }`}
+                className="text-sm font-medium text-[#a1a1aa] transition-colors hover:text-white"
               >
                 Connexion
               </Link>
               <Link href="/register">
                 <Button
                   size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg shadow-blue-600/20"
                 >
                   Essai gratuit
                 </Button>
@@ -83,9 +79,9 @@ export function Navbar() {
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {isMobileMenuOpen ? (
-                <X className="h-6 w-6 text-gray-900" />
+                <X className="h-6 w-6 text-white" />
               ) : (
-                <Menu className="h-6 w-6 text-gray-900" />
+                <Menu className="h-6 w-6 text-white" />
               )}
             </button>
           </div>
@@ -100,23 +96,23 @@ export function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-x-0 top-16 z-40 bg-white border-b border-gray-200 shadow-lg md:hidden"
+            className="fixed inset-x-0 top-16 z-40 bg-[#18181b]/95 backdrop-blur-xl border-b border-white/[0.06] shadow-lg md:hidden"
           >
             <div className="px-4 py-6 space-y-4">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
                   href={link.href}
-                  className="block text-base font-medium text-gray-900 hover:text-blue-600"
+                  className="block text-base font-medium text-[#a1a1aa] hover:text-white"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {link.name}
                 </Link>
               ))}
-              <hr className="border-gray-200" />
+              <hr className="border-white/[0.08]" />
               <Link
                 href="/login"
-                className="block text-base font-medium text-gray-600 hover:text-blue-600"
+                className="block text-base font-medium text-[#a1a1aa] hover:text-white"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Connexion

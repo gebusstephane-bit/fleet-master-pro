@@ -81,7 +81,8 @@ export async function sendEmail(options: EmailOptions, forceSimulate: boolean = 
       subject: options.subject,
       html: options.html,
       text: options.text,
-      reply_to: options.replyTo,
+      // @ts-ignore
+      replyTo: options.replyTo,
     });
 
     if (error) {

@@ -1,14 +1,13 @@
 "use client";
 
-"use client";
-
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import Link from "next/link";
+import { ArrowRight, Play, Shield, Zap, TrendingDown, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Play, Shield, Zap, TrendingDown } from "lucide-react";
-import Image from "next/image";
+import { FloatingParticlesSimple } from "@/components/effects/FloatingParticles";
+import { ShimmerButton } from "@/components/effects/ShimmerButton";
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -19,7 +18,7 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: {
     opacity: 1,
@@ -39,16 +38,50 @@ const stats = [
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen overflow-hidden bg-gradient-to-b from-gray-50 via-white to-white">
-      {/* Background subtle grid */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]" />
-      
-      {/* Gradient orbs */}
-      <div className="absolute left-1/4 top-1/4 -translate-x-1/2 -translate-y-1/2">
-        <div className="h-[500px] w-[500px] rounded-full bg-blue-500/5 blur-3xl" />
+    <section className="relative min-h-screen overflow-hidden bg-[#0a0f1a]">
+      {/* Animated mesh gradient background */}
+      <div className="absolute inset-0">
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: `
+              radial-gradient(at 0% 0%, rgba(6,182,212,0.15) 0px, transparent 50%),
+              radial-gradient(at 100% 0%, rgba(59,130,246,0.15) 0px, transparent 50%),
+              radial-gradient(at 100% 100%, rgba(249,115,22,0.1) 0px, transparent 50%),
+              radial-gradient(at 0% 100%, rgba(6,182,212,0.1) 0px, transparent 50%)
+            `,
+          }}
+        />
+        {/* Radial glow from top */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(ellipse at 50% 0%, rgba(6,182,212,0.1) 0%, transparent 60%)`,
+          }}
+        />
       </div>
-      <div className="absolute right-1/4 bottom-1/4 translate-x-1/2 translate-y-1/2">
-        <div className="h-[400px] w-[400px] rounded-full bg-indigo-500/5 blur-3xl" />
+
+      {/* Grid pattern */}
+      <div 
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+        }}
+      />
+
+      {/* Floating particles */}
+      <FloatingParticlesSimple count={20} />
+
+      {/* Gradient orbs */}
+      <div className="absolute left-1/4 top-1/4 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+        <div className="h-[600px] w-[600px] rounded-full bg-cyan-500/[0.08] blur-[120px] animate-pulse" />
+      </div>
+      <div className="absolute right-1/4 top-1/3 translate-x-1/2 pointer-events-none">
+        <div className="h-[500px] w-[500px] rounded-full bg-blue-500/[0.08] blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-32 pb-20">
@@ -60,35 +93,36 @@ export function Hero() {
             animate="visible"
             className="text-center lg:text-left"
           >
-            {/* Badge */}
-            <motion.div variants={itemVariants} className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5 mb-8">
+            {/* Badge with animated dot */}
+            <motion.div variants={itemVariants} className="inline-flex items-center gap-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 mb-8">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
               </span>
-              <span className="text-sm font-medium text-blue-700">
-                Déjà 200+ transporteurs français
+              <span className="text-sm font-medium text-cyan-400">
+                Déjà 500+ transporteurs français
               </span>
             </motion.div>
 
-            {/* Headline */}
+            {/* Headline with gradient text */}
             <motion.h1
               variants={itemVariants}
-              className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900"
+              className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white"
             >
-              Maîtrisez votre flotte avec{" "}
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                l&apos;intelligence du futur
-              </span>
+              La première plateforme de gestion de flotte qui{" "}
+              <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-orange-400 bg-clip-text text-transparent">
+                anticipe les pannes
+              </span>{" "}
+              avant qu&apos;elles n&apos;arrivent
             </motion.h1>
 
             {/* Subheadline */}
             <motion.p
               variants={itemVariants}
-              className="mt-6 text-lg text-gray-600 max-w-2xl mx-auto lg:mx-0"
+              className="mt-6 text-lg text-slate-400 max-w-2xl mx-auto lg:mx-0"
             >
-              La première plateforme de gestion de flotte qui anticipe les pannes 
-              avant qu&apos;elles n&apos;arrivent. Réduisez vos coûts de 30% et dormez tranquille.
+              Réduisez vos coûts de 30% et dormez tranquille. Notre IA analyse les 
+              données moteur et détecte les anomalies 14 jours avant la panne.
             </motion.p>
 
             {/* CTAs */}
@@ -97,32 +131,29 @@ export function Hero() {
               className="mt-10 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
             >
               <Link href="/register">
-                <Button
-                  size="lg"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-base font-semibold rounded-xl shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 transition-all hover:-translate-y-0.5"
-                >
+                <ShimmerButton size="lg" className="w-full sm:w-auto">
                   Démarrer gratuitement
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
+                  <ArrowRight className="w-5 h-5" />
+                </ShimmerButton>
               </Link>
               <Link href="#features">
                 <Button
                   variant="ghost"
                   size="lg"
-                  className="text-gray-700 hover:text-gray-900 px-8 py-6 text-base font-medium"
+                  className="text-slate-400 hover:text-white hover:bg-white/5 px-8 py-6 text-base font-medium rounded-xl border border-white/10"
                 >
-                  <Play className="mr-2 h-5 w-5" />
+                  <Play className="mr-2 h-5 w-5 text-cyan-400" />
                   Voir la démo
                 </Button>
               </Link>
             </motion.div>
 
             {/* Trust badges */}
-            <motion.div variants={itemVariants} className="mt-12 pt-8 border-t border-gray-200">
-              <p className="text-sm text-gray-500 mb-4">Ils nous font confiance</p>
-              <div className="flex items-center justify-center lg:justify-start gap-8 opacity-50 grayscale">
-                {["Transports Martin", "LogiPro", "Express Delivery", "EcoFleet"].map((company) => (
-                  <span key={company} className="text-sm font-semibold text-gray-700">
+            <motion.div variants={itemVariants} className="mt-12 pt-8 border-t border-white/[0.08]">
+              <p className="text-sm text-slate-500 mb-4">Ils nous font confiance</p>
+              <div className="flex items-center justify-center lg:justify-start gap-8 opacity-50">
+                {["Transports Martin", "LogiPro", "Express Delivery", "EcoFleet", "FastTrack", "CargoPlus"].map((company) => (
+                  <span key={company} className="text-sm font-semibold text-slate-400">
                     {company}
                   </span>
                 ))}
@@ -137,42 +168,45 @@ export function Hero() {
             transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="relative"
           >
-            <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-gray-900/10 border border-gray-200/50 bg-white">
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-cyan-500/20 bg-[#0f172a]/80 backdrop-blur-xl">
               {/* Browser chrome */}
-              <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 border-b border-gray-100">
+              <div className="flex items-center gap-2 px-4 py-3 bg-[#0a0f1a] border-b border-cyan-500/10">
                 <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-400" />
-                  <div className="w-3 h-3 rounded-full bg-amber-400" />
-                  <div className="w-3 h-3 rounded-full bg-green-400" />
+                  <div className="w-3 h-3 rounded-full bg-red-500/60" />
+                  <div className="w-3 h-3 rounded-full bg-amber-500/60" />
+                  <div className="w-3 h-3 rounded-full bg-emerald-500/60" />
                 </div>
                 <div className="flex-1 text-center">
-                  <span className="text-xs text-gray-400">app.fleetmaster.pro</span>
+                  <span className="text-xs text-slate-500">app.fleetmaster.pro</span>
                 </div>
               </div>
-              
+
               {/* Dashboard mockup */}
-              <div className="p-6 bg-gray-50/50">
+              <div className="p-6 bg-[#0a0f1a]/50">
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   {stats.map((stat, i) => (
-                    <div key={i} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                      <stat.icon className="h-5 w-5 text-blue-600 mb-2" />
-                      <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                      <p className="text-xs text-gray-500">{stat.label}</p>
+                    <div 
+                      key={i} 
+                      className="bg-[#0f172a] p-4 rounded-xl border border-cyan-500/10 hover:border-cyan-500/30 transition-colors"
+                    >
+                      <stat.icon className="h-5 w-5 text-cyan-400 mb-2" />
+                      <p className="text-2xl font-bold text-white">{stat.value}</p>
+                      <p className="text-xs text-slate-500">{stat.label}</p>
                     </div>
                   ))}
                 </div>
-                
+
                 {/* Chart mockup */}
-                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <div className="bg-[#0f172a] p-4 rounded-xl border border-cyan-500/10">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-gray-700">Performance flotte</span>
-                    <span className="text-xs text-green-600 font-medium">+12.5%</span>
+                    <span className="text-sm font-medium text-slate-400">Performance flotte</span>
+                    <span className="text-xs text-emerald-400 font-medium">+12.5%</span>
                   </div>
                   <div className="flex items-end gap-2 h-24">
                     {[40, 65, 45, 80, 55, 90, 70, 85, 60, 75, 50, 95].map((h, i) => (
                       <div
                         key={i}
-                        className="flex-1 bg-gradient-to-t from-blue-600 to-blue-400 rounded-t"
+                        className="flex-1 bg-gradient-to-t from-cyan-600 to-cyan-400 rounded-t opacity-80"
                         style={{ height: `${h}%` }}
                       />
                     ))}
@@ -185,15 +219,15 @@ export function Hero() {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.8 }}
-                className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-xl border border-gray-100 p-4"
+                className="absolute -bottom-4 -left-4 bg-[#0f172a] rounded-xl shadow-xl border border-cyan-500/20 p-4"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                    <Zap className="h-5 w-5 text-green-600" />
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+                    <Truck className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">Alerte préventive</p>
-                    <p className="text-xs text-gray-500">Vidange dans 500km</p>
+                    <p className="text-sm font-semibold text-white">Alerte préventive</p>
+                    <p className="text-xs text-slate-500">Vidange dans 500km</p>
                   </div>
                 </div>
               </motion.div>

@@ -106,7 +106,7 @@ export function FuelForm({ onSubmit, isSubmitting = false }: FuelFormProps) {
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="none">Aucun</SelectItem>
-                  {drivers?.map((d: any) => (
+                  {((drivers as unknown) as any[])?.map((d: any) => (
                     <SelectItem key={d.id} value={d.id}>
                       {d.first_name} {d.last_name}
                     </SelectItem>
