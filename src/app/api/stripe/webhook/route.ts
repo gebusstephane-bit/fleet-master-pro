@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { randomBytes } from 'crypto';
-import { withRateLimit, RateLimits, getClientIP } from '@/lib/security/rate-limit';
+import { checkSensitiveRateLimit, getRateLimitHeaders } from '@/lib/security/rate-limiter';
 // PlanType: 'ESSENTIAL' | 'PRO' | 'UNLIMITED'
 type PlanType = 'ESSENTIAL' | 'PRO' | 'UNLIMITED';
 
@@ -138,11 +138,37 @@ async function handler(request: NextRequest) {
   }
 }
 
-// Export avec rate limiting (50 requêtes par minute par IP)
+// Handler avec rate limiting intégré (50 requêtes par minute par IP)
 // Note: Le webhook utilise déjà la vérification de signature Stripe comme protection
-export const POST = withRateLimit(handler, RateLimits.webhook, {
-  getIdentifier: (req) => getClientIP(req),
-});
+async function handlerWithRateLimit(request: NextRequest) {
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  const realIP = request.headers.get('x-real-ip');
+  const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : realIP || 'unknown';
+  
+  const rateLimitResult = await checkSensitiveRateLimit(`webhook:${ip}`);
+  
+  if (!rateLimitResult.success) {
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Too Many Requests',
+        message: 'Trop de requêtes. Réessayez plus tard.',
+        retryAfter: rateLimitResult.retryAfter
+      }),
+      { 
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(rateLimitResult.retryAfter || 60),
+          ...getRateLimitHeaders(rateLimitResult)
+        }
+      }
+    );
+  }
+  
+  return handler(request);
+}
+
+export const POST = handlerWithRateLimit;
 
 // ============================================
 // FONCTIONS HELPER

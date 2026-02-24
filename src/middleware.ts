@@ -1,7 +1,7 @@
 /**
  * Middleware Next.js - SÉCURITÉ + VÉRIFICATION SUBSCRIPTION
  * 
- * 1. RATE LIMITING - Protection contre brute-force et abuse
+ * 1. RATE LIMITING - Protection contre brute-force et abuse (REDIS UPSTASH)
  * 2. AUTHENTIFICATION - Vérification des sessions
  * 3. SUBSCRIPTION STATUS - Contrôle des accès selon abonnement
  */
@@ -10,11 +10,12 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { getSuperadminEmail, isSuperadminEmail } from '@/lib/superadmin';
 import { 
-  getClientIP, 
-  checkRateLimit, 
-  createRateLimitResponse, 
-  RateLimits 
-} from '@/lib/security/rate-limit';
+  checkSensitiveRateLimit,
+  checkAnonymousRateLimit,
+  getRateLimitHeaders,
+  RateLimitResult
+} from '@/lib/security/rate-limiter';
+import { isRedisConfigured } from '@/lib/security/rate-limiter-redis';
 
 // Routes publiques (pas de vérification)
 const publicRoutes = [
@@ -55,30 +56,47 @@ function isPublicApiRoute(pathname: string): boolean {
 }
 
 /**
+ * Extrait l'IP réelle du client
+ */
+function getClientIP(request: NextRequest): string {
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  if (forwardedFor) {
+    return forwardedFor.split(',')[0].trim();
+  }
+  
+  const realIP = request.headers.get('x-real-ip');
+  if (realIP) {
+    return realIP;
+  }
+  
+  return 'unknown';
+}
+
+/**
  * Applique le rate limiting aux routes API
  * Retourne une réponse 429 si la limite est dépassée, null sinon
  */
-function applyRateLimit(request: NextRequest, pathname: string): NextResponse | null {
+async function applyRateLimit(request: NextRequest, pathname: string): Promise<NextResponse | null> {
   if (!pathname.startsWith('/api/')) return null;
   
   const ip = getClientIP(request);
   
-  // Rate limiting spécifique par type de route
-  let rateLimitConfig: { requests: number; windowMs: number } = RateLimits.general;
+  // Déterminer le type de rate limit
+  let result: RateLimitResult;
   let routeType = 'general';
   
   if (pathname.includes('/api/stripe/create-checkout-session')) {
-    rateLimitConfig = RateLimits.checkout;
     routeType = 'checkout';
+    result = await checkSensitiveRateLimit(`checkout:${ip}`);
   } else if (pathname.includes('/api/stripe/webhook')) {
-    rateLimitConfig = RateLimits.webhook;
-    routeType = 'webhook';
+    // Webhooks: pas de rate limit (sécurisé par signature)
+    return null;
   } else if (pathname.includes('/api/auth')) {
-    rateLimitConfig = RateLimits.auth;
     routeType = 'auth';
+    result = await checkSensitiveRateLimit(`auth:${ip}`);
   } else if (pathname.includes('/api/sos/smart-search')) {
-    rateLimitConfig = RateLimits.sosAuthenticated;
     routeType = 'sos';
+    result = await checkAnonymousRateLimit();
   } else if (pathname.includes('/api/cron')) {
     // Les cron jobs doivent avoir un header spécial de Vercel
     const vercelCronSecret = request.headers.get('x-vercel-cron-secret');
@@ -86,34 +104,48 @@ function applyRateLimit(request: NextRequest, pathname: string): NextResponse | 
     
     if (!isVercelCron && process.env.NODE_ENV === 'production') {
       console.warn(`🚫 Rate limit: Tentative d'accès au cron sans secret Vercel: ${ip}`);
-      return createRateLimitResponse(
-        'Accès non autorisé aux endpoints cron',
-        Date.now() + 60 * 60 * 1000
+      return new NextResponse(
+        JSON.stringify({ error: 'Accès non autorisé aux endpoints cron' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
     }
     // Pas de rate limit pour les cron légitimes
     return null;
+  } else {
+    // API générique
+    result = await checkAnonymousRateLimit();
   }
-  
-  // Vérifier le rate limit
-  const result = checkRateLimit(`${ip}:${routeType}`, rateLimitConfig);
   
   if (!result.success) {
     console.warn(`🚫 Rate limit dépassé pour ${ip} sur ${pathname}`);
-    return createRateLimitResponse(
-      routeType === 'checkout' 
-        ? 'Trop de tentatives. Réessayez dans 1 heure ou contactez le support.'
-        : 'Trop de requêtes. Veuillez réessayer plus tard.',
-      result.resetAt
+    
+    const message = routeType === 'checkout' 
+      ? 'Trop de tentatives. Réessayez dans 1 heure ou contactez le support.'
+      : 'Trop de requêtes. Veuillez réessayer plus tard.';
+    
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Too Many Requests', 
+        message,
+        retryAfter: result.retryAfter 
+      }),
+      { 
+        status: 429, 
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(result.retryAfter || 60),
+          ...getRateLimitHeaders(result)
+        }
+      }
     );
   }
   
   // Pour les routes API publiques, retourner une réponse avec les headers
   if (isPublicApiRoute(pathname)) {
     const response = NextResponse.next();
-    response.headers.set('X-RateLimit-Limit', String(rateLimitConfig.requests));
-    response.headers.set('X-RateLimit-Remaining', String(result.remaining));
-    response.headers.set('X-RateLimit-Reset', String(Math.ceil(result.resetAt / 1000)));
+    Object.entries(getRateLimitHeaders(result)).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
     return response;
   }
   
@@ -142,7 +174,6 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser();
     
-    // Utiliser l'utilitaire centralisé pour la vérification
     if (!user || !isSuperadminEmail(user.email)) {
       console.log('❌ Middleware: Accès SuperAdmin refusé pour', user?.email);
       return NextResponse.redirect(new URL('/404', request.url));
@@ -161,11 +192,10 @@ export async function middleware(request: NextRequest) {
   // 🛡️ RATE LIMITING - Toutes les routes API
   // ============================================
   if (pathname.startsWith('/api/')) {
-    const rateLimitResponse = applyRateLimit(request, pathname);
+    const rateLimitResponse = await applyRateLimit(request, pathname);
     if (rateLimitResponse) {
       return rateLimitResponse;
     }
-    // Si pas de réponse, continuer avec les vérifications suivantes
   }
 
   // ============================================
@@ -235,7 +265,6 @@ export async function middleware(request: NextRequest) {
 
   // 2. PAIEMENT ÉCHOUÉ / NON PAYÉ
   if (subscriptionStatus === 'unpaid' || subscriptionStatus === 'past_due') {
-    // Autoriser uniquement la page de facturation
     if (!pathname.startsWith('/settings/billing') && !pathname.startsWith('/api/')) {
       console.log('🚫 Access denied - unpaid:', pathname);
       return NextResponse.redirect(new URL('/settings/billing?status=payment_required', request.url));
@@ -244,7 +273,6 @@ export async function middleware(request: NextRequest) {
 
   // 3. ABONNEMENT ANNULÉ
   if (subscriptionStatus === 'canceled') {
-    // Rediriger vers pricing pour réactiver
     if (!pathname.startsWith('/settings/billing') && !pathname.startsWith('/pricing')) {
       console.log('🚫 Access denied - canceled:', pathname);
       return NextResponse.redirect(new URL('/pricing?status=reactivate_required', request.url));
@@ -265,7 +293,6 @@ export async function middleware(request: NextRequest) {
   // 📋 VÉRIFICATION ONBOARDING
   // ============================================
   if (company.onboarding_completed === false) {
-    // Autoriser uniquement les routes onboarding et API onboarding
     const isOnboardingRoute = pathname.startsWith('/onboarding') || pathname.startsWith('/api/onboarding');
     
     if (!isOnboardingRoute) {
@@ -274,9 +301,14 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Log configuration Redis au démarrage (une seule fois)
+  if (process.env.NODE_ENV === 'development' && pathname === '/') {
+    console.log(`[MIDDLEWARE] Redis Rate Limiting: ${isRedisConfigured() ? '✅ Activé' : '⚠️ Fallback mémoire'}`);
+  }
+
   return response;
 }
- 
+
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };

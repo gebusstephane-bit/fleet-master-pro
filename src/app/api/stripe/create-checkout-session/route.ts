@@ -13,7 +13,7 @@ import { stripe, isStripeConfigured } from '@/lib/stripe/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { randomUUID } from 'crypto';
 import { withCSRFProtection } from '@/lib/security/csrf';
-import { withRateLimit, RateLimits, getClientIP } from '@/lib/security/rate-limit';
+import { checkSensitiveRateLimit, getRateLimitHeaders } from '@/lib/security/rate-limiter';
 
 interface CheckoutRequest {
   email: string;
@@ -237,11 +237,37 @@ async function handler(request: NextRequest) {
   }
 }
 
-// Export avec protection CSRF + Rate Limiting (5 requêtes par heure par IP)
-export const POST = withCSRFProtection(
-  withRateLimit(handler, RateLimits.checkout, {
-    getIdentifier: (req) => getClientIP(req),
-  })
-);
+// Handler avec rate limiting intégré
+async function handlerWithRateLimit(request: NextRequest) {
+  // Rate limiting (5 requêtes par heure par IP)
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  const realIP = request.headers.get('x-real-ip');
+  const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : realIP || 'unknown';
+  
+  const rateLimitResult = await checkSensitiveRateLimit(`checkout:${ip}`);
+  
+  if (!rateLimitResult.success) {
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Too Many Requests',
+        message: 'Trop de tentatives. Réessayez dans 1 heure ou contactez le support.',
+        retryAfter: rateLimitResult.retryAfter
+      }),
+      { 
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(rateLimitResult.retryAfter || 3600),
+          ...getRateLimitHeaders(rateLimitResult)
+        }
+      }
+    );
+  }
+  
+  return handler(request);
+}
+
+// Export avec protection CSRF + Rate Limiting
+export const POST = withCSRFProtection(handlerWithRateLimit);
 
 export const dynamic = 'force-dynamic';
