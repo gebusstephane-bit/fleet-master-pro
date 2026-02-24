@@ -1,6 +1,13 @@
 'use server';
 
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+/**
+ * Actions Véhicules - VERSION SÉCURISÉE RLS
+ * 
+ * PRINCIPE : Utilise uniquement createClient() avec RLS activé
+ * Les policies PostgreSQL assurent l'isolation par company_id
+ */
+
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/lib/logger';
 
@@ -24,20 +31,23 @@ export interface ActionResult<T = unknown> {
   error?: string;
 }
 
+/**
+ * Crée un nouveau véhicule
+ * RLS : L'INSERT est autorisé si company_id = get_current_user_company_id()
+ */
 export async function createVehicle(data: CreateVehicleData): Promise<ActionResult> {
   try {
+    const supabase = await createClient();
+    
     // 1. Vérifier l'authentification
-    const authClient = await createClient();
-    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !authUser) {
       return { success: false, error: 'Non authentifié' };
     }
     
-    // 2. Récupérer le profil avec company_id
-    const adminClient = createAdminClient();
-    
-    const { data: profile, error: profileError } = await adminClient
+    // 2. Récupérer le profil (RLS permet SELECT sur son propre profil)
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('company_id, role')
       .eq('id', authUser.id)
@@ -48,14 +58,14 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
       return { success: false, error: 'Profil ou entreprise non trouvé' };
     }
     
-    // 3. Vérifier les permissions
+    // 3. Vérifier les permissions (métier)
     if (!['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'].includes(profile.role)) {
       return { success: false, error: 'Permissions insuffisantes' };
     }
     
     const vehicleId = crypto.randomUUID();
     
-    // 4. Créer le véhicule avec admin client (bypass RLS)
+    // 4. Créer le véhicule (RLS vérifie company_id automatiquement)
     const insertData = {
       id: vehicleId,
       company_id: profile.company_id,
@@ -66,23 +76,22 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
       mileage: data.mileage,
       fuel_type: data.fuel_type,
       status: data.status || 'ACTIF',
-      purchase_date: data.purchase_date,
-      vin: data.vin,
-      year: data.year,
-      color: data.color,
       qr_code_data: `fleetmaster://vehicle/${vehicleId}`,
-    } as Record<string, unknown>;
+      purchase_date: data.purchase_date || null,
+      vin: data.vin || null,
+      year: data.year || null,
+      color: data.color || null,
+    } as any;
     
-    const { data: vehicle, error: vehicleError } = await adminClient
+    const { data: vehicle, error: vehicleError } = await supabase
       .from('vehicles')
-      .insert(insertData as never)
+      .insert(insertData)
       .select()
       .single();
     
     if (vehicleError) {
       logger.error('createVehicle: Erreur création', new Error(vehicleError.message));
       
-      // Message d'erreur plus user-friendly
       if (vehicleError.code === '23505') {
         if (vehicleError.message?.includes('registration_number')) {
           return { success: false, error: `Un véhicule avec l'immatriculation "${data.registration_number}" existe déjà` };
@@ -93,9 +102,9 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
       return { success: false, error: vehicleError.message };
     }
     
-    // 5. Créer manuellement la prédiction AI (puisque le trigger peut être bloqué)
+    // 5. Créer la prédiction AI (RLS permet INSERT si vehicle_id dans sa company)
     try {
-      await adminClient
+      await supabase
         .from('ai_predictions')
         .insert({
           vehicle_id: vehicleId,
@@ -115,10 +124,11 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
           urgency_level: 'low',
           risk_factors: ['Nouveau véhicule - surveillance initiale'],
           model_version: '1.0.0'
-        });
+        } as any);
     } catch (predError) {
-      // On ignore l'erreur de prédiction - le véhicule est déjà créé
-      logger.warn('createVehicle: Prédiction non créée', { error: predError instanceof Error ? predError.message : String(predError) });
+      logger.warn('createVehicle: Prédiction non créée', { 
+        error: predError instanceof Error ? predError.message : String(predError) 
+      });
     }
     
     revalidatePath('/vehicles');
@@ -132,40 +142,33 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
   }
 }
 
+/**
+ * Met à jour un véhicule
+ * RLS : L'UPDATE est autorisé si le véhicule appartient à la company du user
+ */
 export async function updateVehicle(id: string, data: Partial<CreateVehicleData>): Promise<ActionResult> {
   try {
-    const authClient = await createClient();
-    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+    const supabase = await createClient();
+    
+    // 1. Vérifier auth
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !authUser) {
       return { success: false, error: 'Non authentifié' };
     }
     
-    const adminClient = createAdminClient();
-    
-    // Vérifier que le véhicule appartient à l'entreprise de l'utilisateur
-    const { data: profile } = await adminClient
-      .from('profiles')
-      .select('company_id, role')
-      .eq('id', authUser.id)
-      .single();
-    
-    if (!profile) {
-      return { success: false, error: 'Profil non trouvé' };
-    }
-    
-    const { data: vehicle } = await adminClient
+    // 2. Le véhicule existe-t-il et appartient-il à ma company ? (RLS filtre auto)
+    const { data: existingVehicle, error: checkError } = await supabase
       .from('vehicles')
-      .select('company_id')
+      .select('id')
       .eq('id', id)
       .single();
     
-    if (!vehicle || vehicle.company_id !== profile.company_id) {
+    if (checkError || !existingVehicle) {
       return { success: false, error: 'Véhicule non trouvé ou accès non autorisé' };
     }
     
-    // purchase_date : colonne absente de la table vehicles en DB — ne pas envoyer
-    // Convertir "" → null uniquement pour les champs DATE présents dans le payload
+    // 3. Préparer les données
     const VEHICLE_DATE_FIELDS = [
       'technical_control_date',
       'technical_control_expiry',
@@ -188,7 +191,8 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
       }
     }
     
-    const { data: updated, error } = await adminClient
+    // 4. Mettre à jour (RLS vérifie que le véhicule appartient à ma company)
+    const { data: updated, error } = await supabase
       .from('vehicles')
       .update(updateData)
       .eq('id', id)
@@ -210,44 +214,61 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
   }
 }
 
+/**
+ * Supprime un véhicule
+ * RLS : Le DELETE est autorisé si le véhicule appartient à la company du user
+ * ET si le user a le rôle approprié (vérifié métier)
+ */
 export async function deleteVehicle(id: string): Promise<ActionResult> {
   try {
-    const authClient = await createClient();
-    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+    const supabase = await createClient();
+    
+    // 1. Vérifier auth
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !authUser) {
       return { success: false, error: 'Non authentifié' };
     }
     
-    const adminClient = createAdminClient();
-    
-    // Vérifier les permissions
-    const { data: profile } = await adminClient
+    // 2. Vérifier les permissions métier
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('company_id, role')
       .eq('id', authUser.id)
       .single();
     
-    if (!profile || !['ADMIN', 'DIRECTEUR'].includes(profile.role)) {
+    if (profileError || !profile) {
+      return { success: false, error: 'Profil non trouvé' };
+    }
+    
+    if (!['ADMIN', 'DIRECTEUR'].includes(profile.role)) {
       return { success: false, error: 'Permissions insuffisantes' };
     }
     
-    // Vérifier que le véhicule appartient à l'entreprise
-    const { data: vehicle } = await adminClient
+    // 3. Vérifier que le véhicule existe et est accessible (RLS)
+    const { data: vehicle, error: vehicleError } = await supabase
       .from('vehicles')
-      .select('company_id')
+      .select('id')
       .eq('id', id)
       .single();
     
-    if (!vehicle || vehicle.company_id !== profile.company_id) {
+    if (vehicleError || !vehicle) {
       return { success: false, error: 'Véhicule non trouvé' };
     }
     
-    // Supprimer d'abord les prédictions liées
-    await adminClient.from('ai_predictions').delete().eq('vehicle_id', id);
+    // 4. Supprimer les prédictions liées (RLS doit permettre DELETE sur ai_predictions)
+    const { error: predDeleteError } = await supabase
+      .from('ai_predictions')
+      .delete()
+      .eq('vehicle_id', id);
     
-    // Supprimer le véhicule
-    const { error } = await adminClient
+    if (predDeleteError) {
+      logger.warn('deleteVehicle: Erreur suppression prédictions', { error: predDeleteError.message });
+      // Continuer malgré l'erreur
+    }
+    
+    // 5. Supprimer le véhicule (RLS vérifie l'appartenance à la company)
+    const { error } = await supabase
       .from('vehicles')
       .delete()
       .eq('id', id);

@@ -52,7 +52,7 @@ export function createAdminClient() {
   );
 }
 
-// Récupérer l'utilisateur courant
+// Récupérer l'utilisateur courant (VERSION SÉCURISÉE - RLS)
 export async function getUserWithCompany() {
   try {
     const supabase = await createClient();
@@ -62,13 +62,16 @@ export async function getUserWithCompany() {
       return null;
     }
     
-    // Récupérer le profil depuis la base de données
-    const adminClient = createAdminClient();
-    const { data: profile } = await adminClient
+    // Récupérer le profil via RLS (policy doit permettre SELECT sur son propre profil)
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
+    
+    if (profileError) {
+      console.error('getUserWithCompany: Profile fetch error', profileError);
+    }
     
     if (profile) {
       return {
