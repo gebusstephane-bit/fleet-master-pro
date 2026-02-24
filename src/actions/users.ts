@@ -29,7 +29,10 @@ export type CreateUserData = z.infer<typeof createUserSchema>;
 export type UpdateUserData = z.infer<typeof updateUserSchema>;
 
 // Vérifier les permissions
-async function checkPermissions(supabase: any, userId: string, requiredRoles: string[]) {
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase';
+
+async function checkPermissions(supabase: SupabaseClient<Database>, userId: string, requiredRoles: string[]) {
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('role, company_id')
@@ -86,9 +89,10 @@ export async function getUsers(companyId?: string) {
     }
     
     return { data, error: null };
-  } catch (error: any) {
+  } catch (error) {
     console.error('getUsers exception:', error);
-    return { error: error.message, data: null };
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }
 
@@ -114,15 +118,16 @@ export async function getUserById(userId: string) {
     }
     
     return { data, error: null };
-  } catch (error: any) {
-    return { error: error.message, data: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }
 
 // Créer un nouvel utilisateur
 export async function createUser(data: CreateUserData, creatorId: string) {
   try {
-    console.log('createUser: Données reçues:', { ...data, password: '***' });
+    // Création utilisateur
     
     const supabase = await createClient();
     const adminSupabase = createAdminClient();
@@ -143,7 +148,7 @@ export async function createUser(data: CreateUserData, creatorId: string) {
       return { error: 'Créateur non trouvé', data: null };
     }
     
-    console.log('createUser: Créateur trouvé:', creator);
+    // Créateur trouvé
     
     // Seul ADMIN ou DIRECTEUR peut créer des utilisateurs
     if (!['ADMIN', 'DIRECTEUR'].includes(creator.role)) {
@@ -189,7 +194,7 @@ export async function createUser(data: CreateUserData, creatorId: string) {
     }
     
     // 3. Créer le profil (avec admin pour bypass RLS)
-    console.log('createUser: Création profil avec company_id:', data.company_id);
+    // Création profil
     
     const { data: profile, error: profileError } = await adminSupabase
       .from('profiles')
@@ -207,12 +212,12 @@ export async function createUser(data: CreateUserData, creatorId: string) {
       .select()
       .single();
     
-    console.log('createUser: Profil créé:', profile);
+    // Profil créé
     
     if (profileError) {
       // Rollback: supprimer l'utilisateur auth
       await adminSupabase.auth.admin.deleteUser(authUser.user.id);
-      console.error('createUser profile error:', profileError);
+      console.error('createUser profile error:', profileError?.message);
       return { error: `Erreur création profil: ${profileError.message}`, data: null };
     }
     
@@ -240,9 +245,10 @@ export async function createUser(data: CreateUserData, creatorId: string) {
       }, 
       error: null 
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('createUser exception:', error);
-    return { error: error.message, data: null };
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }
 
@@ -305,7 +311,7 @@ export async function updateUser(data: UpdateUserData, updaterId: string) {
     }
     
     // 4. Effectuer la mise à jour (avec admin)
-    const updateData: any = {};
+    const updateData: Record<string, string | boolean | undefined> = {};
     if (data.first_name) updateData.first_name = data.first_name;
     if (data.last_name) updateData.last_name = data.last_name;
     if (data.phone !== undefined) updateData.phone = data.phone;
@@ -327,8 +333,9 @@ export async function updateUser(data: UpdateUserData, updaterId: string) {
     revalidatePath(`/settings/users/${data.user_id}/edit`);
     
     return { data: updated, error: null };
-  } catch (error: any) {
-    return { error: error.message, data: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }
 
@@ -398,8 +405,9 @@ export async function toggleUserStatus(userId: string, isActive: boolean, actorI
     revalidatePath('/settings/users');
     
     return { data: { success: true }, error: null };
-  } catch (error: any) {
-    return { error: error.message, data: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }
 
@@ -438,8 +446,9 @@ export async function deleteUser(userId: string, actorId: string) {
     revalidatePath('/settings/users');
     
     return { data: { success: true }, error: null };
-  } catch (error: any) {
-    return { error: error.message, data: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }
 
@@ -482,7 +491,8 @@ export async function updateNotificationPreferences(
     }
     
     return { data, error: null };
-  } catch (error: any) {
-    return { error: error.message, data: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }

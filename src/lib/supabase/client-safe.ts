@@ -12,6 +12,16 @@ const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 // Client standard
 export const supabaseClient = createClient<Database>(SUPABASE_URL, SUPABASE_KEY);
 
+interface SafeQueryResult<T> {
+  data: T[] | null;
+  error: Error | null;
+  debug?: Record<string, unknown>;
+}
+
+interface CompanyIdItem {
+  company_id?: string;
+}
+
 /**
  * Fonction utilitaire pour faire des requêtes avec retry et fallback
  * VERSION AVEC LOGS DIAGNOSTIC
@@ -24,7 +34,7 @@ export async function safeQuery<T>(
     orderBy?: { column: string; ascending?: boolean };
     limit?: number;
   }
-): Promise<{ data: T[] | null; error: any; debug?: any }> {
+): Promise<SafeQueryResult<T>> {
   console.log(`[safeQuery] START - Table: ${table}, CompanyId: ${companyId?.slice(0, 8)}...`);
   
   if (!companyId) {
@@ -40,7 +50,7 @@ export async function safeQuery<T>(
     const startTime = Date.now();
     
     const { data, error } = await supabaseClient
-      .from(table as any)
+      .from(table as keyof Database['public']['Tables'])
       .select(select)
       .eq('company_id', companyId)
       .order(options?.orderBy?.column || 'created_at', { 
@@ -52,7 +62,7 @@ export async function safeQuery<T>(
     console.log(`[safeQuery] Attempt 1 completed in ${duration}ms`, { 
       success: !error, 
       dataCount: data?.length,
-      errorCode: error?.code,
+      errorCode: (error as { code?: string })?.code,
       errorMessage: error?.message?.slice(0, 100)
     });
 
@@ -62,12 +72,12 @@ export async function safeQuery<T>(
     }
 
     // Si erreur de récursion RLS, essayer sans filtre
-    if (error.message?.includes('infinite recursion') || error.code === '42P17') {
+    if (error.message?.includes('infinite recursion') || (error as { code?: string })?.code === '42P17') {
       console.warn(`[safeQuery] RLS recursion detected (42P17), trying fallback without filter...`);
       
       const fallbackStart = Date.now();
       const { data: allData, error: allError } = await supabaseClient
-        .from(table as any)
+        .from(table as keyof Database['public']['Tables'])
         .select(select)
         .order(options?.orderBy?.column || 'created_at', { 
           ascending: options?.orderBy?.ascending ?? false 
@@ -78,7 +88,7 @@ export async function safeQuery<T>(
       console.log(`[safeQuery] Fallback completed in ${fallbackDuration}ms`, {
         success: !allError,
         totalRecords: allData?.length,
-        errorCode: allError?.code,
+        errorCode: (allError as { code?: string })?.code,
         errorMessage: allError?.message?.slice(0, 100)
       });
 
@@ -96,7 +106,7 @@ export async function safeQuery<T>(
       }
 
       // Filtrer côté client
-      const filtered = (allData || []).filter((item: any) => item.company_id === companyId);
+      const filtered = (allData || []).filter((item) => (item as CompanyIdItem).company_id === companyId);
       console.log(`[safeQuery] Fallback SUCCESS: ${filtered.length}/${allData?.length || 0} records match company_id`);
       
       return { 
@@ -114,9 +124,10 @@ export async function safeQuery<T>(
     console.error(`[safeQuery] Direct query failed with non-RLS error:`, error);
     return { data: null, error, debug: { stage: 'direct_failed', error } };
     
-  } catch (e: any) {
+  } catch (e) {
     console.error(`[safeQuery] EXCEPTION:`, e);
-    return { data: null, error: e, debug: { stage: 'exception', error: e } };
+    const caughtError = e instanceof Error ? e : new Error(String(e));
+    return { data: null, error: caughtError, debug: { stage: 'exception', error: caughtError } };
   }
 }
 
@@ -130,12 +141,12 @@ export async function safeQuerySimple<T>(
     orderBy?: { column: string; ascending?: boolean };
     limit?: number;
   }
-): Promise<{ data: T[] | null; error: any }> {
+): Promise<{ data: T[] | null; error: Error | null }> {
   const select = options?.select || '*';
 
   try {
     const { data, error } = await supabaseClient
-      .from(table as any)
+      .from(table as keyof Database['public']['Tables'])
       .select(select)
       .order(options?.orderBy?.column || 'created_at', { 
         ascending: options?.orderBy?.ascending ?? false 
@@ -143,7 +154,7 @@ export async function safeQuerySimple<T>(
       .limit(options?.limit || 1000);
 
     return { data: data as T[], error };
-  } catch (e: any) {
-    return { data: null, error: e };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
   }
 }

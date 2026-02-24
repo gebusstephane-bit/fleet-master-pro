@@ -23,12 +23,12 @@ export function MaintenanceStats() {
     );
   }
 
-  const totalCost = stats?.totalCost || 0;
-  const count = stats?.count || 0;
-  const byType = stats?.byType || {};
+  const totalCost = (stats as any)?.totalCost || 0;
+  const count = (stats as any)?.count || 0;
+  const byType = (stats as any)?.byType || {};
 
   // Trier les types par coût
-  const sortedTypes = Object.entries(byType)
+  const sortedTypes = Object.entries(byType as Record<string, { cost: number; count: number }>)
     .sort((a, b) => b[1].cost - a[1].cost)
     .slice(0, 5);
 

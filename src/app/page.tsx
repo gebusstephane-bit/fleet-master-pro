@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
+import { SocialProof } from "@/components/landing/SocialProof";
 import { ProblemSolution } from "@/components/landing/ProblemSolution";
 import { Features } from "@/components/landing/Features";
 import { Testimonials } from "@/components/landing/Testimonials";
@@ -24,6 +25,7 @@ export default function LandingPage() {
     <main className="min-h-screen">
       <Navbar />
       <Hero />
+      <SocialProof />
       <ProblemSolution />
       <section id="features">
         <Features />

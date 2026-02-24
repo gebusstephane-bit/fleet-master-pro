@@ -1,15 +1,20 @@
 /**
- * Middleware Next.js - VÉRIFICATION SUBSCRIPTION STATUS
+ * Middleware Next.js - SÉCURITÉ + VÉRIFICATION SUBSCRIPTION
  * 
- * Bloque l'accès aux routes protégées si :
- * - subscription_status === 'pending_payment' (inscription non finalisée)
- * - subscription_status === 'unpaid' (paiement échoué)
- * - subscription_status === 'canceled' (abonnement annulé)
+ * 1. RATE LIMITING - Protection contre brute-force et abuse
+ * 2. AUTHENTIFICATION - Vérification des sessions
+ * 3. SUBSCRIPTION STATUS - Contrôle des accès selon abonnement
  */
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { getSuperadminEmail, isSuperadminEmail } from '@/lib/superadmin';
+import { 
+  getClientIP, 
+  checkRateLimit, 
+  createRateLimitResponse, 
+  RateLimits 
+} from '@/lib/security/rate-limit';
 
 // Routes publiques (pas de vérification)
 const publicRoutes = [
@@ -24,8 +29,15 @@ const publicRoutes = [
   '/privacy',
 ];
 
-// Routes API publiques
-const publicApiRoutes = ['/api/auth', '/api/stripe/webhook', '/api/stripe/create-checkout-session'];
+// Routes API publiques (rate limit appliqué mais pas d'auth)
+const publicApiRoutes = [
+  '/api/auth', 
+  '/api/stripe/webhook', 
+  '/api/stripe/create-checkout-session',
+  '/api/stripe/checkout-success',
+  '/api/admin/reset-user-password', 
+  '/api/cron'
+];
 
 // Routes autorisées pendant un paiement en attente
 const pendingPaymentAllowedRoutes = [
@@ -34,6 +46,79 @@ const pendingPaymentAllowedRoutes = [
   '/api/stripe',
   '/payment-pending',
 ];
+
+/**
+ * Vérifie si une route est une API route publique
+ */
+function isPublicApiRoute(pathname: string): boolean {
+  return publicApiRoutes.some(route => pathname.startsWith(route));
+}
+
+/**
+ * Applique le rate limiting aux routes API
+ * Retourne une réponse 429 si la limite est dépassée, null sinon
+ */
+function applyRateLimit(request: NextRequest, pathname: string): NextResponse | null {
+  if (!pathname.startsWith('/api/')) return null;
+  
+  const ip = getClientIP(request);
+  
+  // Rate limiting spécifique par type de route
+  let rateLimitConfig: { requests: number; windowMs: number } = RateLimits.general;
+  let routeType = 'general';
+  
+  if (pathname.includes('/api/stripe/create-checkout-session')) {
+    rateLimitConfig = RateLimits.checkout;
+    routeType = 'checkout';
+  } else if (pathname.includes('/api/stripe/webhook')) {
+    rateLimitConfig = RateLimits.webhook;
+    routeType = 'webhook';
+  } else if (pathname.includes('/api/auth')) {
+    rateLimitConfig = RateLimits.auth;
+    routeType = 'auth';
+  } else if (pathname.includes('/api/sos/smart-search')) {
+    rateLimitConfig = RateLimits.sosAuthenticated;
+    routeType = 'sos';
+  } else if (pathname.includes('/api/cron')) {
+    // Les cron jobs doivent avoir un header spécial de Vercel
+    const vercelCronSecret = request.headers.get('x-vercel-cron-secret');
+    const isVercelCron = vercelCronSecret === process.env.CRON_SECRET;
+    
+    if (!isVercelCron && process.env.NODE_ENV === 'production') {
+      console.warn(`🚫 Rate limit: Tentative d'accès au cron sans secret Vercel: ${ip}`);
+      return createRateLimitResponse(
+        'Accès non autorisé aux endpoints cron',
+        Date.now() + 60 * 60 * 1000
+      );
+    }
+    // Pas de rate limit pour les cron légitimes
+    return null;
+  }
+  
+  // Vérifier le rate limit
+  const result = checkRateLimit(`${ip}:${routeType}`, rateLimitConfig);
+  
+  if (!result.success) {
+    console.warn(`🚫 Rate limit dépassé pour ${ip} sur ${pathname}`);
+    return createRateLimitResponse(
+      routeType === 'checkout' 
+        ? 'Trop de tentatives. Réessayez dans 1 heure ou contactez le support.'
+        : 'Trop de requêtes. Veuillez réessayer plus tard.',
+      result.resetAt
+    );
+  }
+  
+  // Pour les routes API publiques, retourner une réponse avec les headers
+  if (isPublicApiRoute(pathname)) {
+    const response = NextResponse.next();
+    response.headers.set('X-RateLimit-Limit', String(rateLimitConfig.requests));
+    response.headers.set('X-RateLimit-Remaining', String(result.remaining));
+    response.headers.set('X-RateLimit-Reset', String(Math.ceil(result.resetAt / 1000)));
+    return response;
+  }
+  
+  return null;
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -72,9 +157,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // API routes publiques
-  if (publicApiRoutes.some(route => pathname.startsWith(route))) {
-    return NextResponse.next();
+  // ============================================
+  // 🛡️ RATE LIMITING - Toutes les routes API
+  // ============================================
+  if (pathname.startsWith('/api/')) {
+    const rateLimitResponse = applyRateLimit(request, pathname);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+    // Si pas de réponse, continuer avec les vérifications suivantes
   }
 
   // ============================================

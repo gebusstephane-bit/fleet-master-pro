@@ -3,14 +3,42 @@
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
-export async function getDashboardStats() {
+interface DashboardStats {
+  vehicles: {
+    total: number;
+    active: number;
+    list: unknown[];
+    totalMileage: number;
+  };
+  drivers: {
+    total: number;
+    active: number;
+  };
+  routes: {
+    today: number;
+    ongoing: number;
+  };
+  costs: {
+    fuel: number;
+    maintenance: number;
+    total: number;
+  };
+}
+
+interface ActionResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+export async function getDashboardStats(): Promise<ActionResult<DashboardStats>> {
   try {
     // Récupérer l'utilisateur authentifié
     const authClient = await createClient();
     const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
     
     if (authError || !authUser) {
-      logger.error('getDashboardStats: Utilisateur non authentifié', authError || undefined);
+      logger.error('getDashboardStats: Utilisateur non authentifié', authError ? new Error(authError.message) : undefined);
       return { success: false, error: 'Non authentifié' };
     }
     
@@ -24,7 +52,7 @@ export async function getDashboardStats() {
       .single();
     
     if (userError || !userData?.company_id) {
-      logger.error('getDashboardStats: Pas de company_id', userError || undefined);
+      logger.error('getDashboardStats: Pas de company_id', userError ? new Error(userError.message) : undefined);
       return { success: false, error: 'Entreprise non trouvée' };
     }
     
@@ -38,7 +66,7 @@ export async function getDashboardStats() {
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
     
-    if (vErr) logger.error('Erreur véhicules', vErr);
+    if (vErr) logger.error('Erreur véhicules', new Error(vErr.message));
     
     // Récupérer les chauffeurs
     const { data: drivers, error: dErr } = await supabase
@@ -46,7 +74,7 @@ export async function getDashboardStats() {
       .select('id, status, first_name, last_name')
       .eq('company_id', companyId);
     
-    if (dErr) logger.error('Erreur chauffeurs', dErr);
+    if (dErr) logger.error('Erreur chauffeurs', new Error(dErr.message));
     
     // Tournées du jour
     const today = new Date().toISOString().split('T')[0];
@@ -56,7 +84,7 @@ export async function getDashboardStats() {
       .eq('company_id', companyId)
       .gte('route_date', today);
     
-    if (rErr) logger.error('Erreur routes', rErr);
+    if (rErr) logger.error('Erreur routes', new Error(rErr.message));
     
     // Coûts ce mois
     const startOfMonth = new Date();
@@ -88,17 +116,17 @@ export async function getDashboardStats() {
       data: {
         vehicles: {
           total: vehicles?.length || 0,
-          active: vehicles?.filter(v => v.status === 'active' || v.status === 'ACTIF').length || 0,
+          active: vehicles?.filter(v => (v.status as string) === 'active' || (v.status as string) === 'ACTIF').length || 0,
           list: vehicles || [],
           totalMileage: vehicles?.reduce((s, v) => s + (v.mileage || 0), 0) || 0
         },
         drivers: {
           total: drivers?.length || 0,
-          active: drivers?.filter(d => d.status === 'active' || d.status === 'ACTIF').length || 0
+          active: drivers?.filter(d => (d.status as string) === 'active' || (d.status as string) === 'ACTIF').length || 0
         },
         routes: {
           today: routes?.length || 0,
-          ongoing: routes?.filter(r => r.status === 'in_progress' || r.status === 'EN_COURS').length || 0
+          ongoing: routes?.filter(r => (r.status as string) === 'in_progress' || (r.status as string) === 'EN_COURS').length || 0
         },
         costs: {
           fuel: totalFuel,
@@ -108,8 +136,8 @@ export async function getDashboardStats() {
       }
     };
     
-  } catch (e: any) {
-    logger.error('Dashboard error', e);
-    return { success: false, error: e.message };
+  } catch (e: unknown) {
+    logger.error('Dashboard error', e instanceof Error ? e : new Error(String(e)));
+    return { success: false, error: e instanceof Error ? e.message : 'Erreur inconnue' };
   }
 }

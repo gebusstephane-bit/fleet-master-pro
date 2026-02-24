@@ -100,7 +100,7 @@ export function useMaintenances(options?: { enabled?: boolean }) {
           if (!allError && allData) {
             const filtered = allData.filter(m => m.company_id === companyId);
             logger.info('Fallback: Found maintenances', { count: filtered.length });
-            return filtered as Maintenance[];
+            return filtered as unknown as Maintenance[];
           }
         }
         
@@ -108,7 +108,7 @@ export function useMaintenances(options?: { enabled?: boolean }) {
       }
       
       logger.info('Fetched maintenances', { count: data?.length || 0 });
-      return (data || []) as Maintenance[];
+      return (data || []) as unknown as Maintenance[];
     },
     enabled: options?.enabled !== false && !!companyId,
     retry: 1,
@@ -145,7 +145,7 @@ export function useMaintenance(id: string, options?: { enabled?: boolean }) {
         throw new Error(error.message);
       }
       
-      return data as Maintenance;
+      return data as unknown as Maintenance;
     },
     enabled: options?.enabled !== false && !!id && !!companyId,
     ...cacheTimes.maintenance,
@@ -176,7 +176,7 @@ export function useMaintenancesByVehicle(vehicleId: string, options?: { enabled?
         throw new Error(error.message);
       }
       
-      return (data || []) as Maintenance[];
+      return (data || []) as unknown as Maintenance[];
     },
     enabled: options?.enabled !== false && !!vehicleId && !!companyId,
     ...cacheTimes.maintenance,

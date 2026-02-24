@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     .range(offset, offset + pageSize - 1);
 
   if (status) {
-    query = query.eq('status', status);
+    query = query.eq('status', status as any);
   }
 
   const { data: vehicles, error, count } = await query;

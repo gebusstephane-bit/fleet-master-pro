@@ -1,4 +1,20 @@
-// src/lib/plans.ts - VERSION HARDCODÉE (fonctionne immédiatement)
+// src/lib/plans.ts - VERSION AVEC VARIABLES D'ENVIRONNEMENT
+
+// Récupération dynamique des IDs Stripe depuis les variables d'environnement
+// Les variables doivent être définies dans .env.local
+
+const getEnvPriceId = (plan: 'essential' | 'pro' | 'unlimited', type: 'monthly' | 'yearly'): string => {
+  const envVarName = `STRIPE_PRICE_ID_${plan.toUpperCase()}${type === 'yearly' ? '_YEARLY' : ''}`;
+  const value = process.env[envVarName];
+  
+  if (!value) {
+    console.error(`❌ ERREUR: Variable d'environnement manquante: ${envVarName}`);
+    console.error('Vérifiez votre fichier .env.local');
+    return '';
+  }
+  
+  return value;
+};
 
 export const PLANS = {
   essential: {
@@ -6,8 +22,8 @@ export const PLANS = {
     name: 'Essential',
     priceMonthly: 29,
     priceYearly: 290,
-    priceId: 'price_1T16Qc2S7pahLrnmcxhOm73Z', // ← ID Stripe Essential
-    priceIdYearly: 'price_1T16Qc2S7pahLrnmcxhOm73Z', // Même ID si pas d'annuel
+    priceId: process.env.STRIPE_PRICE_ID_ESSENTIAL || '',
+    priceIdYearly: process.env.STRIPE_PRICE_ID_ESSENTIAL_YEARLY || process.env.STRIPE_PRICE_ID_ESSENTIAL || '',
     maxVehicles: 3,
     maxDrivers: 2,
     features: [
@@ -27,8 +43,8 @@ export const PLANS = {
     name: 'Pro',
     priceMonthly: 49,
     priceYearly: 490,
-    priceId: 'price_1T16T52S7pahLrnmtBhKKRYj', // ← ID Stripe Pro
-    priceIdYearly: 'price_1T16T52S7pahLrnmtBhKKRYj',
+    priceId: process.env.STRIPE_PRICE_ID_PRO || '',
+    priceIdYearly: process.env.STRIPE_PRICE_ID_PRO_YEARLY || process.env.STRIPE_PRICE_ID_PRO || '',
     maxVehicles: 15,
     maxDrivers: 5,
     features: [
@@ -50,8 +66,8 @@ export const PLANS = {
     name: 'Unlimited',
     priceMonthly: 129,
     priceYearly: 1290,
-    priceId: 'price_1T16UD2S7pahLrnmZOWa0c1g', // ← ID Stripe Unlimited
-    priceIdYearly: 'price_1T16UD2S7pahLrnmZOWa0c1g',
+    priceId: process.env.STRIPE_PRICE_ID_UNLIMITED || '',
+    priceIdYearly: process.env.STRIPE_PRICE_ID_UNLIMITED_YEARLY || process.env.STRIPE_PRICE_ID_UNLIMITED || '',
     maxVehicles: 999,
     maxDrivers: 999,
     features: [
@@ -69,6 +85,24 @@ export const PLANS = {
     cta: 'Contacter pour Unlimited',
   },
 } as const;
+
+// Vérification au chargement (mode serveur uniquement)
+if (typeof window === 'undefined') {
+  const requiredEnvVars = [
+    'STRIPE_PRICE_ID_ESSENTIAL',
+    'STRIPE_PRICE_ID_PRO',
+    'STRIPE_PRICE_ID_UNLIMITED',
+  ];
+  
+  const missing = requiredEnvVars.filter(varName => !process.env[varName]);
+  
+  if (missing.length > 0) {
+    console.error('❌ ERREUR: Variables d\'environnement Stripe manquantes:', missing);
+    console.error('Vérifiez votre fichier .env.local');
+  } else {
+    console.log('✅ Variables d\'environnement Stripe chargées correctement');
+  }
+}
 
 export type PlanId = keyof typeof PLANS;
 
@@ -115,4 +149,16 @@ export function formatPrice(price: number): string {
 export function getYearlySavings(planId: PlanId): number {
   const plan = PLANS[planId];
   return (plan.priceMonthly * 12) - plan.priceYearly;
+}
+
+// Helper pour obtenir le priceId avec vérification
+export function getStripePriceId(planId: PlanId, yearly: boolean = false): string {
+  const plan = PLANS[planId];
+  const priceId = yearly ? plan.priceIdYearly : plan.priceId;
+  
+  if (!priceId) {
+    throw new Error(`Price ID manquant pour le plan ${planId} (${yearly ? 'annuel' : 'mensuel'})`);
+  }
+  
+  return priceId;
 }

@@ -14,7 +14,7 @@ export const createRoute = authActionClient
     
     const { stops, vehicleId, driverId, routeDate, totalDistance, estimatedDuration, fuelCost, ...routeData } = parsedInput;
     
-    console.log('Creating route with data:', { vehicleId, driverId, routeDate, stopsCount: stops?.length });
+    // Creating route
     
     // Mapper les champs camelCase vers snake_case pour la DB
     const dbRouteData = {
@@ -30,7 +30,7 @@ export const createRoute = authActionClient
       company_id: ctx.user.company_id,
     };
     
-    console.log('DB route data:', dbRouteData);
+    // DB route data prepared
     
     // Insérer la tournée
     const { data: route, error: routeError } = await supabase
@@ -40,11 +40,11 @@ export const createRoute = authActionClient
       .single();
     
     if (routeError) {
-      console.error('Route insert error:', routeError);
+      console.error('Route insert error:', routeError?.message);
       throw new Error(`Erreur création tournée: ${routeError.message}`);
     }
     
-    console.log('Route created:', route.id);
+    // Route created
     
     // Insérer les arrêts
     if (stops && stops.length > 0) {
@@ -68,14 +68,14 @@ export const createRoute = authActionClient
         priority: priorityMap[stop.priority || 'NORMAL'] || 2,
       }));
       
-      console.log('Inserting stops:', stopsToInsert.length, stopsToInsert);
+      // Inserting stops
       
       const { error: stopsError } = await supabase
         .from('route_stops')
         .insert(stopsToInsert as any);
       
       if (stopsError) {
-        console.error('Stops insert error:', stopsError);
+        console.error('Stops insert error:', stopsError?.message);
         // Supprimer la route si les arrêts échouent
         await supabase.from('routes').delete().eq('id', route.id);
         throw new Error(`Erreur création arrêts: ${stopsError.message}`);

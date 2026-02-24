@@ -16,7 +16,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false, // Build strict activé - erreurs résiduelles dans tests/
   },
 
   // ============================================

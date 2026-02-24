@@ -97,10 +97,16 @@ export default function RegisterForm() {
       const plan = PLANS[selectedPlan];
       
       // Debug log
-      console.log('Envoi à Stripe:', { 
-        priceId: plan.priceId, 
+      console.log('=== ENVOI AU BACKEND ===');
+      console.log('Données envoyées:', {
         planType: selectedPlan,
-        email: formData.email 
+        email: formData.email,
+        companyName: formData.companyName,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        siret: formData.siret,
+        phone: formData.phone,
+        priceId: plan.priceId
       });
       
       const response = await fetch('/api/stripe/create-checkout-session', {

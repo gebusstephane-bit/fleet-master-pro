@@ -103,15 +103,18 @@ export function useRoutes(options?: { enabled?: boolean }) {
           }
           
           // Récupérer véhicules et chauffeurs séparément
+          const vehicleIds = routesData?.map(r => r.vehicle_id).filter((id): id is string => !!id) || [];
+          const driverIds = routesData?.map(r => r.driver_id).filter((id): id is string => !!id) || [];
+          
           const { data: vehicles } = await supabase
             .from('vehicles')
             .select('id, registration_number, brand, model')
-            .in('id', routesData?.map(r => r.vehicle_id).filter(Boolean) || []);
+            .in('id', vehicleIds);
           
           const { data: drivers } = await supabase
             .from('drivers')
             .select('id, first_name, last_name')
-            .in('id', routesData?.map(r => r.driver_id).filter(Boolean) || []);
+            .in('id', driverIds);
           
           // Fusionner
           const enriched = (routesData || []).map(route => ({
@@ -127,7 +130,7 @@ export function useRoutes(options?: { enabled?: boolean }) {
       }
       
       logger.info('Fetched routes', { count: data?.length || 0 });
-      return (data || []) as Route[];
+      return (data || []) as unknown as Route[];
     },
     enabled: options?.enabled !== false && !!companyId,
     retry: 2,
@@ -166,7 +169,7 @@ export function useRoute(id: string, options?: { enabled?: boolean }) {
         throw new Error(error.message);
       }
       
-      return data as Route;
+      return data as unknown as Route;
     },
     enabled: options?.enabled !== false && !!id && !!companyId,
     ...cacheTimes.routes,
@@ -180,23 +183,27 @@ export function useCreateRoute() {
   const companyId = user?.company_id;
   
   return useMutation({
-    mutationFn: async (data: any) => {
-      const result = await createRoute(data);
+    mutationFn: async (data: unknown) => {
+      // La validation Zod est faite côté serveur
+      const result = await createRoute(data as Parameters<typeof createRoute>[0]);
       console.log('Create route raw result:', result);
       
       if (!result) {
         throw new Error('Pas de réponse du serveur');
       }
       
-      if ((result as any).serverError) {
-        throw new Error(`Erreur serveur: ${(result as any).serverError.message || 'Inconnue'}`);
+      const resultRecord = result as Record<string, unknown>;
+      
+      if (resultRecord.serverError) {
+        const serverError = resultRecord.serverError as { message?: string };
+        throw new Error(`Erreur serveur: ${serverError.message || 'Inconnue'}`);
       }
       
-      if ((result as any).validationErrors) {
-        throw new Error(`Erreur de validation: ${JSON.stringify((result as any).validationErrors)}`);
+      if (resultRecord.validationErrors) {
+        throw new Error(`Erreur de validation: ${JSON.stringify(resultRecord.validationErrors)}`);
       }
       
-      const responseData = (result as any).data;
+      const responseData = resultRecord.data as { success?: boolean; error?: string; data?: unknown } | undefined;
       if (!responseData?.success) {
         const errorMsg = responseData?.error || 'Erreur création tournée';
         throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
@@ -224,18 +231,19 @@ export function useUpdateRoute() {
   const companyId = user?.company_id;
   
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: { id: string } & Record<string, unknown>) => {
       const result = await updateRoute(data);
-      if (!(result as any)?.success) {
-        throw new Error((result as any)?.error || 'Erreur mise à jour');
+      const resultData = result as { success?: boolean; error?: string; data?: unknown } | undefined;
+      if (!resultData?.success) {
+        throw new Error(resultData?.error || 'Erreur mise à jour');
       }
-      return (result as any).data;
+      return resultData.data;
     },
     onSuccess: (_, variables) => {
       if (companyId) {
         queryClient.invalidateQueries({ queryKey: routeKeys.lists(companyId) });
       }
-      queryClient.invalidateQueries({ queryKey: routeKeys.detail((variables as any).id) });
+      queryClient.invalidateQueries({ queryKey: routeKeys.detail(variables.id) });
       toast.success('Tournée mise à jour');
     },
     onError: (error: Error) => {
@@ -253,10 +261,11 @@ export function useDeleteRoute() {
   return useMutation({
     mutationFn: async (id: string) => {
       const result = await deleteRoute({ id });
-      if (!(result as any)?.success) {
-        throw new Error((result as any)?.error || 'Erreur suppression');
+      const resultData = result as { success?: boolean; error?: string; data?: unknown } | undefined;
+      if (!resultData?.success) {
+        throw new Error(resultData?.error || 'Erreur suppression');
       }
-      return (result as any).data;
+      return resultData.data;
     },
     onSuccess: () => {
       if (companyId) {
@@ -279,10 +288,11 @@ export function useStartRoute() {
   return useMutation({
     mutationFn: async (id: string) => {
       const result = await startRoute({ id });
-      if (!(result as any)?.success) {
-        throw new Error((result as any)?.error || 'Erreur démarrage');
+      const resultData = result as { success?: boolean; error?: string; data?: unknown } | undefined;
+      if (!resultData?.success) {
+        throw new Error(resultData?.error || 'Erreur démarrage');
       }
-      return (result as any).data;
+      return resultData.data;
     },
     onSuccess: (_, id) => {
       if (companyId) {
@@ -306,10 +316,11 @@ export function useCompleteRoute() {
   return useMutation({
     mutationFn: async (id: string) => {
       const result = await completeRoute({ id });
-      if (!(result as any)?.success) {
-        throw new Error((result as any)?.error || 'Erreur finalisation');
+      const resultData = result as { success?: boolean; error?: string; data?: unknown } | undefined;
+      if (!resultData?.success) {
+        throw new Error(resultData?.error || 'Erreur finalisation');
       }
-      return (result as any).data;
+      return resultData.data;
     },
     onSuccess: (_, id) => {
       if (companyId) {

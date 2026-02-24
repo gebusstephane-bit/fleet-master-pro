@@ -133,9 +133,9 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
 
     const vehicleStats = {
       total: vehicles?.length || 0,
-      active: vehicles?.filter(v => v.status === 'active' || v.status === 'ACTIF').length || 0,
-      maintenance: vehicles?.filter(v => v.status === 'maintenance' || v.status === 'EN_MAINTENANCE').length || 0,
-      inactive: vehicles?.filter(v => ['inactive', 'retired', 'INACTIF', 'HORS_SERVICE'].includes(v.status)).length || 0,
+      active: vehicles?.filter(v => (v.status as string) === 'active' || (v.status as string) === 'ACTIF').length || 0,
+      maintenance: vehicles?.filter(v => (v.status as string) === 'maintenance' || (v.status as string) === 'EN_MAINTENANCE').length || 0,
+      inactive: vehicles?.filter(v => ['inactive', 'retired', 'INACTIF', 'HORS_SERVICE'].includes(v.status as string)).length || 0,
     };
 
     // KPIs Chauffeurs
@@ -150,7 +150,7 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
 
     const driverStats = {
       total: drivers?.length || 0,
-      active: drivers?.filter(d => d.status === 'active' || d.status === 'ACTIF').length || 0,
+      active: drivers?.filter(d => (d.status as string) === 'active' || (d.status as string) === 'ACTIF').length || 0,
     };
 
     // KPIs Maintenances - UTILISE scheduled_date

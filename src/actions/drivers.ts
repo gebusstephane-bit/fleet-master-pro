@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 // Schéma pour création chauffeur
-const createDriverSchema = z.object({
+export const createDriverSchema = z.object({
   first_name: z.string().min(1, "Prénom requis"),
   last_name: z.string().min(1, "Nom requis"),
   email: z.string().email("Email invalide"),
@@ -22,6 +22,10 @@ const createDriverSchema = z.object({
   cqc_expiry_date: z.string().optional(),
   cqc_category: z.enum(["PASSENGER", "GOODS", "BOTH"]).optional(),
 });
+
+// Type dérivé du schéma pour utilisation dans les hooks
+export type CreateDriverInput = z.infer<typeof createDriverSchema>;
+export type UpdateDriverInput = Partial<CreateDriverInput> & { id: string };
 
 // Créer un chauffeur
 export const createDriver = authActionClient

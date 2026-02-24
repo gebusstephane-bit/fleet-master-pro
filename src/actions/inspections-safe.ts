@@ -3,6 +3,22 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
+interface Defect {
+  id: string;
+  description: string;
+  severity: 'CRITIQUE' | 'MAJEUR' | 'MINEUR';
+  category: string;
+}
+
+interface TiresCondition {
+  frontLeft?: 'GOOD' | 'WORN' | 'BAD';
+  frontRight?: 'GOOD' | 'WORN' | 'BAD';
+  rearLeft?: 'GOOD' | 'WORN' | 'BAD';
+  rearRight?: 'GOOD' | 'WORN' | 'BAD';
+  spare?: 'GOOD' | 'WORN' | 'BAD';
+  notes?: string;
+}
+
 export interface InspectionData {
   vehicleId: string;
   mileage: number;
@@ -14,8 +30,8 @@ export interface InspectionData {
   cleanlinessCargoArea?: number;
   compartmentC1Temp?: number;
   compartmentC2Temp?: number;
-  tiresCondition: any;
-  reportedDefects: any[];
+  tiresCondition: TiresCondition;
+  reportedDefects: Defect[];
   photos?: string[];
   driverName: string;
   driverSignature?: string;
@@ -35,7 +51,7 @@ export async function createInspectionSafe(data: InspectionData) {
     return { error: 'Non authentifié', data: null };
   }
 
-  console.log('createInspectionSafe: Starting for user', user.id);
+  // Création inspection démarrée
 
   try {
     // Récupérer le véhicule
@@ -46,11 +62,11 @@ export async function createInspectionSafe(data: InspectionData) {
       .single();
     
     if (vehicleError || !vehicle) {
-      console.error('createInspectionSafe: Vehicle error', vehicleError);
+      console.error('createInspectionSafe: Vehicle error', vehicleError?.message);
       return { error: 'Véhicule non trouvé', data: null };
     }
 
-    console.log('createInspectionSafe: Vehicle found', vehicle.registration_number);
+    // Véhicule trouvé
 
     // Calculer le score
     const criticalCount = data.reportedDefects.filter(d => d.severity === 'CRITIQUE').length;
@@ -61,36 +77,36 @@ export async function createInspectionSafe(data: InspectionData) {
     // Déterminer le statut - par défaut PENDING pour validation admin
     const status = data.status || (criticalCount > 0 ? 'CRITICAL_ISSUES' : 'PENDING');
 
-    console.log('createInspectionSafe: Score calculated', score, grade, 'Status:', status);
+    // Score calculé
 
     // Créer l'inspection
+    const inspectionData: Record<string, unknown> = {
+      vehicle_id: data.vehicleId,
+      company_id: vehicle.company_id,
+      mileage: data.mileage,
+      fuel_level: data.fuelLevel,
+      adblue_level: data.adblueLevel,
+      gnr_level: data.gnrLevel,
+      cleanliness_exterior: data.cleanlinessExterior,
+      cleanliness_interior: data.cleanlinessInterior,
+      cleanliness_cargo_area: data.cleanlinessCargoArea,
+      compartment_c1_temp: data.compartmentC1Temp,
+      compartment_c2_temp: data.compartmentC2Temp,
+      driver_name: data.driverName,
+      driver_signature: data.driverSignature,
+      inspector_notes: data.inspectorNotes,
+      location: data.location,
+      created_by: user.id,
+      score: score,
+      grade: grade,
+      defects_count: data.reportedDefects.length,
+      reported_defects: data.reportedDefects,  // ← AJOUT: Stocker les détails des défauts
+      status: status,
+    };
+    
     const { data: inspection, error: inspectionError } = await supabase
       .from('vehicle_inspections')
-      .insert({
-        vehicle_id: data.vehicleId,
-        company_id: vehicle.company_id,
-        mileage: data.mileage,
-        fuel_level: data.fuelLevel,
-        adblue_level: data.adblueLevel,
-        gnr_level: data.gnrLevel,
-        cleanliness_exterior: data.cleanlinessExterior,
-        cleanliness_interior: data.cleanlinessInterior,
-        cleanliness_cargo_area: data.cleanlinessCargoArea,
-        compartment_c1_temp: data.compartmentC1Temp,
-        compartment_c2_temp: data.compartmentC2Temp,
-        tires_condition: data.tiresCondition,
-        reported_defects: data.reportedDefects,
-        photos: data.photos || [],
-        driver_name: data.driverName,
-        driver_signature: data.driverSignature,
-        inspector_notes: data.inspectorNotes,
-        location: data.location,
-        created_by: user.id,
-        score: score,
-        grade: grade,
-        defects_count: data.reportedDefects.length,
-        status: status,
-      } as any)
+      .insert(inspectionData as never)
       .select()
       .single();
 
@@ -99,7 +115,7 @@ export async function createInspectionSafe(data: InspectionData) {
       return { error: `Erreur lors de la création: ${inspectionError.message}`, data: null };
     }
 
-    console.log('createInspectionSafe: Inspection created', inspection.id);
+    // Inspection créée
 
     // Mettre à jour le kilométrage
     await supabase
@@ -135,18 +151,44 @@ export async function createInspectionSafe(data: InspectionData) {
       error: null 
     };
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('createInspectionSafe: Exception', error);
-    return { error: error.message, data: null };
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }
 
-// Fonction pour valider un contrôle
+// Fonction pour valider un contrôle (Dashboard uniquement - IDOR sécurisé)
 export async function validateInspection(inspectionId: string) {
   const supabase = createAdminClient();
   
   try {
-    // Récupérer l'inspection
+    // 1. Vérifier l'authentification et récupérer le profil
+    const authClient = await createClient();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    
+    if (authError || !user) {
+      return { error: 'Non authentifié', data: null };
+    }
+
+    // 2. Récupérer le profil avec company_id et rôle
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id, role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile?.company_id) {
+      return { error: 'Profil utilisateur invalide', data: null };
+    }
+
+    // 3. Vérifier les permissions (ADMIN, DIRECTEUR, AGENT_DE_PARC uniquement)
+    const allowedRoles = ['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'];
+    if (!allowedRoles.includes(profile.role)) {
+      return { error: 'Permissions insuffisantes pour valider une inspection', data: null };
+    }
+
+    // 4. Récupérer l'inspection avec company_id (IDOR protection)
     const { data: inspection, error: fetchError } = await supabase
       .from('vehicle_inspections')
       .select('*')
@@ -154,6 +196,20 @@ export async function validateInspection(inspectionId: string) {
       .single();
 
     if (fetchError || !inspection) {
+      console.error('[validateInspection] Inspection fetch error:', fetchError);
+      return { error: 'Inspection non trouvée', data: null };
+    }
+
+    // 5. Vérification IDOR : l'inspection doit appartenir à l'entreprise de l'utilisateur
+    // L'inspection a un company_id directement stocké à la création
+    const inspectionCompanyId = inspection.company_id;
+    if (!inspectionCompanyId) {
+      console.error('[validateInspection] Inspection sans company_id:', inspectionId);
+      return { error: 'Inspection invalide (pas de company_id)', data: null };
+    }
+    
+    if (inspectionCompanyId !== profile.company_id) {
+      console.warn('[IDOR] Tentative d\'accès interdit à la validation');
       return { error: 'Inspection non trouvée', data: null };
     }
 
@@ -161,9 +217,9 @@ export async function validateInspection(inspectionId: string) {
       return { error: 'Cette inspection a déjà été traitée', data: null };
     }
 
-    const defects = Array.isArray(inspection.reported_defects) ? inspection.reported_defects : [];
+    const defects = Array.isArray(inspection.reported_defects) ? (inspection.reported_defects as unknown as Defect[]) : [];
     const newStatus = defects.length > 0 
-      ? (defects.some((d: any) => d.severity === 'CRITIQUE') ? 'CRITICAL_ISSUES' : 'ISSUES_FOUND')
+      ? (defects.some((d) => d.severity === 'CRITIQUE') ? 'CRITICAL_ISSUES' : 'ISSUES_FOUND')
       : 'COMPLETED';
 
     const { error } = await supabase
@@ -180,16 +236,43 @@ export async function validateInspection(inspectionId: string) {
     revalidatePath(`/vehicles/${inspection.vehicle_id}`);
 
     return { data: { success: true, status: newStatus }, error: null };
-  } catch (error: any) {
-    return { error: error.message, data: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }
 
-// Fonction pour réfuser un contrôle
+// Fonction pour réfuser un contrôle (Dashboard uniquement - IDOR sécurisé)
 export async function rejectInspection(inspectionId: string, reason: string) {
   const supabase = createAdminClient();
   
   try {
+    // 1. Vérifier l'authentification et récupérer le profil
+    const authClient = await createClient();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    
+    if (authError || !user) {
+      return { error: 'Non authentifié', data: null };
+    }
+
+    // 2. Récupérer le profil avec company_id et rôle
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id, role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile?.company_id) {
+      return { error: 'Profil utilisateur invalide', data: null };
+    }
+
+    // 3. Vérifier les permissions (ADMIN, DIRECTEUR, AGENT_DE_PARC uniquement)
+    const allowedRoles = ['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'];
+    if (!allowedRoles.includes(profile.role)) {
+      return { error: 'Permissions insuffisantes pour rejeter une inspection', data: null };
+    }
+
+    // 4. Récupérer l'inspection avec company_id (IDOR protection)
     const { data: inspection, error: fetchError } = await supabase
       .from('vehicle_inspections')
       .select('*')
@@ -197,6 +280,19 @@ export async function rejectInspection(inspectionId: string, reason: string) {
       .single();
 
     if (fetchError || !inspection) {
+      console.error('[rejectInspection] Inspection fetch error:', fetchError);
+      return { error: 'Inspection non trouvée', data: null };
+    }
+
+    // 5. Vérification IDOR : l'inspection doit appartenir à l'entreprise de l'utilisateur
+    const inspectionCompanyId = inspection.company_id;
+    if (!inspectionCompanyId) {
+      console.error('[rejectInspection] Inspection sans company_id');
+      return { error: 'Inspection invalide (pas de company_id)', data: null };
+    }
+    
+    if (inspectionCompanyId !== profile.company_id) {
+      console.warn('[IDOR] Tentative d\'accès interdit au rejet');
       return { error: 'Inspection non trouvée', data: null };
     }
 
@@ -222,8 +318,9 @@ export async function rejectInspection(inspectionId: string, reason: string) {
     revalidatePath(`/vehicles/${inspection.vehicle_id}`);
 
     return { data: { success: true }, error: null };
-  } catch (error: any) {
-    return { error: error.message, data: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }
 
@@ -273,10 +370,18 @@ export async function getInspectionsSafe(companyId?: string) {
     }
 
     // Fusionner les données
-    const vehiclesMap = (vehicles || []).reduce((acc, v) => {
-      acc[v.id] = v;
+    interface VehicleInfo {
+      id: string;
+      registration_number: string;
+      brand: string;
+      model: string;
+      type: string;
+    }
+    
+    const vehiclesMap = (vehicles || []).reduce<Record<string, VehicleInfo>>((acc, v) => {
+      acc[v.id] = v as VehicleInfo;
       return acc;
-    }, {} as Record<string, any>);
+    }, {});
 
     const enrichedInspections = inspections.map(inspection => ({
       ...inspection,
@@ -284,8 +389,9 @@ export async function getInspectionsSafe(companyId?: string) {
     }));
 
     return { data: enrichedInspections, error: null };
-  } catch (error: any) {
+  } catch (error) {
     console.error('getInspectionsSafe: Exception', error);
-    return { error: error.message, data: null };
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }

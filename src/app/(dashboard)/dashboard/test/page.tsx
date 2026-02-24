@@ -1,15 +1,23 @@
 /**
  * Page de test du dashboard
  * Pour déboguer les problèmes de récupération de données
+ * PROTÉGÉ: Uniquement accessible en développement
  */
 
 'use client';
+
+import { notFound } from 'next/navigation';
 
 import { useEffect, useState } from 'react';
 import { getSimpleKPIs, getKPIsWithFallback } from '@/actions/dashboard-simple';
 import { getDashboardKPIs } from '@/actions/dashboard-production';
 
 export default function DashboardTestPage() {
+  // Protection: page uniquement accessible en développement
+  if (process.env.NODE_ENV === 'production') {
+    notFound();
+  }
+  
   const [results, setResults] = useState<{
     simple?: any;
     fallback?: any;

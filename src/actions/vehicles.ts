@@ -4,7 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/lib/logger';
 
-interface CreateVehicleData {
+export interface CreateVehicleData {
   registration_number: string;
   brand: string;
   model: string;
@@ -18,7 +18,13 @@ interface CreateVehicleData {
   color?: string;
 }
 
-export async function createVehicle(data: CreateVehicleData) {
+export interface ActionResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+export async function createVehicle(data: CreateVehicleData): Promise<ActionResult> {
   try {
     // 1. Vérifier l'authentification
     const authClient = await createClient();
@@ -38,7 +44,7 @@ export async function createVehicle(data: CreateVehicleData) {
       .single();
     
     if (profileError || !profile?.company_id) {
-      logger.error('createVehicle: Profil non trouvé', profileError || undefined);
+      logger.error('createVehicle: Profil non trouvé', profileError ? new Error(profileError.message) : undefined);
       return { success: false, error: 'Profil ou entreprise non trouvé' };
     }
     
@@ -50,29 +56,31 @@ export async function createVehicle(data: CreateVehicleData) {
     const vehicleId = crypto.randomUUID();
     
     // 4. Créer le véhicule avec admin client (bypass RLS)
+    const insertData = {
+      id: vehicleId,
+      company_id: profile.company_id,
+      registration_number: data.registration_number,
+      brand: data.brand,
+      model: data.model,
+      type: data.type,
+      mileage: data.mileage,
+      fuel_type: data.fuel_type,
+      status: data.status || 'ACTIF',
+      purchase_date: data.purchase_date,
+      vin: data.vin,
+      year: data.year,
+      color: data.color,
+      qr_code_data: `fleetmaster://vehicle/${vehicleId}`,
+    } as Record<string, unknown>;
+    
     const { data: vehicle, error: vehicleError } = await adminClient
       .from('vehicles')
-      .insert({
-        id: vehicleId,
-        company_id: profile.company_id,
-        registration_number: data.registration_number,
-        brand: data.brand,
-        model: data.model,
-        type: data.type,
-        mileage: data.mileage,
-        fuel_type: data.fuel_type,
-        status: data.status || 'ACTIF',
-        purchase_date: data.purchase_date,
-        vin: data.vin,
-        year: data.year,
-        color: data.color,
-        qr_code_data: `fleetmaster://vehicle/${vehicleId}`,
-      } as any)
+      .insert(insertData as never)
       .select()
       .single();
     
     if (vehicleError) {
-      logger.error('createVehicle: Erreur création', vehicleError);
+      logger.error('createVehicle: Erreur création', new Error(vehicleError.message));
       
       // Message d'erreur plus user-friendly
       if (vehicleError.code === '23505') {
@@ -110,20 +118,21 @@ export async function createVehicle(data: CreateVehicleData) {
         });
     } catch (predError) {
       // On ignore l'erreur de prédiction - le véhicule est déjà créé
-      logger.warn('createVehicle: Prédiction non créée', predError as any);
+      logger.warn('createVehicle: Prédiction non créée', { error: predError instanceof Error ? predError.message : String(predError) });
     }
     
     revalidatePath('/vehicles');
     
     return { success: true, data: vehicle };
     
-  } catch (error: any) {
-    logger.error('createVehicle: Exception', error);
-    return { success: false, error: error.message };
+  } catch (error) {
+    logger.error('createVehicle: Exception', error instanceof Error ? error : new Error(String(error)));
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { success: false, error: message };
   }
 }
 
-export async function updateVehicle(id: string, data: Partial<CreateVehicleData>) {
+export async function updateVehicle(id: string, data: Partial<CreateVehicleData>): Promise<ActionResult> {
   try {
     const authClient = await createClient();
     const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
@@ -155,12 +164,14 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
       return { success: false, error: 'Véhicule non trouvé ou accès non autorisé' };
     }
     
+    const updateData = {
+      ...data,
+      updated_at: new Date().toISOString()
+    } as Record<string, unknown>;
+    
     const { data: updated, error } = await adminClient
       .from('vehicles')
-      .update({
-        ...data,
-        updated_at: new Date().toISOString()
-      } as any)
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
@@ -174,12 +185,13 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
     
     return { success: true, data: updated };
     
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { success: false, error: message };
   }
 }
 
-export async function deleteVehicle(id: string) {
+export async function deleteVehicle(id: string): Promise<ActionResult> {
   try {
     const authClient = await createClient();
     const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
@@ -229,7 +241,8 @@ export async function deleteVehicle(id: string) {
     
     return { success: true };
     
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { success: false, error: message };
   }
 }

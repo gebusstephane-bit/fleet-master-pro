@@ -91,8 +91,8 @@ supabase/migrations/20250216000000_sos_garage_v3_external_search.sql
 
 Dans `.env.local`, tu dois avoir:
 ```bash
-OPENAI_API_KEY=sk-proj-...
-APIFY_API_TOKEN=apify_api_N667F19mZHb9YYmeTwZpwmrC5cetft1k5XBa
+OPENAI_API_KEY=your_openai_key_here
+APIFY_API_TOKEN=your_apify_token_here
 ```
 
 ### 3. Installer les dépendances (si besoin)

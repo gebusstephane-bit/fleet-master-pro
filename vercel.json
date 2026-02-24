@@ -1,5 +1,15 @@
 {
   "buildCommand": "npm run build",
   "framework": "nextjs",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "crons": [
+    {
+      "path": "/api/cron/vehicle-documents-check",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/driver-documents",
+      "schedule": "0 8 * * *"
+    }
+  ]
 }

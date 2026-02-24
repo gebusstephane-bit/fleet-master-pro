@@ -183,20 +183,20 @@ export default function InspectionPage() {
       const defects = checks
         .filter(c => c.status !== 'OK')
         .map(c => ({
+          id: crypto.randomUUID(),
           category: c.category === 'CRITICAL' ? 'MECANIQUE' : 'AUTRE',
           description: `${c.label}: ${c.status === 'CRITICAL' ? 'Problème critique' : 'À surveiller'}`,
-          severity: c.status === 'CRITICAL' ? 'CRITIQUE' : 'MAJEUR' as any,
-          requiresImmediateMaintenance: c.status === 'CRITICAL',
+          severity: (c.status === 'CRITICAL' ? 'CRITIQUE' : 'MAJEUR') as 'CRITIQUE' | 'MAJEUR' | 'MINEUR',
         }));
       
       // Ajouter les problèmes de propreté
       const dirtyItems = cleanliness.filter(c => c.status !== 'CLEAN');
       if (dirtyItems.length > 0) {
         defects.push({
+          id: crypto.randomUUID(),
           category: 'PROPRETE',
           description: `Propreté: ${dirtyItems.map(i => i.label).join(', ')} - ${dirtyItems.map(i => cleanlinessConfig[i.status].label).join(', ')}`,
-          severity: dirtyItems.some(i => i.status === 'DAMAGED') ? 'MAJEUR' : 'MINEUR' as any,
-          requiresImmediateMaintenance: false,
+          severity: (dirtyItems.some(i => i.status === 'DAMAGED') ? 'MAJEUR' : 'MINEUR') as 'CRITIQUE' | 'MAJEUR' | 'MINEUR',
         });
       }
       
@@ -211,11 +211,11 @@ export default function InspectionPage() {
         compartmentC1Temp: undefined,
         compartmentC2Temp: undefined,
         tiresCondition: {
-          front_left: { pressure: null, wear: 'OK', damage: null },
-          front_right: { pressure: null, wear: 'OK', damage: null },
-          rear_left: { pressure: null, wear: 'OK', damage: null },
-          rear_right: { pressure: null, wear: 'OK', damage: null },
-          spare: { pressure: null, wear: 'OK', damage: null },
+          frontLeft: 'GOOD',
+          frontRight: 'GOOD',
+          rearLeft: 'GOOD',
+          rearRight: 'GOOD',
+          spare: 'GOOD',
         },
         reportedDefects: defects,
         driverName,

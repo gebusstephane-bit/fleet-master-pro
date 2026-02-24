@@ -20,9 +20,9 @@ const footerLinks = {
     { name: "Status", href: "#" },
   ],
   legal: [
-    { name: "Mentions légales", href: "#" },
-    { name: "Confidentialité", href: "#" },
-    { name: "CGU", href: "#" },
+    { name: "Mentions légales", href: "/mentions-legales" },
+    { name: "Confidentialité", href: "/politique-confidentialite" },
+    { name: "CGV", href: "/cgv" },
     { name: "Cookies", href: "#" },
   ],
   contact: [

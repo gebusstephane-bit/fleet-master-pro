@@ -16,6 +16,9 @@ export default function ConfirmContent() {
   
   const [isChecking, setIsChecking] = useState(true);
   const [accountReady, setAccountReady] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [showManualHelp, setShowManualHelp] = useState(false);
+  const MAX_ATTEMPTS = 10; // environ 50 secondes (5s * 10)
 
   useEffect(() => {
     if (!pending && !sessionId) {
@@ -26,6 +29,16 @@ export default function ConfirmContent() {
     const checkAccount = async () => {
       try {
         await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Vérifier si on a atteint le nombre max de tentatives
+        if (attempts >= MAX_ATTEMPTS) {
+          setShowManualHelp(true);
+          setIsChecking(false);
+          return; // Arrêter le polling
+        }
+        
+        // Incrémenter le compteur de tentatives
+        setAttempts(prev => prev + 1);
         
         const supabase = getSupabaseClient();
         const { data: { user } } = await supabase.auth.getUser();
@@ -46,7 +59,7 @@ export default function ConfirmContent() {
     };
 
     checkAccount();
-  }, [pending, sessionId, router]);
+  }, [pending, sessionId, router, attempts]);
 
   if (isChecking && (pending || sessionId)) {
     return (
@@ -62,6 +75,19 @@ export default function ConfirmContent() {
           <p className="text-sm text-muted-foreground">
             Veuillez patienter, vous allez être redirigé automatiquement.
           </p>
+          
+          {showManualHelp && (
+            <div className="mt-4 p-4 bg-yellow-900/30 border border-yellow-700 rounded">
+              <p className="text-yellow-200">
+                La création de votre compte prend plus de temps que prévu.
+              </p>
+              <p className="text-sm text-yellow-300 mt-2">
+                1. Vérifiez votre email (spam inclus) pour un lien de connexion<br/>
+                2. Ou essayez de vous connecter directement : <Link href="/login" className="underline">Connexion</Link><br/>
+                3. Si le problème persiste, contactez-nous à support@fleetmaster.pro
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     );

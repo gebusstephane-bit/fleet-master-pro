@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     }
     
     const companyId = (userData as any).company_id;
-    console.log("API Dashboard: Company ID =", companyId);
+    // Company ID récupéré pour le dashboard
     
     const results = {
       vehicles: { total: 0, active: 0 },

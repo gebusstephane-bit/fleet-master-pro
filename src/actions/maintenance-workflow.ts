@@ -56,11 +56,11 @@ async function getUserCompanyData(userId: string) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('profiles')
-    .select('*, companies(*)')
+    .select('id, first_name, last_name, email, role, company_id')
     .eq('id', userId)
     .single();
-  
-  if (error) throw new Error('Utilisateur non trouvé');
+
+  if (error || !data) throw new Error('Utilisateur non trouvé');
   return data;
 }
 
@@ -104,11 +104,7 @@ export const createMaintenanceRequest = authActionClient
   .action(async ({ parsedInput, ctx }) => {
     const supabase = createAdminClient();
     
-    console.log('createMaintenanceRequest:', {
-      vehicleId: parsedInput.vehicleId,
-      userCompanyId: ctx.user.company_id,
-      userId: ctx.user.id
-    });
+    // Création maintenance request
     
     // 1. Vérifier le véhicule
     const { data: vehicle, error: vehicleError } = await supabase
@@ -118,10 +114,10 @@ export const createMaintenanceRequest = authActionClient
       .eq('company_id', ctx.user.company_id)
       .single();
     
-    console.log('Vehicle query result:', { vehicle, vehicleError });
+    // Vehicle query done
     
     if (vehicleError || !vehicle) {
-      console.error('Vehicle error:', vehicleError);
+      console.error('Vehicle error:', vehicleError?.message);
       throw new Error('Véhicule non trouvé ou accès non autorisé');
     }
     
@@ -151,46 +147,51 @@ export const createMaintenanceRequest = authActionClient
       throw new Error('Erreur lors de la création de la demande: données manquantes');
     }
     
-    // 3. Trouver les directeurs et envoyer emails
-    const directors = await getCompanyDirectors(ctx.user.company_id);
-    const requester = await getUserCompanyData(ctx.user.id);
-    
-    for (const director of directors) {
-      const validationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/maintenance/validate?id=${maintenance.id}&token=${maintenance.validation_token}`;
-      
-      await sendEmail({
-        to: director.email,
-        subject: `🔧 Validation requise : ${vehicle.registration_number}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #1f2937;">Nouvelle demande d'intervention</h2>
-            
-            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>🚗 Véhicule :</strong> ${vehicle.registration_number} (${vehicle.brand} ${vehicle.model})</p>
-              <p><strong>🔧 Type :</strong> ${parsedInput.type}</p>
-              <p><strong>📝 Description :</strong> ${parsedInput.description}</p>
-              <p><strong>⚡ Priorité :</strong> <span style="color: ${parsedInput.priority === 'CRITICAL' ? '#dc2626' : parsedInput.priority === 'HIGH' ? '#ea580c' : '#6b7280'};">${parsedInput.priority}</span></p>
-              <p><strong>👤 Demandé par :</strong> ${requester.first_name} ${requester.last_name}</p>
-              ${parsedInput.estimatedCost ? `<p><strong>💰 Coût estimé :</strong> ${parsedInput.estimatedCost}€</p>` : ''}
+    // 3. Trouver les directeurs et envoyer emails (non-bloquant)
+    try {
+      const directors = await getCompanyDirectors(ctx.user.company_id);
+      const requester = await getUserCompanyData(ctx.user.id);
+
+      for (const director of directors) {
+        const validationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/maintenance/validate?id=${maintenance.id}&token=${maintenance.validation_token}`;
+
+        await sendEmail({
+          to: director.email,
+          subject: `🔧 Validation requise : ${vehicle.registration_number}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #1f2937;">Nouvelle demande d'intervention</h2>
+
+              <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>🚗 Véhicule :</strong> ${vehicle.registration_number} (${vehicle.brand} ${vehicle.model})</p>
+                <p><strong>🔧 Type :</strong> ${parsedInput.type}</p>
+                <p><strong>📝 Description :</strong> ${parsedInput.description}</p>
+                <p><strong>⚡ Priorité :</strong> <span style="color: ${parsedInput.priority === 'CRITICAL' ? '#dc2626' : parsedInput.priority === 'HIGH' ? '#ea580c' : '#6b7280'};">${parsedInput.priority}</span></p>
+                <p><strong>👤 Demandé par :</strong> ${requester.first_name} ${requester.last_name}</p>
+                ${parsedInput.estimatedCost ? `<p><strong>💰 Coût estimé :</strong> ${parsedInput.estimatedCost}€</p>` : ''}
+              </div>
+
+              <div style="margin: 30px 0; text-align: center;">
+                <a href="${validationUrl}&action=validate"
+                   style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-right: 10px; display: inline-block;">
+                  ✅ Valider la demande
+                </a>
+                <a href="${validationUrl}&action=reject"
+                   style="background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                   ❌ Refuser
+                </a>
+              </div>
+
+              <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">
+                Cet email a été envoyé automatiquement par FleetMaster Pro.
+              </p>
             </div>
-            
-            <div style="margin: 30px 0; text-align: center;">
-              <a href="${validationUrl}&action=validate" 
-                 style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-right: 10px; display: inline-block;">
-                ✅ Valider la demande
-              </a>
-              <a href="${validationUrl}&action=reject" 
-                 style="background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                 ❌ Refuser
-              </a>
-            </div>
-            
-            <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">
-              Cet email a été envoyé automatiquement par FleetMaster Pro.
-            </p>
-          </div>
-        `,
-      });
+          `,
+        });
+      }
+    } catch (emailError) {
+      // L'email est non-bloquant : la demande est créée même si l'envoi échoue
+      console.error('Erreur envoi email directeur (non-bloquant):', emailError);
     }
     
     revalidatePath('/maintenance');
@@ -206,11 +207,7 @@ export const validateMaintenanceRequest = authActionClient
   .action(async ({ parsedInput, ctx }) => {
     const supabase = createAdminClient();
     
-    console.log('validateMaintenanceRequest:', {
-      id: parsedInput.id,
-      userCompanyId: ctx.user.company_id,
-      action: parsedInput.action
-    });
+    // Validation maintenance request
     
     // 1. Récupérer la demande sans filtre company_id d'abord
     const { data: maintenance, error } = await supabase
@@ -219,8 +216,7 @@ export const validateMaintenanceRequest = authActionClient
       .eq('id', parsedInput.id)
       .single();
     
-    console.log('Maintenance found:', maintenance);
-    console.log('Maintenance error:', error);
+    // Maintenance query done
     
     if (error || !maintenance) {
       throw new Error('Demande non trouvée');
@@ -228,17 +224,19 @@ export const validateMaintenanceRequest = authActionClient
     
     // Vérifier le company_id manuellement
     if (maintenance.company_id !== ctx.user.company_id) {
-      console.error('Company mismatch:', {
-        maintenanceCompanyId: maintenance.company_id,
-        userCompanyId: ctx.user.company_id
-      });
+      console.error('Company mismatch');
       throw new Error('Accès non autorisé à cette demande');
     }
     
+    // Vérification stricte du rôle : seuls ADMIN et DIRECTEUR peuvent valider
+    if (!['ADMIN', 'DIRECTEUR'].includes(ctx.user.role as string)) {
+      throw new Error('Accès non autorisé - réservé aux directeurs');
+    }
+
     if (maintenance.status !== 'DEMANDE_CREEE') {
       throw new Error('Cette demande a déjà été traitée');
     }
-    
+
     const newStatus = parsedInput.action === 'validate' ? 'VALIDEE_DIRECTEUR' : 'REFUSEE';
     
     // 2. Mettre à jour le statut
@@ -315,10 +313,7 @@ export const scheduleMaintenanceRDV = authActionClient
   .action(async ({ parsedInput, ctx }) => {
     const supabase = createAdminClient();
     
-    console.log('scheduleMaintenanceRDV:', {
-      maintenanceId: parsedInput.maintenanceId,
-      userCompanyId: ctx.user.company_id
-    });
+    // Schedule maintenance RDV
     
     // 1. Récupérer la maintenance
     const { data: maintenance, error } = await supabase
@@ -327,7 +322,7 @@ export const scheduleMaintenanceRDV = authActionClient
       .eq('id', parsedInput.maintenanceId)
       .single();
     
-    console.log('scheduleMaintenanceRDV - maintenance:', maintenance, 'error:', error);
+    // Maintenance query done
     
     if (error || !maintenance) {
       throw new Error('Demande non trouvée');
@@ -396,9 +391,14 @@ export const scheduleMaintenanceRDV = authActionClient
       parsedInput.notes
     );
     
-    // 6. Emails de confirmation
+    // 6. Emails de confirmation (ADMIN + DIRECTEUR + AGENT_DE_PARC + EXPLOITANT)
     const directors = await getCompanyDirectors(ctx.user.company_id);
-    const recipients = [...directors, maintenance.requester];
+    const { data: exploitants } = await supabase
+      .from('profiles')
+      .select('id, email, first_name, last_name')
+      .eq('company_id', ctx.user.company_id)
+      .eq('role', 'EXPLOITANT');
+    const recipients = [...directors, ...(exploitants || []), maintenance.requester];
     
     const formattedDate = format(new Date(parsedInput.rdvDate), 'EEEE d MMMM yyyy', { locale: fr });
     

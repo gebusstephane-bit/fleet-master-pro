@@ -15,11 +15,9 @@ import {
   TrendingUp,
   TrendingDown
 } from 'lucide-react';
-// @ts-ignore
 import { DashboardStats } from '@/types';
 
 interface StatsCardsProps {
-  // @ts-ignore
   stats: DashboardStats;
 }
 
@@ -49,7 +47,6 @@ export function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       title: 'Tournées aujourd\'hui',
-      // @ts-ignore
       value: stats.todayRoutes || 0,
       subtitle: 'En cours et planifiées',
       icon: Route,
@@ -61,7 +58,6 @@ export function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       title: 'Alertes',
-      // @ts-ignore
       value: stats.alertsCount || 0,
       subtitle: `${stats.criticalAlerts || 0} critiques`,
       icon: AlertTriangle,

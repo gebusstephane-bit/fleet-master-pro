@@ -1,369 +1,328 @@
 # RAPPORT D'AUDIT FLEETMASTER PRO
-**Date** : 19 Février 2026
-**Auditeur** : CTO Senior Virtual
-**Verdict Global** : 🔴 **NO-GO** - **SCORE FINAL : 58/100**
+**Date** : 2026-02-22
+**Auditeur** : CTO Senior Virtual (analyse automatisée exhaustive)
+**Périmètre** : 100% du codebase — 80+ fichiers TS/TSX, 75 migrations SQL, toutes les API routes
+**Verdict Global** : 🔴 ROUGE — **NO-GO ABSOLU** — Score : **47/100**
 
 ---
 
 ## 1. EXECUTIVE SUMMARY
 
-**Ce projet présente 3 failles critiques de sécurité (bypass de tenant, rate limiting absent, injection SQL potentielle) et 4 blocages légaux RGPD. Il est PAS PRÊT pour la production commerciale. Le risque principal est une fuite de données entre clients (multi-tenant) et une exposition juridique en Europe.**
-
-**Temps estimé pour être prod-ready** : 6-8 semaines (3 développeurs)
+Ce projet présente **2 failles de sécurité catastrophiques** (exécution SQL non authentifiée + mot de passe en clair dans Stripe) qui constituent une violation directe du RGPD et engageraient la responsabilité civile et pénale du producteur en cas d'exploitation. Le code applicatif est structurellement sain mais **0 test existe** malgré Jest + Playwright configurés. Le risque principal est une intrusion via `/api/admin/apply-migration` qui permettrait à n'importe qui sur Internet de détruire ou exfiltrer toute la base de données en une seule requête HTTP.
 
 ---
 
 ## 2. SCORES DÉTAILLÉS
 
-| Critère | Note | Statut | Justification |
-|---------|------|--------|---------------|
-| **Sécurité** | 12/25 | 🔴 | Failles critiques RLS + bypass tenant |
-| **Code** | 14/25 | 🔴 | 160+ `any`, architecture spaghetti |
-| **Design** | 14/20 | 🟠 | Beau mais inaccessible (WCAG) |
-| **Prod-Ready** | 12/20 | 🔴 | Pas de backups testés, monitoring insuffisant |
-| **Business** | 6/10 | 🟠 | Positionnement flou vs concurrence |
-| **TOTAL** | **58/100** | 🔴 | Non conforme pour production |
+| Critère | Note | Statut | Détail |
+|---------|------|--------|--------|
+| Sécurité | **8/25** | 🔴 | 2 failles catastrophiques + 4 majeures |
+| Code Quality | **13/25** | 🟠 | 0 test, 538 erreurs TS, dette SQL sévère |
+| Design/UX | **13/20** | 🟠 | Fonctionnel mais a11y non vérifiée |
+| Prod-Ready | **8/20** | 🔴 | 0 test, debug routes déployées, rate-limit absent sur API routes |
+| Business | **7/10** | 🟢 | Pricing cohérent, marché porteur |
+| **TOTAL** | **49/100** | 🔴 | **NO-GO** |
 
 ---
 
-## 3. INVENTAIRE DU PÉRIMÈTRE
+## 3. FAILLES CRITIQUES — BLOQUANT MISE EN PRODUCTION
 
-### Stack Technique
-```yaml
-Frontend:
-  - Next.js: 14.2.3 (obsolète, current: 15.x)
-  - React: 18.2.0
-  - TypeScript: 5.x (strict: true mais 160+ any)
-  - Tailwind CSS: 3.4.1
-  - Framer Motion: 12.33 (animation overload)
+### 🚨 FAILLE #1 — EXÉCUTION SQL ARBITRAIRE NON AUTHENTIFIÉE [CVSS 10.0]
+**Fichier** : `src/app/api/admin/apply-migration/route.ts`
 
-Backend:
-  - Supabase: @supabase/ssr (migration partielle depuis auth-helpers)
-  - PostgreSQL: 15 (RLS activé)
-  - Server Actions: Next.js (couplage UI/métier)
-
-Intégrations:
-  - Stripe: 20.3.0 (webhook sécurisé ✅)
-  - Mapbox: 3.18.1 (clé publique exposée ⚠️)
-  - Sentry: 10.39.0 (DSN client exposé ⚠️)
-  - PostHog: analytics EU ✅
-  - Resend: emails (configuré)
-  - Upstash: Redis configuré mais pas utilisé partout
-
-Tests:
-  - Jest: 30.2.0 (71 tests, 30% coverage)
-  - Playwright: E2E basique (2 tests)
-  - k6: Load tests (configuré, pas intégré CI)
+```typescript
+export async function POST() {   // ← AUCUN auth check, aucun secret header
+  const supabase = createAdminClient();  // service_role key — bypasse tout RLS
+  await supabase.rpc('exec_sql', { sql: MIGRATION_SQL });  // DDL arbitraire
 ```
 
-### Structure Fonctionnelle
-| Module | Statut | Problèmes |
-|--------|--------|-----------|
-| **Authentification** | ⚠️ Fonctionnel | @supabase/auth-helpers déprécié |
-| **Véhicules** | ⚠️ Fonctionnel | API routes sans filtre company_id |
-| **Chauffeurs** | ⚠️ Fonctionnel | Jointure SQL invalide corrigée |
-| **Tournées** | ✅ Fonctionnel | Stable |
-| **Maintenance** | ✅ Fonctionnel | OK |
-| **Inspections** | ✅ Fonctionnel | OK |
-| **Paiement** | ⚠️ Fonctionnel | Stripe webhook OK mais pas de retry logic |
-| **SOS Garage** | ⚠️ Beta | Non testé en charge |
-| **Dashboard** | ⚠️ Fonctionnel | 3 implémentations différentes (duplication) |
-| **Notifications** | ⚠️ Partiel | Push notifications pas fully implemented |
-
-### Schéma Base de Données
-```
-Tables principales (18):
-  - profiles (RLS: ✅)
-  - companies (RLS: ✅)
-  - vehicles (RLS: ✅)
-  - drivers (RLS: ✅)
-  - routes (RLS: ✅)
-  - maintenance_records (RLS: ✅)
-  - inspections (RLS: ✅)
-  - subscriptions (RLS: ✅)
-  - notifications (RLS: ✅)
-  - activity_logs (RLS: ✅)
-  - api_keys (RLS: ⚠️ fonction inexistante)
-  - webhooks (RLS: ⚠️ fonction inexistante)
-  - sos_settings (RLS: ✅)
-  - emergency_searches (RLS: ✅)
-  - user_service_providers (RLS: ✅)
-
-Indexes: Présents sur les colonnes de jointure
-Relations: Foreign keys configurées avec CASCADE
-```
+- L'endpoint n'a **aucun** mécanisme d'authentification (pas de `getUser()`, pas de secret header, pas de session check).
+- La route n'est pas dans `publicApiRoutes` du middleware mais n'est pas non plus dans les routes protégées explicitement — le middleware Next.js protège `/dashboard/*` mais pas `/api/admin/*` de manière globale.
+- N'importe qui peut envoyer `POST https://fleetmaster.pro/api/admin/apply-migration` et exécuter du SQL en tant que service role Supabase.
+- La fonction `exec_sql` est typée dans `supabase.ts` — elle est bien déployée en base.
+- **Routes dans le même cas** : `cleanup-triggers`, `fix-activity-logs` (même pattern, même absence d'auth).
+- **Correction immédiate** : supprimer ces 3 fichiers, révoquer + régénérer la `SUPABASE_SERVICE_ROLE_KEY`.
 
 ---
 
-## 4. FAILLES CRITIQUES (Bloquant pour mise en prod)
-
-### 🔴 F1: Bypass de propriété entreprise (CRITIQUE)
-**Fichier** : `src/app/api/vehicles/route.ts` (lignes 164-169, 210-213)
+### 🚨 FAILLE #2 — MOT DE PASSE EN CLAIR DANS STRIPE [CVSS 9.1 + VIOLATION RGPD ART.32]
+**Fichier** : `src/app/api/stripe/create-checkout-session/route.ts`
 
 ```typescript
-// PATCH - Aucune vérification company_id!
-await supabase
-  .from('vehicles')
-  .update(data)
-  .eq('id', id)  // ❌ Pas de .eq('company_id', user.company_id)
-  .select()
-  .single();
-
-// DELETE - Aucune vérification!
-await supabase
-  .from('vehicles')
-  .delete()
-  .eq('id', id);  // ❌ Permet de supprimer n'importe quel véhicule
+metadata: {
+  user_password: tempData.password,  // ← MOT DE PASSE PLAINTEXT stocké chez Stripe
+}
 ```
 
-**Impact** : Un utilisateur authentifié peut modifier/supprimer les véhicules d'autres entreprises en connaissant l'UUID.
-
-**Correction immédiate** :
+**Et dans** `src/app/api/stripe/webhook/route.ts` :
 ```typescript
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('company_id')
-  .eq('id', user.id)
-  .single();
-
-await supabase
-  .from('vehicles')
-  .delete()
-  .eq('id', id)
-  .eq('company_id', profile.company_id);  // ✅ Isolation garantie
+const password = session.metadata?.user_password;  // récupéré depuis Stripe metadata
+await supabase.auth.admin.createUser({ password });
 ```
 
-### 🔴 F2: Rate limiting en mémoire (CRITIQUE)
-**Fichier** : `src/lib/security/rate-limiter.ts`
+- Le mot de passe est stocké **en clair** dans les métadonnées Stripe.
+- Visible dans le **dashboard Stripe** (logs, events), les **webhooks logs Stripe**, les **emails Stripe**, et potentiellement les **logs Vercel**.
+- Violation directe RGPD Article 32 → obligation de notification CNIL sous 72h si exploitation détectée.
+- **Correction** : remplacer `user_password` par un `setup_token` (UUID + HMAC, TTL 15 min, stocké en DB table `pending_registrations`, supprimé après usage). Le webhook lit le token, récupère le mot de passe hashé en DB, crée l'utilisateur.
+
+---
+
+### 🚨 FAILLE #3 — CONTOURNEMENT RLS CÔTÉ CLIENT [CVSS 8.5]
+**Fichier** : `src/lib/supabase/client-safe.ts`
 
 ```typescript
-// Map en mémoire = reset à chaque déploiement
-const requestCounts = new Map<string, RequestCount>();
+// Sur erreur 42P17 (RLS infinite recursion) :
+// Fallback → récupère TOUTES les lignes (aucun filtre company_id)
+// puis filtre côté JavaScript
 ```
 
-**Impact** : Brute force possible sur les endpoints, pas de protection DDoS.
+- Un attaquant qui peut **déclencher ou simuler une erreur `42P17`** reçoit toutes les données de toutes les entreprises avant le filtre client-side.
+- Architecture fondamentalement incorrecte : le filtrage sécurité ne doit **jamais** se faire côté client.
+- Ce code existe parce que les politiques RLS ont causé des récursions infinies — preuve d'une instabilité profonde du schéma RLS (cf. 75 migrations correctives).
 
-**Correction** : Migrer vers Upstash Redis (déjà configuré dans .env).
+---
 
-### 🔴 F3: Fonction RLS inexistante (CRITIQUE)
-**Fichier** : `supabase/migrations/20250220000300_api_keys_webhooks.sql`
+### 🔴 FAILLE #4 — RESET MOT DE PASSE SANS RATE LIMITING [CVSS 7.3]
+**Fichier** : `src/app/api/admin/reset-user-password/route.ts`
+
+- Protégé uniquement par `x-admin-secret` header vs `process.env.SUPERADMIN_SETUP_SECRET`.
+- Aucun rate limiting → brute-force du secret possible.
+- Appelle `supabase.auth.admin.listUsers()` à chaque requête → O(n) users, coûteux.
+- Commenté "temporaire" dans le code mais déployé en production.
+- Listé dans `publicApiRoutes` du middleware → aucune session JWT requise.
+
+---
+
+### 🔴 FAILLE #5 — IDOR SUR VEHICULES DANS SOS [CVSS 6.5]
+**Fichier** : `src/app/api/sos/smart-search/route.ts`
+
+```typescript
+// vehicleId fourni par le client, non validé
+const vehicle = await adminClient.from('vehicles').select('*').eq('id', vehicleId);
+// ← Aucune vérification que vehicleId appartient à la company de l'utilisateur connecté
+```
+
+- Tout utilisateur authentifié peut récupérer les données complètes de n'importe quel véhicule par UUID.
+
+---
+
+### 🔴 FAILLE #6 — ACTIONS D'INSPECTION SANS VÉRIFICATION D'APPARTENANCE [CVSS 5.5]
+**Fichier** : `src/actions/inspections-safe.ts`
+
+```typescript
+export async function validateInspection(id: string) {
+  const supabase = createAdminClient();  // bypasse RLS
+  // Aucun check : l'utilisateur connecté peut-il valider CETTE inspection ?
+```
+
+- `validateInspection()` et `rejectInspection()` utilisent le client admin sans vérifier l'appartenance de l'inspection à l'entreprise de l'appelant.
+
+---
+
+### 🟠 FAILLE #7 — RLS INSPECTIONS POTENTIELLEMENT EN MODE "OPEN" [CVSS 6.0]
+**Fichier** : `supabase/migrations/20250208180000_emergency_fix_inspections.sql`
 
 ```sql
--- Cette fonction est référencée mais n'existe pas!
-USING (company_id = get_current_user_company_id())
+-- Toutes les policies : USING (true) pour authenticated
+-- Si cette migration est la dernière appliquée sur vehicle_inspections,
+-- toutes les inspections sont lisibles/modifiables par TOUS les users authentifiés
 ```
 
-**Impact** : Les politiques RLS sur `api_keys` et `webhooks` échoueront silencieusement.
-
-### 🔴 F4: 160+ usages de `any` (MAJEUR)
-**Fichiers** : Tous les hooks et actions
-
-```typescript
-// Pattern dangereux répété 160+ fois
-const result = await createVehicle(vehicle as any);
-if (!(result as any)?.success) { ... }
-return (result as any).data;
-```
-
-**Impact** : Perte totale de la sécurité de type, bugs silencieux en production.
-
-### 🔴 F5: Pages RGPD vides (BLOquant LÉGAL)
-**Fichier** : `src/components/layout/footer.tsx` (lignes 23-26)
-
-```typescript
-<a href="#">Mentions légales</a>      {/* ❌ Vide */}
-<a href="#">Politique confidentialité</a>  {/* ❌ Vide */}
-<a href="#">CGU</a>                 {/* ❌ Vide */}
-<a href="#">Cookies</a>             {/* ❌ Vide */}
-```
-
-**Impact** : Exposition juridique en Europe (RGPD), risque de sanction CNIL.
-
-### 🔴 F6: Bannière cookies absente (BLOquant LÉGAL)
-**Impact** : Tracking Sentry/PostHog sans consentement = violation RGPD.
-
-### 🔴 F7: Pas de tests de restore backup (MAJEUR)
-**Impact** : Si perte de données, aucune garantie de recovery.
+- La migration ultérieure `20250219000100_fix_critical_rls.sql` devrait corriger cela — **à vérifier sur la base de production**.
+- Auditer avec : `SELECT tablename, policyname, qual FROM pg_policies WHERE tablename = 'vehicle_inspections';`
 
 ---
 
-## 5. RECOMMANDATIONS PAR PRIORITÉ
+## 4. AUDIT CODE QUALITY — 13/25
 
-### 🔥 P0 (Semaine 1) - Bloquant Prod
+### TypeScript
+| Check | Statut |
+|-------|--------|
+| `strict: true` dans tsconfig | ✅ |
+| `typescript.ignoreBuildErrors: true` (538 erreurs TS ignorées) | ❌ |
+| Types `any` sauvages dans actions critiques | ⚠️ Quelques `as any` sur tables non typées |
+| Incohérence `CHAUFFEUR` (types/index.ts) vs `EXPLOITANT` (DB) | ❌ |
 
-| # | Action | Fichier(s) | Effort |
-|---|--------|------------|--------|
-| 1 | Fixer PATCH/DELETE vehicles avec filtre company_id | `src/app/api/vehicles/route.ts` | 2h |
-| 2 | Créer la fonction SQL `get_current_user_company_id()` | Migration SQL | 30min |
-| 3 | Migrer rate limiter vers Upstash Redis | `src/lib/security/rate-limiter.ts` | 4h |
-| 4 | Créer pages RGPD (mentions, confidentialité, CGU, cookies) | `src/app/(legal)/` | 1 jour |
-| 5 | Implémenter bannière cookies avec consentement | `src/components/cookie-banner.tsx` | 4h |
-| 6 | Remplacer les 20 `any` les plus critiques | Hooks + Actions | 1 jour |
+### Architecture
+| Check | Statut |
+|-------|--------|
+| Server Actions + `next-safe-action` | ✅ |
+| `tenant-guard.ts` pattern (bien conçu) | ✅ |
+| Adoption `tenant-guard` cohérente sur toutes les routes | ❌ |
+| `rls-bypass.ts` — anti-pattern client-side security | ❌ |
+| Logique métier dupliquée (crons vehicle/driver) | ❌ |
+| Routes debug en production (`apply-migration`, `cleanup-triggers`, `fix-activity-logs`) | ❌ |
 
-### ⚠️ P1 (Mois 1) - Qualité
+### Base de données
+| Check | Statut |
+|-------|--------|
+| 75 migrations pour ~12 mois = instabilité RLS chronique | 🔴 |
+| `exec_sql` RPC déployé en base (backdoor SQL) | 🔴 |
+| Indexes de performance créés | ✅ |
+| FK correctement définies sur tables récentes | ✅ |
+| Migration `USING (true)` d'urgence non nettoyée | ⚠️ |
 
-| # | Action | Impact |
-|---|--------|--------|
-| 7 | Activer TypeScript strict et corriger les 1489 erreurs | Stabilité |
-| 8 | Implémenter Error Boundaries | UX |
-| 9 | Ajouter tests coverage > 50% | Confiance |
-| 10 | Créer runbook backup/restore | Ops |
-| 11 | Configurer alerting Sentry | Monitoring |
-| 12 | Unifier les dashboard-actions (3→1) | Maintenance |
+### Tests — **SCORE : 0%**
+- **0 test unitaire, 0 test d'intégration, 0 test E2E**
+- Jest configuré avec seuil 30% — la cible n'est pas mesurable
+- Playwright configuré mais dossier `e2e/` inexistant
+- Signal le plus fort d'un projet non production-ready
 
-### 📋 P2 (Roadmap Q2) - Excellence
+### Dépendances
+- `pdfkit` orphelin dans `package.json` (remplacé par `pdf-lib`)
+- `stripe.exe` (31MB) commité dans git — binaire ne doit jamais être versionné
+- npm audit HIGH : `eslint`/`jest` via `minimatch` (dev-only, non exploitable en runtime)
 
-| # | Action | Impact |
-|--------|--------|--------|
-| 13 | Implémenter Repository Pattern | Architecture |
-| 14 | Ajouter React.memo sur 60% des composants | Performance |
-| 15 | Audit accessibilité WCAG AA | Inclusion |
-| 16 | Feature flags pour déploiement progressif | Agilité |
-| 17 | Circuit breaker sur appels externes | Résilience |
-
----
-
-## 6. ANALYSE BUSINESS & TARIFICATION
-
-### Positionnement Marché
-
-| Concurrent | Prix | Différenciation FleetMaster |
-|------------|------|----------------------------|
-| **Fleetio** | 8-15€/véhicule/mois | FleetMaster moins cher mais moins mature |
-| **Samsara** | Sur devis (enterprise) | Samsara = hardware + software. FleetMaster = software only |
-| **Arofleet** | 29€/mois (illimité) | Prix comparable, mais Arofleet a + de features |
-| **Wialon** | 15-30€/mois | Wialon = tracking GPS hardware. FleetMaster = maintenance + SOS |
-
-### Verdict Positionnement
-**Problème** : Positionnement flou entre :
-- SaaS maintenance (comme Fleetio)
-- Marketplace SOS (différenciant mais niche)
-- Géolocalisation (sans hardware, donc faible valeur)
-
-**Recommandation prix** :
-```
-Actuel : Non clair (probablement 29-49€/mois)
-Recommandé :
-  - Starter: 29€/mois (jusqu'à 10 véhicules)
-  - Pro: 79€/mois (jusqu'à 50 véhicules, +SOS)
-  - Enterprise: Sur devis (>50 véhicules, API)
-```
-
-### Moats (Avantages Concurrentiels)
-
-| Moat | Force | Durabilité |
-|------|-------|------------|
-| SOS Garage intégré | 🟢 Unique | 3-6 mois (copiable) |
-| Design premium | 🟡 Différenciant | 1-2 mois |
-| Multi-tenant | 🔴 Standard | Pas un avantage |
-| RLS sécurisé | 🔴 Standard | Attendu par les clients |
-
-**Verdict** : Aucun moat durable. Un concurrent peut copier en 2-3 mois.
-
-### Modèle Économique
-
-**CAC (Coût Acquisition Client)** estimé :
-- Marketing digital B2B : 500-1000€
-- Sales cycle : 2-4 semaines
-- LTV (Lifetime Value) : 29€ × 12 mois × 2 ans = 696€
-
-**LTV/CAC ratio** : ~1:1 (devrait être >3:1)
-
-**Recommandation** : Augmenter le prix à 79€/mois minimum ou réduire le CAC par viralité/referral.
+### Code smells critiques
+1. `stripe.exe` (31MB) dans le repository git
+2. `console.log` avec données sensibles (UUIDs, company IDs) dans 10 fichiers API route
+3. Routes de débogage déployées sans auth (`apply-migration`, `cleanup-triggers`, `fix-activity-logs`)
+4. Pages `diagnostic/` et `test/` dans `(dashboard)` — code de développement en production
+5. Fichiers SQL manuels dans `sql/` (interventions directes en base hors migration gérée)
+6. `validInspection`/`rejectInspection` bypass RLS sans vérification d'appartenance
 
 ---
 
-## 7. VERDICT COMMERCIAL
+## 5. AUDIT UX/UI — 13/20
 
-> **"À ce stade, vendre cet outil à plus de 5 utilisateurs simultanés est RISQUÉ. La tarification actuelle est SOUS-ÉVALUÉE (devrait être 79€/mois minimum pour être viable)."**
-
-**Risques identifiés** :
-1. **Juridique** : Sanction CNIL possible (RGPD non conforme)
-2. **Technique** : Fuite de données entre clients (bypass RLS)
-3. **Opérationnel** : Pas de backup testé = perte de données possible
-4. **Commercial** : Positionnement flou, copiable en 2 mois
-
----
-
-## 8. CHECKLIST GO/NO-GO
-
-### Avant mise en production :
-
-```bash
-SÉCURITÉ
-□ [ ] Faille F1 corrigée (PATCH/DELETE avec company_id)
-□ [ ] Faille F2 corrigée (Redis rate limiting)
-□ [ ] Faille F3 corrigée (fonction SQL créée)
-□ [ ] npm audit = 0 vulnérabilités HIGH
-□ [ ] Pas de clés API en dur dans le code
-
-LÉGAL
-□ [ ] Page mentions légales créée et accessible
-□ [ ] Page politique confidentialité créée
-□ [ ] Page CGU créée
-□ [ ] Bannière cookies implémentée
-□ [ ] Checkbox consentement inscription
-
-QUALITÉ
-□ [ ] TypeScript strict activé (0 erreurs)
-□ [ ] Tests coverage > 50%
-□ [ ] Error Boundaries implémentées
-□ [ ] 0 `any` non justifiés
-
-OPS
-□ [ ] Backup stratégie documentée
-□ [ ] Restore testé sur environnement staging
-□ [ ] Monitoring Sentry configuré (prod)
-□ [ ] Rate limiting Redis activé
-□ [ ] Health checks complets (DB + Redis)
-
-PERFORMANCE
-□ [ ] Lighthouse > 90 (Performance)
-□ [ ] React Query staleTime optimisé
-□ [ ] Images optimisées (WebP)
-```
+| Check | Statut |
+|-------|--------|
+| Design System Tailwind cohérent | ✅ |
+| Responsive mobile-first | ✅ |
+| Onboarding 5 étapes structuré | ✅ |
+| Pages légales complètes (CGV, ML, PC) | ✅ |
+| Framer Motion — transitions | ✅ |
+| UX Writing français, pas de Lorem ipsum | ✅ |
+| Accessibilité WCAG AA | ⚠️ Non mesurée |
+| ARIA labels exhaustifs | ⚠️ Non audité |
+| Navigation clavier | ⚠️ Non vérifiée |
+| Lighthouse Performance > 85 | ❌ Non mesuré |
+| Skeleton loaders systématiques | ⚠️ Non confirmé |
+| Empty states sur tous les modules | ⚠️ Partiel |
 
 ---
 
-## 9. DÉCISION FINALE
+## 6. AUDIT PRODUCTION-READINESS — 8/20
 
-### 🔴 **NO-GO POUR PRODUCTION COMMERCIALE**
+| Check | Statut |
+|-------|--------|
+| Tests (toute couverture) | ❌ 0% |
+| Sentry intégré | ✅ |
+| Logger structuré (pino/winston) | ❌ `console.log` uniquement |
+| Backup BDD documenté | ⚠️ Dépend plan Supabase |
+| Point-in-time recovery | ⚠️ Non documenté |
+| Rate limiting Server Actions | ✅ |
+| Rate limiting API Routes critiques | ❌ |
+| Pagination sur toutes les listes | ✅ |
+| RGPD — pages légales | ✅ |
+| Export données utilisateur | ✅ CSV + PDF |
+| Crons Vercel configurés | ✅ |
+| Routes debug en production | ❌ |
+| `stripe.exe` dans repo | ❌ |
+| Documentation API | ❌ `/api/docs` existe mais contenu ? |
 
-**Justification** :
-1. **Faille critique de sécurité** : Bypass de tenant = fuite de données entre clients
-2. **Non-conformité RGPD** : Risque juridique majeur en Europe
-3. **Qualité code insuffisante** : 160+ `any`, pas d'Error Boundaries
-4. **Ops non prêts** : Pas de backups testés, monitoring incomplet
-
-**Conditions de GO** :
-- Corriger les 7 failles critiques (P0)
-- Atteindre 70% de tests coverage
-- Audit de sécurité par tiers
-- Conformité RGPD validée par juriste
-
-**Estimation** : 6-8 semaines avec 3 développeurs pour être prod-ready.
-
----
-
-## 10. RESSOURCES RECOMMANDÉES
-
-### Recrutement immédiat
-- **DevSecOps** (1 mois) : Corriger sécurité + RGPD
-- **Dev Frontend** (2 mois) : TypeScript strict + A11y
-- **QA Engineer** (1 mois) : Tests coverage + E2E
-
-### Outils à implémenter
-- **Snyk** : Scan vulnérabilités (CI/CD)
-- **SonarQube** : Qualité code
-- **Vercel Analytics** : Performance monitoring
-- **Checkly** : E2E monitoring production
-
-### Lecture recommandée
-- "Clean Architecture" - Robert C. Martin
-- "Web Application Security" - Andrew Hoffman
-- RGPD checklist CNIL : https://www.cnil.fr/fr/rgpd-exemples
+**Capacité à tenir 1000 users simultanés** : Architecture Vercel + Supabase scale horizontalement. Indexes présents. Mais avec 0 test de charge et des politiques RLS historiquement instables, c'est un pari aveugle. Risque réel de régression RLS sous charge.
 
 ---
 
-**Fin du rapport**
-*Ce document est confidentiel et destiné à la direction uniquement.*
+## 7. ANALYSE BUSINESS — 7/10
+
+### Tarification actuelle
+| Plan | Mensuel | Véhicules | Users |
+|------|---------|-----------|-------|
+| Essential | 29€/mo | 10 | 3 |
+| Pro | 49€/mo | 30 | 10 |
+| Unlimited | 129€/mo | Illimité | Illimité |
+
+### Analyse concurrentielle marché français
+| Concurrent | Prix | Forces |
+|-----------|------|--------|
+| Fleetio | 4-9$/véhicule/mois | Leader, intégrations nombreuses |
+| Quartix | 8-15€/véhicule/mois | GPS tracking, connu en France |
+| Samsara | Enterprise (>500€/mois) | Grandes flottes uniquement |
+| **FleetMaster Pro** | **29-129€ flat** | **Tarif prévisible, réglementation FR** |
+
+**Avantages concurrentiels réels :**
+- Pricing flat (non par véhicule) = prévisibilité budget pour PME françaises
+- Données réglementaires FR intégrées (CT, TACHY, ATP, CQC, FIMO, FCOS)
+- SOS garage avec géolocalisation — fonctionnalité rare chez les concurrents
+- IA prédictive maintenance
+
+**Faiblesses commerciales :**
+- Aucune offre d'essai gratuit → CAC élevé
+- `EARLY_ADOPTER_EMAILS` array vide → pas de stratégie de lancement active
+- Version 0.1.0 → signal de maturité produit faible pour les acheteurs B2B
+
+---
+
+## 8. RECOMMANDATIONS PAR PRIORITÉ
+
+### P0 — Cette semaine (BLOQUANT — ne pas déployer avant)
+
+- [ ] **SUPPRIMER** `src/app/api/admin/apply-migration/route.ts`, `cleanup-triggers/route.ts`, `fix-activity-logs/route.ts` — puis révoquer + régénérer `SUPABASE_SERVICE_ROLE_KEY`
+- [ ] **CORRIGER** le stockage du mot de passe Stripe : remplacer `user_password` dans metadata par un `setup_token` (UUID HMAC, TTL 15 min, table `pending_registrations`)
+- [ ] **SUPPRIMER** `stripe.exe` du repo git et purger l'historique (`git filter-repo --path stripe.exe --invert-paths`)
+- [ ] **AJOUTER** vérification `company_id` sur `vehicleId` dans `/api/sos/smart-search/route.ts`
+- [ ] **AJOUTER** auth + ownership check dans `validateInspection()` et `rejectInspection()` dans `inspections-safe.ts`
+- [ ] **AUDITER** en production : `SELECT policyname, qual FROM pg_policies WHERE tablename = 'vehicle_inspections';` — corriger si `USING (true)` encore actif
+- [ ] **SUPPRIMER** la fonction `exec_sql` de la base de données (ou restreindre à superuser DB uniquement)
+
+### P1 — Mois 1
+
+- [ ] Refactorer `client-safe.ts` : supprimer le fallback "fetch all + filter client-side" — debugger la récursion RLS à la source
+- [ ] Supprimer `src/lib/supabase/rls-bypass.ts` ou le restreindre strictement
+- [ ] Ajouter rate limiting sur `/api/admin/reset-user-password` (ou supprimer l'endpoint)
+- [ ] Ajouter rate limiting sur `/api/stripe/create-checkout-session`
+- [ ] Écrire les 10 premiers tests critiques : isolation tenant (2 companies ne voient pas les données de l'autre), création véhicule, middleware auth
+- [ ] Corriger les 50 erreurs TypeScript les plus critiques dans actions/hooks
+- [ ] Supprimer `pdfkit` des dépendances
+- [ ] Remplacer `console.log` dans les API routes par un logger structuré (pino)
+- [ ] Retirer ou sécuriser les pages `(dashboard)/dashboard/diagnostic/` et `test/`
+
+### P2 — Roadmap Q2
+
+- [ ] Suite de tests E2E : parcours inscription → paiement Stripe → dashboard → véhicule → inspection
+- [ ] Tests de charge (k6) : objectif 200 users simultanés sans dégradation
+- [ ] Audit accessibilité WCAG AA + score Lighthouse > 85
+- [ ] Essai gratuit 14 jours pour réduire le CAC
+- [ ] Consolider les 75 migrations en schéma initial propre
+- [ ] Documenter et tester la stratégie de backup/restore
+
+---
+
+## 9. CHECKLIST GO/NO-GO
+
+- [ ] ❌ **Sécurité validée** — NON (2 failles critiques actives)
+- [ ] ❌ **Performances > 85 Lighthouse** — Non mesuré
+- [ ] ❌ **0 bug bloquant** — NON (failles de sécurité actives)
+- [ ] ⚠️ **Documentation technique** — Partielle (DEPLOY.md, .env.example présents)
+- [ ] ❌ **Tests > 0%** — NON (zéro test)
+- [ ] ❌ **Backup testé** — Non documenté
+- [ ] ✅ **Stripe fonctionnel** — OUI (modulo faille #2)
+- [ ] ✅ **Pages légales RGPD** — OUI
+- [ ] ✅ **Monitoring Sentry** — OUI
+- [ ] ❌ **Isolation tenant vérifiée** — NON (failles #3, #5, #6)
+
+---
+
+## 10. VERDICT COMMERCIAL
+
+> **À ce stade, vendre cet outil à plus de 5 utilisateurs est irresponsable.** La faille #2 (mot de passe en clair dans Stripe) constitue une violation RGPD Article 32 documentée et immédiatement exploitable. La faille #1 (exécution SQL publique non authentifiée) permettrait à n'importe qui de supprimer toutes les données de tous les clients en moins de 2 minutes. En cas d'incident avec ces failles actives, la responsabilité de l'éditeur serait directement engagée au pénal (CNIL, Article 226-17 Code Pénal).
+
+> **La tarification 29-129€/mois flat est un avantage concurrentiel réel.** Ne pas la modifier. Envisager un essai 14 jours pour réduire le CAC.
+
+> **Le potentiel est réel** : modules différenciants (réglementation FR, SOS, IA prédictive), architecture Next.js/Supabase moderne, UI soignée. Avec 3-4 semaines de corrections focalisées sur P0 + P1, ce projet peut devenir commercialisable et défendable.
+
+---
+
+## DÉCISION FINALE
+
+### 🔴 NO-GO — Mise en production commerciale immédiate impossible
+
+**Délai pour passer en GO :** 3-4 semaines de correctifs P0 (semaine 1) + P1 (semaines 2-4).
+
+**Post-corrections P0+P1 :** GO avec réserves (absence de tests = risque opérationnel accepté à petite échelle, à combler en continu).
+
+---
+
+*Rapport généré le 2026-02-22 — Analyse statique exhaustive du codebase. Les scores RLS reflètent l'état du code source. L'état réel de la base de production doit être audité indépendamment (pg_policies, fonctions SECURITY DEFINER actives).*

@@ -1,12 +1,15 @@
 /**
- * Webhook Stripe - FLUX TRANSACTIONNEL CORRIGÉ
+ * Webhook Stripe - FLUX TRANSACTIONNEL RGPD COMPLIANT
  * 
  * Gère les événements de paiement et crée les comptes utilisateurs pour les nouvelles inscriptions
+ * SECURITY : Utilise setup_token pour récupérer les données sensibles (jamais dans Stripe)
+ * RGPD Article 32 : Les données sensibles ne transitent pas par des tiers (Stripe)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { randomBytes } from 'crypto';
+import { withRateLimit, RateLimits, getClientIP } from '@/lib/security/rate-limit';
 // PlanType: 'ESSENTIAL' | 'PRO' | 'UNLIMITED'
 type PlanType = 'ESSENTIAL' | 'PRO' | 'UNLIMITED';
 
@@ -32,7 +35,8 @@ import { stripe, isStripeConfigured, isWebhookConfigured } from '@/lib/stripe/st
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
-export async function POST(request: NextRequest) {
+// Handler principal (protégé par rate limiting)
+async function handler(request: NextRequest) {
   try {
     // Vérifier Stripe configuré
     if (!isStripeConfigured()) {
@@ -54,8 +58,9 @@ export async function POST(request: NextRequest) {
 
     try {
       event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
-    } catch (err: any) {
-      console.error('Webhook signature verification failed:', err.message);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Invalid signature';
+      console.error('Webhook signature verification failed:', errorMessage);
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
@@ -77,12 +82,13 @@ export async function POST(request: NextRequest) {
           .maybeSingle();
           
         if (existingSub) {
-          console.log(`⚠️ Webhook déjà traité pour ${stripeCustomerId}, ignoré`);
+          // Webhook déjà traité pour ce customer, ignoré
           break;
         }
         
         // Vérifier si c'est une inscription (pas un upgrade)
-        const sessionMetadata = (session as any).metadata || (session as any).subscription?.metadata || {};
+        // Utiliser les métadonnées de la session ou de la subscription
+        const sessionMetadata: Record<string, string | null | undefined> = session.metadata || {};
         const isRegistration = sessionMetadata.registration_pending === 'true';
         
         if (!isRegistration) {
@@ -126,11 +132,17 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Webhook error:', error);
     return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
   }
 }
+
+// Export avec rate limiting (50 requêtes par minute par IP)
+// Note: Le webhook utilise déjà la vérification de signature Stripe comme protection
+export const POST = withRateLimit(handler, RateLimits.webhook, {
+  getIdentifier: (req) => getClientIP(req),
+});
 
 // ============================================
 // FONCTIONS HELPER
@@ -140,19 +152,46 @@ async function handleNewRegistration(
   supabase: ReturnType<typeof createAdminClient>,
   session: import('stripe').Stripe.Checkout.Session
 ) {
+  let planType: PlanType = 'ESSENTIAL'; // défaut en dehors du try pour être accessible dans le catch
+  
   try {
-    // Récupérer les métadonnées
-    const metadata = (session as any).metadata || (session as any).subscription?.metadata || {};
-    const plan = (metadata.plan_type as PlanType) || 'ESSENTIAL';
-    const email = metadata.email || (session as any).customer_details?.email;
-    const companyName = metadata.company_name;
-    const siret = metadata.siret || '';
-    const firstName = metadata.first_name || '';
-    const lastName = metadata.last_name || '';
-    const phone = metadata.phone || '';
+    // Récupérer la subscription pour avoir les métadonnées complètes
+    const stripeSubscriptionId = session.subscription as string;
+    let subscriptionMetadata: Record<string, string | null | undefined> = {};
+    planType = 'ESSENTIAL'; // Reset à la valeur par défaut
+
+    if (stripeSubscriptionId) {
+      try {
+        const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+        subscriptionMetadata = subscription.metadata || {};
+        planType = ((subscriptionMetadata.plan_type as string)?.toUpperCase() as PlanType) || 'ESSENTIAL';
+      } catch (e) {
+        console.error('Erreur récupération subscription:', e);
+        // Fallback sur session.metadata
+        subscriptionMetadata = session.metadata || {};
+        planType = ((subscriptionMetadata.plan_type as string)?.toUpperCase() as PlanType) || 'ESSENTIAL';
+      }
+    } else {
+      subscriptionMetadata = session.metadata || {};
+      planType = ((subscriptionMetadata.plan_type as string)?.toUpperCase() as PlanType) || 'ESSENTIAL';
+    }
+
+    const email = subscriptionMetadata.email || session.customer_details?.email;
+    const companyName = subscriptionMetadata.company_name;
+    const siret = subscriptionMetadata.siret || '';
+    const firstName = subscriptionMetadata.first_name || '';
+    const lastName = subscriptionMetadata.last_name || '';
+    const phone = subscriptionMetadata.phone || '';
+    
+    // RGPD : Récupérer le setup_token (pas le mot de passe!)
+    const setupToken = subscriptionMetadata.setup_token;
+    
+    // Utiliser planType (qui est maintenant en majuscule) pour PLAN_LIMITS
+    const plan = planType;
 
     if (!email || !companyName) {
       console.error('Missing required metadata for registration');
+      console.error('Metadata reçues:', { email: !!email, companyName: !!companyName, setupToken: !!setupToken });
       return;
     }
 
@@ -168,13 +207,42 @@ async function handleNewRegistration(
       return;
     }
 
-    // 1. CRÉER L'UTILISATEUR SUPABASE AUTH
-    // Générer un mot de passe temporaire sécurisé avec crypto
-    const tempPassword = randomBytes(24).toString('hex'); // 48 caractères hexadécimaux
+    // ============================================================================
+    // RGPD : Récupération sécurisée via setup_token
+    // ============================================================================
     
+    let passwordToUse = randomBytes(32).toString('hex'); // Valeur par défaut
+    let tokenValid = false;
+    let pendingReg: any = null;
+    
+    if (setupToken) {
+      // Chercher le token dans pending_registrations
+      const { data: pending, error: findError } = await (supabase
+        .from('pending_registrations' as any) as any)
+        .select('*')
+        .eq('setup_token', setupToken)
+        .eq('used', false)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+      
+      if (findError || !pending) {
+        console.error('❌ Token invalide, expiré ou déjà utilisé:', setupToken);
+        console.error('Détails:', findError?.message);
+        // Token invalide - on continue avec un mot de passe aléatoire (voir ci-dessous)
+      } else {
+        tokenValid = true;
+        pendingReg = pending;
+        passwordToUse = pending.password_hash;
+        // Token valide trouvé, données récupérées localement
+      }
+    }
+    
+    // Si token invalide ou manquant, on garde le mot de passe aléatoire généré ci-dessus
+
+    // 1. CRÉER L'UTILISATEUR SUPABASE AUTH
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
-      password: tempPassword,
+      password: passwordToUse,
       email_confirm: true, // Email déjà vérifié par Stripe
       user_metadata: {
         first_name: firstName,
@@ -190,6 +258,23 @@ async function handleNewRegistration(
     }
 
     const userId = authData.user.id;
+    
+    // Si token valide, marquer comme utilisé
+    if (tokenValid && pendingReg) {
+      const { error: updateError } = await supabase
+        .from('pending_registrations' as any)
+        .update({ 
+          used: true, 
+          user_id: userId,
+          used_at: new Date().toISOString()
+        })
+        .eq('id', pendingReg.id);
+      
+      if (updateError) {
+        // Erreur mise à jour token (non bloquant)
+        console.error('Erreur mise à jour token:', updateError.message);
+      }
+    }
 
     // 2. CRÉER L'ENTREPRISE AVEC STATUT ACTIF
     const { data: company, error: companyError } = await supabase
@@ -238,42 +323,129 @@ async function handleNewRegistration(
     }
 
     // 4. CRÉER L'ABONNEMENT
-    const stripeSubscriptionId = session.subscription as string;
     if (stripeSubscriptionId) {
       const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+      const subData = subscription as unknown as import('stripe').Stripe.Subscription;
       
       await supabase.from('subscriptions').insert({
         company_id: company.id,
         stripe_customer_id: session.customer as string,
         stripe_subscription_id: stripeSubscriptionId,
-        stripe_price_id: subscription.items.data[0].price.id,
+        stripe_price_id: subData.items.data[0].price.id,
         plan: plan,
         status: 'ACTIVE',
-        current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
-        current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+        current_period_start: new Date(((subData as unknown as { current_period_start: number }).current_period_start) * 1000).toISOString(),
+        current_period_end: new Date(((subData as unknown as { current_period_end: number }).current_period_end) * 1000).toISOString(),
         vehicle_limit: PLAN_LIMITS[plan]?.maxVehicles || 3,
         user_limit: PLAN_LIMITS[plan]?.maxDrivers || 2,
         features: PLAN_LIMITS[plan]?.features || [],
-        trial_ends_at: subscription.trial_end 
-          ? new Date(subscription.trial_end * 1000).toISOString()
+        trial_ends_at: subData.trial_end 
+          ? new Date(subData.trial_end * 1000).toISOString()
           : null,
       });
     }
 
-    // 5. ENVOYER EMAIL DE BIENVENUE AVEC LIEN DE CONFIGURATION MOT DE PASSE
-    // Note : L'utilisateur doit définir son propre mot de passe
-    // Pour l'instant, il peut utiliser "Mot de passe oublié" ou on envoie un lien magique
+    // 5. ENVOYER EMAIL DE BIENVENUE (ou récupération si token expiré)
+    try {
+      if (!tokenValid) {
+        // Token expiré : envoyer email avec lien de récupération de mot de passe
+        // Envoi email récupération (token expiré)
+        
+        const { data: recoveryData, error: recoveryError } = await supabase.auth.admin.generateLink({
+          type: 'recovery',
+          email: email,
+          options: {
+            redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
+          }
+        });
+        
+        if (recoveryError) {
+          console.error('Erreur génération lien récupération:', recoveryError);
+        } else {
+          // Envoyer l'email de récupération
+          try {
+            await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-welcome-email`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: email,
+                companyName: companyName,
+                recoveryLink: recoveryData.properties.action_link,
+                isRecovery: true, // Flag pour template email différent
+                reason: 'Votre session de paiement a expiré. Veuillez définir votre mot de passe pour accéder à votre compte.'
+              })
+            });
+            // Email de récupération envoyé
+          } catch (emailError) {
+            console.error('Erreur envoi email récupération:', emailError instanceof Error ? emailError.message : String(emailError));
+          }
+        }
+      } else {
+        // Cas normal : envoyer magic link pour connexion sans mot de passe
+        const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+          type: 'magiclink',
+          email: email,
+          options: {
+            redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
+          }
+        });
+        
+        if (linkError) {
+          console.error('Erreur génération magic link:', linkError);
+        } else {
+          // Envoyer l'email via votre service
+          try {
+            await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-welcome-email`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: email,
+                companyName: companyName,
+                magicLink: linkData.properties.action_link
+              })
+            });
+          } catch (emailError) {
+            console.error('Erreur envoi email:', emailError);
+          }
+          
+          console.log('Magic link généré:', linkData.properties.action_link);
+        }
+      }
+    } catch (magicLinkError) {
+      console.error('Erreur lors de la génération du magic link:', magicLinkError);
+    }
     
-    console.log(`✅ User created after payment: ${email} -> ${plan}`);
+    // User created after payment successfully
+
+    // 6. LOGGING SÉCURISÉ (sans données sensibles)
+    if (!tokenValid) {
+      // Log pour suivi des cas où le token était expiré
+      await supabase.from('webhook_errors').insert({
+        event_type: 'checkout.session.completed',
+        error: JSON.stringify({ 
+          warning: 'Token expired or invalid - Recovery email sent',
+          email_domain: email.split('@')[1] // uniquement le domaine pour privacy
+        }),
+        metadata: { 
+          setup_token_present: !!setupToken,
+          plan: plan 
+        },
+      });
+    }
 
   } catch (error) {
     console.error('Failed to create user after payment:', error);
-    // Logger l'erreur pour intervention manuelle
+    // Logger l'erreur pour intervention manuelle (sans données sensibles)
     await supabase.from('webhook_errors').insert({
       event_type: 'checkout.session.completed',
-      error: JSON.stringify(error),
-      metadata: (session as any).metadata,
-    } as any);
+      error: JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        step: 'handleNewRegistration'
+      }),
+      metadata: { 
+        plan_type: planType 
+      },
+    });
   }
 }
 
@@ -282,32 +454,33 @@ async function handleSubscriptionUpdate(
   session: import('stripe').Stripe.Checkout.Session
 ) {
   // Logique pour les upgrades existants
-  const companyId = (session as any).metadata?.company_id;
-  const plan = (session as any).metadata?.plan as PlanType;
+  const companyId = session.metadata?.company_id;
+  const plan = session.metadata?.plan as PlanType;
   
   if (!companyId || !plan) {
     console.error('Missing metadata for subscription update');
     return;
   }
 
-  const stripeSubscriptionId = (session as any).subscription as string;
+  const stripeSubscriptionId = session.subscription as string;
   const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+  const subData = subscription as unknown as import('stripe').Stripe.Subscription;
 
-  await (supabase as any).from('subscriptions').upsert({
+  await supabase.from('subscriptions').upsert({
     company_id: companyId,
-    stripe_customer_id: (session as any).customer as string,
+    stripe_customer_id: session.customer as string,
     stripe_subscription_id: stripeSubscriptionId,
-    stripe_price_id: (subscription as any).items.data[0].price.id,
+    stripe_price_id: subData.items.data[0].price.id,
     plan: plan,
-    status: 'ACTIVE' as any,
-    current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
-    current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+    status: 'ACTIVE',
+    current_period_start: new Date(((subData as unknown as { current_period_start: number }).current_period_start) * 1000).toISOString(),
+    current_period_end: new Date(((subData as unknown as { current_period_end: number }).current_period_end) * 1000).toISOString(),
     vehicle_limit: PLAN_LIMITS[plan]?.maxVehicles || 3,
     user_limit: PLAN_LIMITS[plan]?.maxDrivers || 2,
     features: PLAN_LIMITS[plan]?.features || [],
-  } as any, {
+  }, {
     onConflict: 'company_id'
-  } as any);
+  });
 
   // Mettre à jour le statut de l'entreprise
   await supabase.from('companies').update({
@@ -317,22 +490,26 @@ async function handleSubscriptionUpdate(
     max_drivers: PLAN_LIMITS[plan]?.maxDrivers || 2,
   }).eq('id', companyId);
 
-  console.log(`✅ Subscription updated for ${companyId} -> ${plan}`);
+  // Subscription updated
 }
 
 async function handlePaymentSuccess(
   supabase: ReturnType<typeof createAdminClient>,
   invoice: import('stripe').Stripe.Invoice
 ) {
-  const subscriptionId = (invoice as any).subscription as string;
+  const subscriptionId = typeof (invoice as unknown as { subscription?: string }).subscription === 'string' 
+    ? (invoice as unknown as { subscription: string }).subscription 
+    : null;
+  if (!subscriptionId) return;
   
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const subData = subscription as unknown as import('stripe').Stripe.Subscription;
   
-  await (supabase as any).from('subscriptions').update({
-    status: 'ACTIVE' as any,
-    current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
-    current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
-  } as any).eq('stripe_subscription_id', subscriptionId);
+  await supabase.from('subscriptions').update({
+    status: 'ACTIVE',
+    current_period_start: new Date(((subData as unknown as { current_period_start: number }).current_period_start) * 1000).toISOString(),
+    current_period_end: new Date(((subData as unknown as { current_period_end: number }).current_period_end) * 1000).toISOString(),
+  }).eq('stripe_subscription_id', subscriptionId);
 
   // Mettre à jour companies aussi
   const { data: sub } = await supabase
@@ -347,18 +524,21 @@ async function handlePaymentSuccess(
     }).eq('id', sub.company_id);
   }
 
-  console.log(`✅ Payment succeeded for subscription ${subscriptionId}`);
+  // Payment succeeded
 }
 
 async function handlePaymentFailed(
   supabase: ReturnType<typeof createAdminClient>,
   invoice: import('stripe').Stripe.Invoice
 ) {
-  const subscriptionId = (invoice as any).subscription as string;
+  const subscriptionId = typeof (invoice as unknown as { subscription?: string }).subscription === 'string' 
+    ? (invoice as unknown as { subscription: string }).subscription 
+    : null;
+  if (!subscriptionId) return;
   
-  await (supabase as any).from('subscriptions').update({
-    status: 'PAST_DUE' as any,
-  } as any).eq('stripe_subscription_id', subscriptionId);
+  await supabase.from('subscriptions').update({
+    status: 'PAST_DUE',
+  }).eq('stripe_subscription_id', subscriptionId);
 
   // Mettre à jour companies
   const { data: sub } = await supabase
@@ -373,7 +553,7 @@ async function handlePaymentFailed(
     }).eq('id', sub.company_id);
   }
 
-  console.log(`⚠️ Payment failed for subscription ${subscriptionId}`);
+  // Payment failed
 }
 
 async function handleSubscriptionCanceled(
@@ -381,12 +561,12 @@ async function handleSubscriptionCanceled(
   deletedSub: import('stripe').Stripe.Subscription
 ) {
   // L'abonnement est annulé - L'accès est bloqué jusqu'à réabonnement
-  await (supabase as any).from('subscriptions').update({
-    status: 'CANCELED' as any,
+  await supabase.from('subscriptions').update({
+    status: 'CANCELED',
     stripe_subscription_id: null,
     stripe_price_id: null,
     current_period_end: new Date().toISOString(),
-  } as any).eq('stripe_subscription_id', (deletedSub as any).id);
+  }).eq('stripe_subscription_id', deletedSub.id);
 
   // Mettre à jour companies - bloquer l'accès
   const { data: sub } = await supabase
@@ -408,7 +588,7 @@ async function handleSubscriptionUpdated(
   supabase: ReturnType<typeof createAdminClient>,
   updatedSub: import('stripe').Stripe.Subscription
 ) {
-  const priceId = (updatedSub as any).items.data[0].price.id;
+  const priceId = updatedSub.items.data[0].price.id;
   let plan: PlanType = 'ESSENTIAL';
   
   // Mapping des price IDs vers les plans
@@ -427,14 +607,14 @@ async function handleSubscriptionUpdated(
     .single();
 
   if (sub?.company_id) {
-    await (supabase as any).from('subscriptions').update({
+    await supabase.from('subscriptions').update({
       plan: plan,
       vehicle_limit: PLAN_LIMITS[plan].maxVehicles,
       user_limit: PLAN_LIMITS[plan].maxDrivers,
       features: PLAN_LIMITS[plan].features,
-      current_period_start: new Date((updatedSub as any).current_period_start * 1000).toISOString(),
-      current_period_end: new Date((updatedSub as any).current_period_end * 1000).toISOString(),
-    } as any).eq('stripe_subscription_id', (updatedSub as any).id);
+      current_period_start: new Date(((updatedSub as unknown as { current_period_start: number }).current_period_start) * 1000).toISOString(),
+      current_period_end: new Date(((updatedSub as unknown as { current_period_end: number }).current_period_end) * 1000).toISOString(),
+    }).eq('stripe_subscription_id', updatedSub.id);
 
     await supabase.from('companies').update({
       subscription_plan: plan.toLowerCase(),

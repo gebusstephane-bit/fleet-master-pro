@@ -110,9 +110,9 @@ export default function VehiclesPage() {
   // Stats calculation
   const stats = {
     total: vehicles?.length || 0,
-    active: vehicles?.filter((v: Vehicle) => v.status === 'active' || v.status === 'ACTIF').length || 0,
-    maintenance: vehicles?.filter((v: Vehicle) => v.status === 'maintenance' || v.status === 'EN_MAINTENANCE').length || 0,
-    inactive: vehicles?.filter((v: Vehicle) => ['inactive', 'INACTIF', 'retired', 'HORS_SERVICE'].includes(v.status)).length || 0,
+    active: vehicles?.filter((v) => v.status === 'active' || v.status === 'ACTIF').length || 0,
+    maintenance: vehicles?.filter((v) => v.status === 'maintenance' || v.status === 'EN_MAINTENANCE').length || 0,
+    inactive: vehicles?.filter((v) => ['inactive', 'INACTIF', 'retired', 'HORS_SERVICE'].includes(v.status)).length || 0,
   };
 
   // Bulk delete handler
@@ -381,7 +381,7 @@ export default function VehiclesPage() {
       <GlassCard className="overflow-hidden">
         <PaginatedDataTable
           columns={columns}
-          data={filteredVehicles}
+          data={filteredVehicles as Vehicle[]}
           keyExtractor={(v) => v.id}
           onRowClick={(vehicle) => router.push(`/vehicles/${vehicle.id}`)}
           pageSize={10}

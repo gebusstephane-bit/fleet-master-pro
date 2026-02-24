@@ -30,9 +30,17 @@ function normalizeText(text: unknown): string {
     .replace(/[^\x00-\xFF]/g, '?');                 // tout autre hors Latin-1 → ?
 }
 
-interface PDFConfig {
-  type: ExportType;
-  data: any[];
+import { Vehicle, Driver, Maintenance } from '@/types';
+
+type ExportData<T extends ExportType> = T extends 'vehicles' 
+  ? Vehicle[] 
+  : T extends 'drivers' 
+  ? Driver[] 
+  : Maintenance[];
+
+interface PDFConfig<T extends ExportType = ExportType> {
+  type: T;
+  data: ExportData<T>;
   companyName: string;
 }
 
@@ -240,14 +248,17 @@ export async function generatePDF(config: PDFConfig): Promise<Buffer> {
 
   // ─── Serialize ────────────────────────────────────────────────────────────
   const pdfBytes = await pdfDoc.save();
-  return Buffer.from(pdfBytes);
+  return Buffer.from(pdfBytes) as unknown as Buffer;
 }
 
 // ─── Column definitions ────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ItemWithStringKeys = Record<string, any>;
+
 interface ColDef {
   header: string;
-  getValue: (item: any) => string;
+  getValue: (item: ItemWithStringKeys) => string;
   align?: 'left' | 'center' | 'right';
   bold?: boolean;
   highlight?: boolean;

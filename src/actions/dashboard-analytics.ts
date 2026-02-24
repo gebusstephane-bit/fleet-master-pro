@@ -102,12 +102,7 @@ export const getDashboardAnalytics = cache(async (
   const activeMonths = monthlyCosts.filter(m => m.interventions > 0).length;
   const avgMonthlyCost = activeMonths > 0 ? Math.round(totalCost / activeMonths) : 0;
 
-  console.log("[Analytics]", {
-    rawRecords: rawData?.length ?? 0,
-    totalInterventions,
-    totalCost,
-    topVehiclesCount: topVehicles.length,
-  });
+  // Analytics computed
 
   return {
     monthlyCosts,

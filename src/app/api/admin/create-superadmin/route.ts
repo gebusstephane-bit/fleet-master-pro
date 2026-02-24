@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log('✅ SuperAdmin créé avec succès:', superadminEmail);
+    // SuperAdmin créé avec succès
 
     return NextResponse.json({
       success: true,

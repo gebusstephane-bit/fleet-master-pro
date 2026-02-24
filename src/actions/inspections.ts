@@ -46,7 +46,7 @@ export async function createInspection(data: InspectionData) {
     return { error: 'Non authentifié', data: null };
   }
 
-  console.log('createInspection: User ID:', user.id);
+  // Création inspection
 
   try {
     // Vérifier que le véhicule existe
@@ -57,11 +57,11 @@ export async function createInspection(data: InspectionData) {
       .single();
     
     if (vehicleError || !vehicle) {
-      console.error('createInspection: Vehicle not found', vehicleError);
+      console.error('createInspection: Vehicle not found', vehicleError?.message);
       return { error: 'Véhicule non trouvé', data: null };
     }
 
-    console.log('createInspection: Vehicle company_id:', vehicle.company_id);
+    // Véhicule trouvé
 
     // Vérifier le profil de l'utilisateur (optionnel - pour info seulement)
     const { data: profile } = await supabase
@@ -70,15 +70,12 @@ export async function createInspection(data: InspectionData) {
       .eq('id', user.id)
       .single();
 
-    console.log('createInspection: Profile company_id:', profile?.company_id);
+    // Profil récupéré
 
     // Autoriser si le profil n'existe pas (fallback) OU si les company_id correspondent
     // OU si le véhicule appartient à la même company que l'utilisateur connecté
     if (profile && profile.company_id && profile.company_id !== vehicle.company_id) {
-      console.error('createInspection: Company mismatch', {
-        userCompany: profile.company_id,
-        vehicleCompany: vehicle.company_id
-      });
+      console.error('createInspection: Company mismatch');
       return { error: 'Non autorisé - Ce véhicule n\'appartient pas à votre entreprise', data: null };
     }
 

@@ -1,9 +1,12 @@
 /**
  * Page de diagnostic avec admin client
  * Bypass RLS pour vérifier les données réelles
+ * PROTÉGÉ: Uniquement accessible en développement
  */
 
 'use client';
+
+import { notFound } from 'next/navigation';
 
 import { useEffect, useState } from 'react';
 
@@ -14,6 +17,11 @@ async function testConnection() {
 }
 
 export default function DiagnosticPage() {
+  // Protection: page uniquement accessible en développement
+  if (process.env.NODE_ENV === 'production') {
+    notFound();
+  }
+  
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -15,30 +15,15 @@ import {
   createDriver,
   updateDriver,
   deleteDriver,
+  type CreateDriverInput,
+  type UpdateDriverInput,
 } from '@/actions/drivers';
 import { cacheTimes } from '@/lib/query-config';
+import { Driver } from '@/types';
+import { ApiResponse } from '@/types';
 
-// Types
-export interface Driver {
-  id: string;
-  company_id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  license_number: string;
-  license_expiry: string;
-  license_type: string;
-  status: 'active' | 'inactive' | 'on_leave' | 'terminated';
-  address?: string;
-  city?: string;
-  hire_date?: string;
-  cqc_card_number?: string;
-  cqc_expiry_date?: string;
-  cqc_category?: 'PASSENGER' | 'GOODS' | 'BOTH';
-  created_at: string;
-  updated_at: string;
-}
+// Re-export du type Driver depuis types/index
+export type { Driver };
 
 // Clés de cache
 export const driverKeys = {
@@ -72,7 +57,7 @@ export function useDrivers(options?: { enabled?: boolean }) {
       
       if (!error) {
         console.log('[useDrivers] Direct query SUCCESS:', data?.length, 'records');
-        return (data || []) as Driver[];
+        return (data || []) as unknown as Driver[];
       }
       
       // Tentative 2 : Fallback avec safeQuery si RLS error
@@ -133,7 +118,7 @@ export function useDriver(id: string, options?: { enabled?: boolean }) {
         throw new Error(error.message);
       }
       
-      return data as Driver;
+      return data as unknown as Driver;
     },
     enabled: options?.enabled !== false && !!id && !!companyId,
     ...cacheTimes.drivers,
@@ -147,12 +132,13 @@ export function useCreateDriver() {
   const companyId = user?.company_id;
   
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: CreateDriverInput) => {
       const result = await createDriver(data);
-      if (!(result as any)?.success) {
-        throw new Error((result as any)?.error || 'Erreur création');
+      const typedResult = result as ApiResponse<Driver>;
+      if (!typedResult?.success) {
+        throw new Error(typedResult?.error || 'Erreur création');
       }
-      return (result as any).data;
+      return typedResult.data;
     },
     onSuccess: () => {
       if (companyId) {
@@ -173,18 +159,19 @@ export function useUpdateDriver() {
   const companyId = user?.company_id;
   
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: UpdateDriverInput) => {
       const result = await updateDriver(data);
-      if (!(result as any)?.success) {
-        throw new Error((result as any)?.error || 'Erreur mise à jour');
+      const typedResult = result as ApiResponse<Driver>;
+      if (!typedResult?.success) {
+        throw new Error(typedResult?.error || 'Erreur mise à jour');
       }
-      return (result as any).data;
+      return typedResult.data;
     },
     onSuccess: (_, variables) => {
       if (companyId) {
         queryClient.invalidateQueries({ queryKey: driverKeys.lists(companyId) });
       }
-      queryClient.invalidateQueries({ queryKey: driverKeys.detail((variables as any).id) });
+      queryClient.invalidateQueries({ queryKey: driverKeys.detail(variables.id) });
       toast.success('Chauffeur mis à jour');
     },
     onError: (error: Error) => {
@@ -202,10 +189,11 @@ export function useDeleteDriver() {
   return useMutation({
     mutationFn: async (id: string) => {
       const result = await deleteDriver({ id });
-      if (!(result as any)?.success) {
-        throw new Error((result as any)?.error || 'Erreur suppression');
+      const typedResult = result as ApiResponse<Driver>;
+      if (!typedResult?.success) {
+        throw new Error(typedResult?.error || 'Erreur suppression');
       }
-      return (result as any).data;
+      return typedResult.data;
     },
     onSuccess: () => {
       if (companyId) {

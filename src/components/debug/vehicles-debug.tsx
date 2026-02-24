@@ -45,7 +45,7 @@ export function VehiclesDebug() {
           }
         }
         
-        setResults(prev => ({ ...prev, vehicles: { data: vData, error: vError } }));
+        setResults((prev: any) => ({ ...prev, vehicles: { data: vData, error: vError } }));
       } catch (e: any) {
         addLog(`❌ Exception: ${e.message}`);
       }
@@ -68,7 +68,7 @@ export function VehiclesDebug() {
           }
         }
         
-        setResults(prev => ({ ...prev, drivers: { data: dData, error: dError } }));
+        setResults((prev: any) => ({ ...prev, drivers: { data: dData, error: dError } }));
       } catch (e: any) {
         addLog(`❌ Exception: ${e.message}`);
       }
@@ -92,7 +92,7 @@ export function VehiclesDebug() {
           addLog(`   Dont ${matching} avec votre company_id`);
         }
         
-        setResults(prev => ({ ...prev, allVehicles: { data: allVData, error: allVError } }));
+        setResults((prev: any) => ({ ...prev, allVehicles: { data: allVData, error: allVError } }));
       } catch (e: any) {
         addLog(`❌ Exception: ${e.message}`);
       }
