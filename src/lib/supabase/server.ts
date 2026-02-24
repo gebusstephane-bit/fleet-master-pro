@@ -59,38 +59,47 @@ export async function getUserWithCompany() {
     const { data: { user }, error } = await supabase.auth.getUser();
     
     if (error || !user) {
+      console.error('getUserWithCompany: Auth error', error);
       return null;
     }
     
     // Récupérer le profil via RLS (policy doit permettre SELECT sur son propre profil)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, companies(*)')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
     
     if (profileError) {
       console.error('getUserWithCompany: Profile fetch error', profileError);
     }
     
-    if (profile) {
+    if (profile && profile.company_id) {
       return {
         ...profile,
+        companies: profile.companies || null,
+      };
+    }
+    
+    // Fallback: si pas de profil en DB mais company_id dans metadata
+    if (user.user_metadata?.company_id) {
+      return {
+        id: user.id,
+        email: user.email || '',
+        first_name: user.user_metadata?.first_name || '',
+        last_name: user.user_metadata?.last_name || '',
+        role: user.user_metadata?.role || 'ADMIN',
+        is_active: true,
+        company_id: user.user_metadata.company_id,
         companies: null,
       };
     }
     
-    // Fallback: retourner les données de auth
-    return {
-      id: user.id,
-      email: user.email || '',
-      first_name: user.user_metadata?.first_name || '',
-      last_name: user.user_metadata?.last_name || '',
-      role: 'ADMIN',
-      is_active: true,
-      company_id: user.user_metadata?.company_id || null,
-      companies: null,
-    };
+    console.error('getUserWithCompany: Pas de company_id dans le profil ni dans metadata', { 
+      userId: user.id,
+      metadata: user.user_metadata 
+    });
+    return null;
   } catch (e) {
     console.error('getUserWithCompany error:', e);
     return null;

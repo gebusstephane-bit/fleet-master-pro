@@ -1,5 +1,12 @@
 'use server';
 
+/**
+ * Actions Dashboard - VERSION SÉCURISÉE RLS
+ * 
+ * PRINCIPE : Utilise uniquement createClient() avec RLS activé
+ * Le company_id est récupéré depuis le profil en DB, pas depuis user_metadata
+ */
+
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
@@ -33,25 +40,36 @@ interface ActionResult<T = unknown> {
 
 export async function getDashboardStats(): Promise<ActionResult<DashboardStats>> {
   try {
+    const supabase = await createClient();
+    
     // Récupérer l'utilisateur authentifié
-    const authClient = await createClient();
-    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !authUser) {
       logger.error('getDashboardStats: Utilisateur non authentifié', authError ? new Error(authError.message) : undefined);
       return { success: false, error: 'Non authentifié' };
     }
     
-    const companyId = authUser.user_metadata?.company_id;
+    // Récupérer le profil pour avoir le company_id (RLS permet de lire son propre profil)
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', authUser.id)
+      .maybeSingle();
     
-    if (!companyId) {
-      logger.error('getDashboardStats: Pas de company_id dans user_metadata');
+    if (profileError || !profile?.company_id) {
+      logger.error('getDashboardStats: Profil ou company_id non trouvé', { 
+        userId: authUser.id, 
+        profileError,
+        profile 
+      });
       return { success: false, error: 'Entreprise non trouvée' };
     }
+    
+    const companyId = profile.company_id;
     logger.info('getDashboardStats: Chargement pour company', { companyId });
     
     // Récupérer les véhicules (RLS gère le filtre company_id)
-    const supabase = await createClient();
     const { data: vehicles, error: vErr } = await supabase
       .from('vehicles')
       .select('id, registration_number, status, mileage, fuel_type, brand, model')
