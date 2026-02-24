@@ -190,18 +190,45 @@ export function useCreateVehicle() {
   });
 }
 
+// Champs DATE réellement présents dans la table vehicles
+// purchase_date est volontairement absent : la colonne n'existe pas en DB
+const VEHICLE_DATE_FIELDS = [
+  'technical_control_date',
+  'technical_control_expiry',
+  'tachy_control_date',
+  'tachy_control_expiry',
+  'atp_date',
+  'atp_expiry',
+] as const;
+
+function sanitizeVehicleDates(data: Record<string, unknown>): Record<string, unknown> {
+  const cleaned = { ...data };
+  // Supprimer purchase_date : colonne absente de la table vehicles en DB
+  delete cleaned['purchase_date'];
+  // Convertir "" → null uniquement pour les champs déjà présents dans le payload
+  for (const field of VEHICLE_DATE_FIELDS) {
+    if (field in cleaned && cleaned[field] === '') {
+      cleaned[field] = null;
+    }
+  }
+  return cleaned;
+}
+
 // Hook mise à jour
 export function useUpdateVehicle() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string } & Partial<Vehicle>) => {
       const supabase = getSupabaseClient();
-      
-      const updateData: Record<string, unknown> = { ...data };
+
+      let updateData: Record<string, unknown> = { ...data };
       delete updateData.id;
       delete updateData.drivers;
-      
+
+      // Convertir les champs date vides ("") en null pour éviter l'erreur PostgreSQL 22007
+      updateData = sanitizeVehicleDates(updateData);
+
       const { data: updated, error } = await supabase
         .from('vehicles')
         .update(updateData)

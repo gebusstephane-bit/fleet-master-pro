@@ -51,13 +51,13 @@ const formSchema = z.object({
   vin: z.string().optional(),
   status: z.enum(["active", "inactive", "maintenance", "retired"]).default("active"),
   
-  // Échéances réglementaires
-  technical_control_date: z.string().optional(),
-  technical_control_expiry: z.string().optional(),
-  tachy_control_date: z.string().optional(),
-  tachy_control_expiry: z.string().optional(),
-  atp_date: z.string().optional(),
-  atp_expiry: z.string().optional(),
+  // Échéances réglementaires — "" → null pour éviter l'erreur PostgreSQL 22007
+  technical_control_date: z.string().optional().transform((v) => v === '' ? null : v ?? null),
+  technical_control_expiry: z.string().optional().transform((v) => v === '' ? null : v ?? null),
+  tachy_control_date: z.string().optional().transform((v) => v === '' ? null : v ?? null),
+  tachy_control_expiry: z.string().optional().transform((v) => v === '' ? null : v ?? null),
+  atp_date: z.string().optional().transform((v) => v === '' ? null : v ?? null),
+  atp_expiry: z.string().optional().transform((v) => v === '' ? null : v ?? null),
 });
 
 type FormData = z.infer<typeof formSchema>;

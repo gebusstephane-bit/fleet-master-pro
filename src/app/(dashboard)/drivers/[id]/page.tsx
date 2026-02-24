@@ -143,14 +143,14 @@ export default function DriverDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Permis */}
-            <div className="p-4 rounded-lg bg-slate-50">
+            <div className="rounded-xl p-4 bg-slate-800 border border-slate-700">
               <div className="flex items-center gap-3 mb-3">
-                <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <CreditCard className="h-5 w-5 text-blue-600" />
+                <div className="h-10 w-10 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+                  <CreditCard className="h-5 w-5 text-blue-400" />
                 </div>
                 <div>
-                  <p className="font-medium">Permis de conduire</p>
-                  <p className="text-sm text-gray-400">{(driver as any).license_number}</p>
+                  <p className="font-medium text-slate-200">Permis de conduire</p>
+                  <p className="text-sm text-slate-400">{(driver as any).license_number}</p>
                 </div>
               </div>
               <LicenseExpiryAlert expiryDate={(driver as any).license_expiry} />
@@ -158,18 +158,18 @@ export default function DriverDetailPage() {
 
             {/* CQC */}
             {(driver as any).cqc_card_number ? (
-              <CQCCard 
+              <CQCCard
                 number={(driver as any).cqc_card_number}
                 expiryDate={(driver as any).cqc_expiry_date}
                 category={(driver as any).cqc_category}
               />
             ) : (
-              <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
+              <div className="rounded-xl p-4 bg-amber-950/40 border border-amber-700/50">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+                  <AlertTriangle className="h-5 w-5 text-amber-400 mt-0.5" />
                   <div>
-                    <p className="font-medium text-amber-900">Carte CQC non renseignée</p>
-                    <p className="text-sm text-amber-700 mt-1">
+                    <p className="font-medium text-amber-300">Carte CQC non renseignée</p>
+                    <p className="text-sm text-amber-400/70 mt-1">
                       La qualification conducteur est obligatoire pour le transport de marchandises ou voyageurs.
                     </p>
                   </div>
@@ -185,25 +185,25 @@ export default function DriverDetailPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Car className="h-5 w-5 text-blue-500" />
+              <Car className="h-5 w-5 text-blue-400" />
               Véhicule assigné
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Link 
+            <Link
               href={`/vehicles/${(driver as any).vehicles.id}`}
-              className="flex items-center gap-4 p-4 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
+              className="flex items-center gap-4 p-4 rounded-xl bg-slate-800 border border-slate-700 hover:border-cyan-500/40 hover:bg-slate-700/80 transition-all"
             >
               <div className="h-12 w-12 rounded-xl bg-blue-500 flex items-center justify-center text-white">
                 <Car className="h-6 w-6" />
               </div>
               <div className="flex-1">
-                <p className="font-medium text-lg">{(driver as any).vehicles.registration_number}</p>
-                <p className="text-sm text-gray-400">
+                <p className="font-medium text-lg text-slate-200">{(driver as any).vehicles.registration_number}</p>
+                <p className="text-sm text-slate-400">
                   {(driver as any).vehicles.brand} {(driver as any).vehicles.model} • {(driver as any).vehicles.year}
                 </p>
               </div>
-              <Button variant="outline" size="sm">Voir la fiche</Button>
+              <Button variant="outline" size="sm" className="border-cyan-500/30 text-slate-300 hover:bg-cyan-500/10">Voir la fiche</Button>
             </Link>
           </CardContent>
         </Card>
@@ -295,40 +295,40 @@ function CQCCard({ number, expiryDate, category }: {
   
   return (
     <div className={cn(
-      "p-4 rounded-lg border",
-      isExpired ? "bg-red-50 border-red-200" :
-      isExpiringSoon ? "bg-amber-50 border-amber-200" :
-      "bg-green-50 border-green-200"
+      "rounded-xl p-4 border",
+      isExpired ? "bg-red-950/40 border-red-700/50" :
+      isExpiringSoon ? "bg-amber-950/40 border-amber-700/50" :
+      "bg-emerald-950/40 border-emerald-700/50"
     )}>
       <div className="flex items-start gap-3">
         <div className={cn(
           "h-10 w-10 rounded-lg flex items-center justify-center",
-          isExpired ? "bg-red-100" :
-          isExpiringSoon ? "bg-amber-100" :
-          "bg-green-100"
+          isExpired ? "bg-red-500/20" :
+          isExpiringSoon ? "bg-amber-500/20" :
+          "bg-emerald-500/20"
         )}>
           <Award className={cn("h-5 w-5",
-            isExpired ? "text-red-600" :
-            isExpiringSoon ? "text-amber-600" :
-            "text-green-600"
+            isExpired ? "text-red-400" :
+            isExpiringSoon ? "text-amber-400" :
+            "text-green-400"
           )} />
         </div>
         <div className="flex-1">
-          <p className="font-medium">Carte Qualification Conducteur (CQC)</p>
-          <p className="text-sm text-gray-300 mt-1">
+          <p className="font-medium text-slate-200">Carte Qualification Conducteur (CQC)</p>
+          <p className="text-sm text-slate-400 mt-1">
             Numéro : <span className="font-mono">****{number.slice(-4)}</span>
           </p>
-          <p className="text-sm text-gray-300">
-            Catégorie : <Badge variant="outline" className="font-normal">
+          <p className="text-sm text-slate-400">
+            Catégorie : <Badge variant="outline" className="font-normal border-slate-600 text-slate-300">
               {cqcCategoryLabels[category] || category}
             </Badge>
           </p>
           <p className={cn("text-sm mt-2 font-medium",
-            isExpired ? "text-red-600" :
-            isExpiringSoon ? "text-amber-600" :
-            "text-green-600"
+            isExpired ? "text-red-400" :
+            isExpiringSoon ? "text-amber-400" :
+            "text-green-400"
           )}>
-            {isExpired && `⚠️ Expirée depuis ${Math.abs(daysUntil)} jours`}
+            {isExpired && `⚠️ Expirée depuis ${Math.abs(daysUntil!)} jours`}
             {isExpiringSoon && `⏰ Expire dans ${daysUntil} jours`}
             {!isExpired && !isExpiringSoon && daysUntil !== null && `✅ Valide (${daysUntil} jours)`}
           </p>
@@ -338,29 +338,29 @@ function CQCCard({ number, expiryDate, category }: {
   );
 }
 
-function ScoreCard({ label, value, max, color }: { 
-  label: string; 
-  value: number; 
+function ScoreCard({ label, value, max, color }: {
+  label: string;
+  value: number;
   max: number;
   color: 'emerald' | 'blue' | 'amber';
 }) {
   const percentage = (value / max) * 100;
-  const colorClasses = {
-    emerald: 'bg-emerald-500',
-    blue: 'bg-blue-500',
-    amber: 'bg-amber-500',
+  const barClasses = {
+    emerald: 'scorecard-bar-fill scorecard-bar-emerald',
+    blue: 'scorecard-bar-fill scorecard-bar-cyan',
+    amber: 'scorecard-bar-fill scorecard-bar-amber',
   };
-  
+
   return (
-    <div className="p-4 rounded-lg bg-slate-50">
-      <p className="text-sm text-gray-400 mb-2">{label}</p>
+    <div className="rounded-xl p-4 bg-slate-800 border border-slate-700">
+      <p className="text-sm text-slate-400 mb-2">{label}</p>
       <div className="flex items-end gap-2">
         <span className="text-3xl font-bold text-white">{value}</span>
-        <span className="text-sm text-gray-400 mb-1">/{max}</span>
+        <span className="text-sm text-slate-500 mb-1">/{max}</span>
       </div>
-      <div className="mt-3 h-2 bg-slate-200 rounded-full overflow-hidden">
-        <div 
-          className={cn("h-full rounded-full transition-all duration-500", colorClasses[color])}
+      <div className="mt-3 h-2 rounded-full overflow-hidden bg-slate-700">
+        <div
+          className={barClasses[color]}
           style={{ width: `${percentage}%` }}
         />
       </div>

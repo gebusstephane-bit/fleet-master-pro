@@ -164,10 +164,29 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
       return { success: false, error: 'Véhicule non trouvé ou accès non autorisé' };
     }
     
-    const updateData = {
+    // purchase_date : colonne absente de la table vehicles en DB — ne pas envoyer
+    // Convertir "" → null uniquement pour les champs DATE présents dans le payload
+    const VEHICLE_DATE_FIELDS = [
+      'technical_control_date',
+      'technical_control_expiry',
+      'tachy_control_date',
+      'tachy_control_expiry',
+      'atp_date',
+      'atp_expiry',
+    ] as const;
+
+    const updateData: Record<string, unknown> = {
       ...data,
-      updated_at: new Date().toISOString()
-    } as Record<string, unknown>;
+      updated_at: new Date().toISOString(),
+    };
+
+    delete updateData['purchase_date'];
+
+    for (const field of VEHICLE_DATE_FIELDS) {
+      if (field in updateData && updateData[field] === '') {
+        updateData[field] = null;
+      }
+    }
     
     const { data: updated, error } = await adminClient
       .from('vehicles')

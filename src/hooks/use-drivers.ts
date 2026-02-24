@@ -20,7 +20,6 @@ import {
 } from '@/actions/drivers';
 import { cacheTimes } from '@/lib/query-config';
 import { Driver } from '@/types';
-import { ApiResponse } from '@/types';
 
 // Re-export du type Driver depuis types/index
 export type { Driver };
@@ -125,20 +124,25 @@ export function useDriver(id: string, options?: { enabled?: boolean }) {
   });
 }
 
+// Utilitaire : next-safe-action enveloppe les résultats dans { data, serverError }
+// Les actions retournent { success, data?, error? } dans result.data
+function unwrapActionResult<T>(result: unknown): T {
+  const r = result as { data?: { success?: boolean; data?: T; error?: string }; serverError?: string } | undefined;
+  if (r?.serverError) throw new Error(r.serverError);
+  if (!r?.data?.success) throw new Error(r?.data?.error || 'Erreur action');
+  return r.data.data as T;
+}
+
 // Hook création chauffeur
 export function useCreateDriver() {
   const queryClient = useQueryClient();
   const { user } = useUserContext();
   const companyId = user?.company_id;
-  
+
   return useMutation({
     mutationFn: async (data: CreateDriverInput) => {
       const result = await createDriver(data);
-      const typedResult = result as ApiResponse<Driver>;
-      if (!typedResult?.success) {
-        throw new Error(typedResult?.error || 'Erreur création');
-      }
-      return typedResult.data;
+      return unwrapActionResult<Driver>(result);
     },
     onSuccess: () => {
       if (companyId) {
@@ -157,15 +161,11 @@ export function useUpdateDriver() {
   const queryClient = useQueryClient();
   const { user } = useUserContext();
   const companyId = user?.company_id;
-  
+
   return useMutation({
     mutationFn: async (data: UpdateDriverInput) => {
       const result = await updateDriver(data);
-      const typedResult = result as ApiResponse<Driver>;
-      if (!typedResult?.success) {
-        throw new Error(typedResult?.error || 'Erreur mise à jour');
-      }
-      return typedResult.data;
+      return unwrapActionResult<Driver>(result);
     },
     onSuccess: (_, variables) => {
       if (companyId) {
@@ -185,15 +185,11 @@ export function useDeleteDriver() {
   const queryClient = useQueryClient();
   const { user } = useUserContext();
   const companyId = user?.company_id;
-  
+
   return useMutation({
     mutationFn: async (id: string) => {
       const result = await deleteDriver({ id });
-      const typedResult = result as ApiResponse<Driver>;
-      if (!typedResult?.success) {
-        throw new Error(typedResult?.error || 'Erreur suppression');
-      }
-      return typedResult.data;
+      return unwrapActionResult<void>(result);
     },
     onSuccess: () => {
       if (companyId) {

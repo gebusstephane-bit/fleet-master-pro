@@ -5,8 +5,8 @@ import { authActionClient, idSchema } from '@/lib/safe-action';
 import { createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
-// Schéma pour création chauffeur
-export const createDriverSchema = z.object({
+// Schéma local (non exporté) — 'use server' n'autorise que les fonctions async en export
+const createDriverSchema = z.object({
   first_name: z.string().min(1, "Prénom requis"),
   last_name: z.string().min(1, "Nom requis"),
   email: z.string().email("Email invalide"),
@@ -16,10 +16,11 @@ export const createDriverSchema = z.object({
   license_type: z.string().default('B'),
   address: z.string().optional(),
   city: z.string().optional(),
-  hire_date: z.string().optional(),
+  // Les champs date optionnels : "" → null pour éviter l'erreur PostgreSQL 22007
+  hire_date: z.string().optional().transform((val) => val === '' ? null : val ?? null),
   status: z.enum(["active", "inactive", "on_leave", "terminated"]).default("active"),
   cqc_card_number: z.string().optional(),
-  cqc_expiry_date: z.string().optional(),
+  cqc_expiry_date: z.string().optional().transform((val) => val === '' ? null : val ?? null),
   cqc_category: z.enum(["PASSENGER", "GOODS", "BOTH"]).optional(),
 });
 

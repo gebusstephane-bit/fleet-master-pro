@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useUserContext } from '@/components/providers/user-provider';
 import { ArrowLeft, User, Camera, Mail, Phone, Save, Building2, Shield } from 'lucide-react';
+import { toast } from 'sonner';
+import { updateUser } from '@/actions/users';
 
 export default function ProfilePage() {
   const { user } = useUserContext();
@@ -24,9 +26,28 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.id) return;
     setIsLoading(true);
-    // TODO: Save profile
-    setTimeout(() => setIsLoading(false), 1000);
+    try {
+      const result = await updateUser(
+        {
+          user_id: user.id,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+        },
+        user.id
+      );
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success('Profil mis à jour avec succès');
+      }
+    } catch (err) {
+      toast.error('Erreur lors de la mise à jour du profil');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
