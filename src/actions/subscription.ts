@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { authActionClient } from '@/lib/safe-action';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 // Mapping des plans vers les variables d'environnement Stripe
@@ -30,12 +30,12 @@ const upgradeSchema = z.object({
 // Récupérer l'abonnement de l'entreprise
 export const getCompanySubscription = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
+    // RLS filtre automatiquement par company_id
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
-      .eq('company_id', ctx.user.company_id)
       .single();
     
     if (error) {
@@ -48,13 +48,12 @@ export const getCompanySubscription = authActionClient
 // Vérifier les limites actuelles
 export const checkSubscriptionLimits = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Récupérer l'abonnement avec les compteurs
+    // Récupérer l'abonnement avec les compteurs (RLS filtre automatiquement)
     const { data: sub } = await supabase
       .from('company_subscription' as any)
       .select('*')
-      .eq('company_id', ctx.user.company_id)
       .single();
     
     if (!sub) {
@@ -81,24 +80,22 @@ export const createCheckoutSession = authActionClient
   .schema(upgradeSchema)
   .action(async ({ parsedInput, ctx }) => {
     const { plan, yearly } = parsedInput;
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Récupérer l'entreprise
+    // Récupérer l'entreprise (RLS filtre automatiquement)
     const { data: company } = await supabase
       .from('companies')
       .select('id, name, email')
-      .eq('id', ctx.user.company_id)
       .single();
     
     if (!company) {
       throw new Error('Entreprise non trouvée');
     }
     
-    // Récupérer ou créer le customer Stripe
+    // Récupérer ou créer le customer Stripe (RLS filtre automatiquement)
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('stripe_customer_id')
-      .eq('company_id', company.id)
       .single();
     
     let customerId = subscription?.stripe_customer_id;
@@ -117,11 +114,10 @@ export const createCheckoutSession = authActionClient
       
       customerId = customer.id;
       
-      // Sauvegarder le customer_id
+      // Sauvegarder le customer_id (RLS filtre automatiquement)
       await supabase
         .from('subscriptions')
-        .update({ stripe_customer_id: customerId })
-        .eq('company_id', company.id);
+        .update({ stripe_customer_id: customerId });
     }
     
     // Créer la session de checkout
@@ -165,13 +161,12 @@ export const requestEnterpriseQuote = authActionClient
   }))
   .action(async ({ parsedInput, ctx }) => {
     const { message, phone } = parsedInput;
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Récupérer les infos de l'entreprise
+    // Récupérer les infos de l'entreprise (RLS filtre automatiquement)
     const { data: company } = await supabase
       .from('companies')
       .select('id, name, email, siret')
-      .eq('id', ctx.user.company_id)
       .single();
     
     if (!company) {
@@ -213,12 +208,12 @@ export const requestEnterpriseQuote = authActionClient
 // Annuler l'abonnement
 export const cancelSubscription = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
+    // RLS filtre automatiquement par company_id
     const { data: sub } = await supabase
       .from('subscriptions')
       .select('stripe_subscription_id, plan')
-      .eq('company_id', ctx.user.company_id)
       .single();
     
     if (!sub?.stripe_subscription_id) {
@@ -230,14 +225,13 @@ export const cancelSubscription = authActionClient
     
     await stripe.subscriptions.cancel(sub.stripe_subscription_id);
     
-    // Mettre à jour en base (le webhook confirmera, mais on prépare)
+    // Mettre à jour en base (le webhook confirmera, mais on prépare) - RLS filtre automatiquement
     await supabase
       .from('subscriptions')
       .update({
         status: 'CANCELED',
         canceled_at: new Date().toISOString(),
-      })
-      .eq('company_id', ctx.user.company_id);
+      });
     
     revalidatePath('/settings/billing');
     

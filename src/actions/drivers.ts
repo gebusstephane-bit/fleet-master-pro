@@ -1,8 +1,15 @@
 'use server';
 
+/**
+ * Actions Chauffeurs - VERSION SÉCURISÉE RLS
+ * 
+ * PRINCIPE : Utilise uniquement createClient() avec RLS activé
+ * Les policies PostgreSQL assurent l'isolation par company_id
+ */
+
 import { z } from 'zod';
 import { authActionClient, idSchema } from '@/lib/safe-action';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 // Schéma local (non exporté) — 'use server' n'autorise que les fonctions async en export
@@ -28,17 +35,19 @@ const createDriverSchema = z.object({
 export type CreateDriverInput = z.infer<typeof createDriverSchema>;
 export type UpdateDriverInput = Partial<CreateDriverInput> & { id: string };
 
-// Créer un chauffeur
+/**
+ * Créer un chauffeur
+ * RLS : Vérifie que l'email n'existe pas déjà dans la company
+ */
 export const createDriver = authActionClient
   .schema(createDriverSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Vérifier si l'email existe déjà
+    // Vérifier si l'email existe déjà (dans la company du user via RLS)
     const { data: existing } = await supabase
       .from('drivers')
       .select('id')
-      .eq('company_id', ctx.user.company_id)
       .eq('email', parsedInput.email)
       .single();
     
@@ -63,18 +72,31 @@ export const createDriver = authActionClient
     return { success: true, data };
   });
 
-// Mettre à jour un chauffeur
+/**
+ * Mettre à jour un chauffeur
+ * RLS : Filtre automatiquement par company_id
+ */
 export const updateDriver = authActionClient
   .schema(createDriverSchema.partial().extend({ id: z.string().uuid() }))
   .action(async ({ parsedInput, ctx }) => {
     const { id, ...updates } = parsedInput;
-    const supabase = createAdminClient();
+    const supabase = await createClient();
+    
+    // Vérifier que le chauffeur existe et appartient à la company (RLS)
+    const { data: existing } = await supabase
+      .from('drivers')
+      .select('id')
+      .eq('id', id)
+      .single();
+    
+    if (!existing) {
+      throw new Error('Chauffeur non trouvé ou accès non autorisé');
+    }
     
     const { data, error } = await supabase
       .from('drivers')
       .update(updates)
       .eq('id', id)
-      .eq('company_id', ctx.user.company_id)
       .select()
       .single();
     
@@ -87,17 +109,30 @@ export const updateDriver = authActionClient
     return { success: true, data };
   });
 
-// Supprimer un chauffeur
+/**
+ * Supprimer un chauffeur
+ * RLS : Vérifie l'appartenance à la company
+ */
 export const deleteDriver = authActionClient
   .schema(idSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
+    
+    // Vérifier que le chauffeur existe (RLS filtre par company)
+    const { data: existing } = await supabase
+      .from('drivers')
+      .select('id')
+      .eq('id', parsedInput.id)
+      .single();
+    
+    if (!existing) {
+      throw new Error('Chauffeur non trouvé');
+    }
     
     const { error } = await supabase
       .from('drivers')
       .delete()
-      .eq('id', parsedInput.id)
-      .eq('company_id', ctx.user.company_id);
+      .eq('id', parsedInput.id);
     
     if (error) {
       throw new Error(`Erreur suppression: ${error.message}`);
@@ -107,26 +142,27 @@ export const deleteDriver = authActionClient
     return { success: true };
   });
 
-// Récupérer tous les chauffeurs (sans jointure ambiguë)
+/**
+ * Récupérer tous les chauffeurs
+ * RLS : Filtre automatiquement par company_id
+ */
 export const getDrivers = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('drivers')
       .select('*')
-      .eq('company_id', ctx.user.company_id)
       .order('created_at', { ascending: false });
     
     if (error) {
       throw new Error(`Erreur récupération: ${error.message}`);
     }
     
-    // Récupérer les véhicules séparément
+    // Récupérer les véhicules séparément (RLS filtre aussi)
     const { data: vehicles } = await supabase
       .from('vehicles')
-      .select('id, registration_number, brand, model, driver_id')
-      .eq('company_id', ctx.user.company_id);
+      .select('id, registration_number, brand, model, driver_id');
     
     // Fusionner les données
     const driversWithVehicles = (data || []).map(driver => {
@@ -137,17 +173,19 @@ export const getDrivers = authActionClient
     return { success: true, data: driversWithVehicles };
   });
 
-// Récupérer un chauffeur par ID
+/**
+ * Récupérer un chauffeur par ID
+ * RLS : Filtre par company_id automatiquement
+ */
 export const getDriverById = authActionClient
   .schema(idSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data: driver, error } = await supabase
       .from('drivers')
       .select('*')
       .eq('id', parsedInput.id)
-      .eq('company_id', ctx.user.company_id)
       .single();
     
     if (error) {

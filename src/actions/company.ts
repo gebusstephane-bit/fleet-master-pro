@@ -1,6 +1,6 @@
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/lib/logger';
 
@@ -21,10 +21,10 @@ export async function getCompany(userId: string) {
   try {
     logger.info('[getCompany] userId', { userId });
     
-    const adminSupabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Get user's company_id from profiles
-    const { data: profile, error: profileError } = await adminSupabase
+    // Get user's company_id from profiles (RLS gère la sécurité)
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('company_id')
       .eq('id', userId)
@@ -36,8 +36,8 @@ export async function getCompany(userId: string) {
       return { error: 'Entreprise non trouvée' };
     }
     
-    // Get company data
-    const { data: company, error: companyError } = await adminSupabase
+    // Get company data (RLS gère la sécurité)
+    const { data: company, error: companyError } = await supabase
       .from('companies')
       .select('*')
       .eq('id', profile.company_id)
@@ -58,10 +58,10 @@ export async function getCompany(userId: string) {
 
 export async function updateCompany(userId: string, data: Partial<CompanyData>) {
   try {
-    const adminSupabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Check permissions - only ADMIN or DIRECTEUR can update
-    const { data: profile, error: profileError } = await adminSupabase
+    // Check permissions - only ADMIN or DIRECTEUR can update (RLS gère la sécurité)
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role, company_id')
       .eq('id', userId)
@@ -75,8 +75,19 @@ export async function updateCompany(userId: string, data: Partial<CompanyData>) 
       return { error: 'Permissions insuffisantes' };
     }
     
+    // Vérifier que l'entreprise existe (RLS gère la sécurité)
+    const { data: existing } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('id', profile.company_id)
+      .single();
+    
+    if (!existing) {
+      return { error: 'Entreprise non trouvée' };
+    }
+    
     // Update company
-    const { data: company, error: companyError } = await adminSupabase
+    const { data: company, error: companyError } = await supabase
       .from('companies')
       .update({
         name: data.name,
@@ -109,10 +120,10 @@ export async function updateCompany(userId: string, data: Partial<CompanyData>) 
 
 export async function uploadCompanyLogo(userId: string, formData: FormData) {
   try {
-    const adminSupabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Check permissions
-    const { data: profile, error: profileError } = await adminSupabase
+    // Check permissions (RLS gère la sécurité)
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role, company_id')
       .eq('id', userId)
@@ -148,8 +159,8 @@ export async function uploadCompanyLogo(userId: string, formData: FormData) {
     const fileName = `${profile.company_id}-${Date.now()}.${fileExt}`;
     const filePath = `company-logos/${fileName}`;
     
-    // Upload to Supabase Storage
-    const { error: uploadError } = await adminSupabase.storage
+    // Upload to Supabase Storage (utilise le client standard avec RLS)
+    const { error: uploadError } = await supabase.storage
       .from('logos')
       .upload(filePath, file, {
         cacheControl: '3600',
@@ -162,12 +173,12 @@ export async function uploadCompanyLogo(userId: string, formData: FormData) {
     }
     
     // Get public URL
-    const { data: { publicUrl } } = adminSupabase.storage
+    const { data: { publicUrl } } = supabase.storage
       .from('logos')
       .getPublicUrl(filePath);
     
-    // Update company with new logo URL
-    const { error: updateError } = await adminSupabase
+    // Update company with new logo URL (RLS gère la sécurité)
+    const { error: updateError } = await supabase
       .from('companies')
       .update({ 
         logo_url: publicUrl,
@@ -190,10 +201,10 @@ export async function uploadCompanyLogo(userId: string, formData: FormData) {
 
 export async function deleteCompanyLogo(userId: string) {
   try {
-    const adminSupabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Check permissions
-    const { data: profile, error: profileError } = await adminSupabase
+    // Check permissions (RLS gère la sécurité)
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role, company_id')
       .eq('id', userId)
@@ -207,8 +218,19 @@ export async function deleteCompanyLogo(userId: string) {
       return { error: 'Permissions insuffisantes' };
     }
     
+    // Vérifier que l'entreprise existe (RLS gère la sécurité)
+    const { data: existing } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('id', profile.company_id)
+      .single();
+    
+    if (!existing) {
+      return { error: 'Entreprise non trouvée' };
+    }
+    
     // Update company to remove logo
-    const { error: updateError } = await adminSupabase
+    const { error: updateError } = await supabase
       .from('companies')
       .update({ 
         logo_url: null,

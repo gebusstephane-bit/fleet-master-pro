@@ -1,14 +1,20 @@
 'use server';
 
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { AppearanceSettings } from '@/types/appearance';
 
 export async function getAppearanceSettings(userId: string) {
   try {
-    const adminSupabase = createAdminClient();
+    const supabase = await createClient();
     
-    const { data, error } = await adminSupabase
+    // Vérifier que l'utilisateur est authentifié
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.id !== userId) {
+      return { data: null, error: 'Non autorisé' };
+    }
+    
+    const { data, error } = await supabase
       .from('user_appearance_settings')
       .select('*')
       .eq('user_id', userId)
@@ -17,7 +23,7 @@ export async function getAppearanceSettings(userId: string) {
     if (error) {
       // Si pas de données, créer les paramètres par défaut
       if (error.code === 'PGRST116') {
-        const { data: newSettings, error: createError } = await adminSupabase
+        const { data: newSettings, error: createError } = await supabase
           .from('user_appearance_settings')
           .insert({ user_id: userId })
           .select()
@@ -47,7 +53,6 @@ export async function updateAppearanceSettings(
 ) {
   try {
     const supabase = await createClient();
-    const adminSupabase = createAdminClient();
     
     // Vérifier que l'utilisateur est authentifié
     const { data: { user } } = await supabase.auth.getUser();
@@ -78,7 +83,7 @@ export async function updateAppearanceSettings(
     dbSettings.updated_at = new Date().toISOString();
     
     // Vérifier si l'entrée existe déjà
-    const { data: existing } = await adminSupabase
+    const { data: existing } = await supabase
       .from('user_appearance_settings')
       .select('id')
       .eq('user_id', userId)
@@ -87,7 +92,7 @@ export async function updateAppearanceSettings(
     let result;
     if (existing) {
       // Mettre à jour
-      result = await adminSupabase
+      result = await supabase
         .from('user_appearance_settings')
         .update(dbSettings)
         .eq('user_id', userId)
@@ -95,7 +100,7 @@ export async function updateAppearanceSettings(
         .single();
     } else {
       // Insérer
-      result = await adminSupabase
+      result = await supabase
         .from('user_appearance_settings')
         .insert({
           user_id: userId,
@@ -122,7 +127,6 @@ export async function updateAppearanceSettings(
 export async function resetAppearanceSettings(userId: string) {
   try {
     const supabase = await createClient();
-    const adminSupabase = createAdminClient();
     
     // Vérifier que l'utilisateur est authentifié
     const { data: { user } } = await supabase.auth.getUser();
@@ -130,7 +134,18 @@ export async function resetAppearanceSettings(userId: string) {
       return { error: 'Non autorisé', data: null };
     }
     
-    const { data, error } = await adminSupabase
+    // Vérifier que les paramètres existent
+    const { data: existing } = await supabase
+      .from('user_appearance_settings')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+    
+    if (!existing) {
+      return { error: 'Paramètres non trouvés', data: null };
+    }
+    
+    const { data, error } = await supabase
       .from('user_appearance_settings')
       .update({
         theme: 'system',

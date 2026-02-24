@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { authActionClient, idSchema } from '@/lib/safe-action';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { routeSchema } from '@/lib/schemas/routes';
 
@@ -10,7 +10,7 @@ import { routeSchema } from '@/lib/schemas/routes';
 export const createRoute = authActionClient
   .schema(routeSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { stops, vehicleId, driverId, routeDate, totalDistance, estimatedDuration, fuelCost, ...routeData } = parsedInput;
     
@@ -89,7 +89,7 @@ export const createRoute = authActionClient
 // Récupérer toutes les tournées
 export const getRoutes = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('routes')
@@ -113,7 +113,7 @@ export const getRoutes = authActionClient
 export const getRouteById = authActionClient
   .schema(idSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data: route, error } = await supabase
       .from('routes')
@@ -139,7 +139,7 @@ export const updateRoute = authActionClient
   .schema(routeSchema.partial().extend({ id: z.string().uuid() }))
   .action(async ({ parsedInput, ctx }) => {
     const { id, stops, vehicleId, driverId, routeDate, totalDistance, estimatedDuration, fuelCost, ...updates } = parsedInput;
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     // Mapper les champs camelCase vers snake_case
     const dbUpdates: any = { ...updates };
@@ -171,7 +171,7 @@ export const updateRoute = authActionClient
 export const startRoute = authActionClient
   .schema(idSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('routes')
@@ -196,7 +196,7 @@ export const startRoute = authActionClient
 export const completeRoute = authActionClient
   .schema(idSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('routes')
@@ -221,7 +221,7 @@ export const completeRoute = authActionClient
 export const deleteRoute = authActionClient
   .schema(idSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { error } = await supabase
       .from('routes')

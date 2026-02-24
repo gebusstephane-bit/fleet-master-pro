@@ -6,7 +6,7 @@
 
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import { addDays, startOfMonth } from 'date-fns';
 
@@ -81,27 +81,16 @@ export interface ActivityItem {
 }
 
 /**
- * Récupère le company_id depuis le premier véhicule disponible
+ * Vérifie que l'utilisateur est authentifié
  */
-async function getCompanyId(): Promise<string | null> {
+async function checkAuth(): Promise<boolean> {
   try {
-    const adminClient = createAdminClient();
-    
-    const { data: firstVehicle, error } = await adminClient
-      .from('vehicles')
-      .select('company_id')
-      .limit(1)
-      .single();
-    
-    if (error) {
-      logger.error('getCompanyId: Erreur', { error: error.message });
-      return null;
-    }
-    
-    return firstVehicle?.company_id || null;
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    return !!user;
   } catch (error) {
-    logger.error('getCompanyId: Exception', { error: (error as Error).message });
-    return null;
+    logger.error('checkAuth: Exception', { error: (error as Error).message });
+    return false;
   }
 }
 
@@ -110,21 +99,20 @@ async function getCompanyId(): Promise<string | null> {
  */
 export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?: string }> {
   try {
-    const companyId = await getCompanyId();
+    const isAuth = await checkAuth();
     
-    logger.info('getDashboardKPIs: DEBUT', { companyId });
+    logger.info('getDashboardKPIs: DEBUT');
     
-    if (!companyId) {
-      return { error: 'Company ID non trouvé' };
+    if (!isAuth) {
+      return { error: 'Non authentifié' };
     }
 
-    const adminClient = createAdminClient();
+    const supabase = await createClient();
 
-    // KPIs Véhicules
-    const { data: vehicles, error: vehiclesError } = await adminClient
+    // KPIs Véhicules (RLS gère le filtre company_id)
+    const { data: vehicles, error: vehiclesError } = await supabase
       .from('vehicles')
-      .select('status')
-      .eq('company_id', companyId);
+      .select('status');
 
     if (vehiclesError) {
       logger.error('getDashboardKPIs: ERREUR VEHICULES', { error: vehiclesError.message });
@@ -138,11 +126,10 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
       inactive: vehicles?.filter(v => ['inactive', 'retired', 'INACTIF', 'HORS_SERVICE'].includes(v.status as string)).length || 0,
     };
 
-    // KPIs Chauffeurs
-    const { data: drivers, error: driversError } = await adminClient
+    // KPIs Chauffeurs (RLS gère le filtre company_id)
+    const { data: drivers, error: driversError } = await supabase
       .from('drivers')
-      .select('status')
-      .eq('company_id', companyId);
+      .select('status');
 
     if (driversError) {
       logger.error('getDashboardKPIs: ERREUR CHAUFFEURS', { error: driversError.message });
@@ -157,10 +144,9 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
     const sevenDaysFromNow = addDays(new Date(), 7);
     const thirtyDaysFromNow = addDays(new Date(), 30);
 
-    const { data: urgentMaintenances, error: urgentError } = await adminClient
+    const { data: urgentMaintenances, error: urgentError } = await supabase
       .from('maintenance_records')
       .select('id, rdv_date, status')
-      .eq('company_id', companyId)
       .lte('rdv_date', sevenDaysFromNow.toISOString().split('T')[0])
       .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS']);
 
@@ -168,10 +154,9 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
       logger.error('getDashboardKPIs: ERREUR MAINTENANCES URGENTES', { error: urgentError.message });
     }
 
-    const { data: upcomingMaintenances, error: upcomingError } = await adminClient
+    const { data: upcomingMaintenances, error: upcomingError } = await supabase
       .from('maintenance_records')
       .select('id')
-      .eq('company_id', companyId)
       .gt('rdv_date', sevenDaysFromNow.toISOString().split('T')[0])
       .lte('rdv_date', thirtyDaysFromNow.toISOString().split('T')[0])
       .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS']);
@@ -180,21 +165,19 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
       logger.error('getDashboardKPIs: ERREUR MAINTENANCES A VENIR', { error: upcomingError.message });
     }
 
-    const { data: inProgressMaintenances, error: inProgressError } = await adminClient
+    const { data: inProgressMaintenances, error: inProgressError } = await supabase
       .from('maintenance_records')
       .select('id')
-      .eq('company_id', companyId)
       .eq('status', 'EN_COURS');
 
     if (inProgressError) {
       logger.error('getDashboardKPIs: ERREUR MAINTENANCES EN COURS', { error: inProgressError.message });
     }
 
-    // KPIs Inspections
-    const { data: pendingInspections, error: inspectError } = await adminClient
+    // KPIs Inspections (RLS gère le filtre company_id)
+    const { data: pendingInspections, error: inspectError } = await supabase
       .from('inspections')
       .select('id')
-      .eq('company_id', companyId)
       .eq('status', 'pending');
 
     if (inspectError) {
@@ -202,10 +185,9 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
     }
 
     const startOfCurrentMonth = startOfMonth(new Date());
-    const { data: completedInspections, error: completedError } = await adminClient
+    const { data: completedInspections, error: completedError } = await supabase
       .from('inspections')
       .select('id, completed_at')
-      .eq('company_id', companyId)
       .eq('status', 'completed')
       .gte('completed_at', startOfCurrentMonth.toISOString());
 
@@ -227,7 +209,7 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
       },
     };
 
-    logger.info('getDashboardKPIs: SUCCES', { companyId, ...kpis });
+    logger.info('getDashboardKPIs: SUCCES', { ...kpis });
 
     return { data: kpis };
 
@@ -242,15 +224,15 @@ export async function getDashboardKPIs(): Promise<{ data?: DashboardKPIs; error?
  */
 export async function getMaintenanceAlerts(): Promise<{ data?: MaintenanceAlert[]; error?: string }> {
   try {
-    const companyId = await getCompanyId();
+    const isAuth = await checkAuth();
     
-    if (!companyId) return { data: [] };
+    if (!isAuth) return { data: [] };
 
-    const adminClient = createAdminClient();
+    const supabase = await createClient();
     const now = new Date();
     const thirtyDaysFromNow = addDays(new Date(), 30);
 
-    const { data: maintenances, error } = await adminClient
+    const { data: maintenances, error } = await supabase
       .from('maintenance_records')
       .select(`
         id,
@@ -264,7 +246,6 @@ export async function getMaintenanceAlerts(): Promise<{ data?: MaintenanceAlert[
           model
         )
       `)
-      .eq('company_id', companyId)
       .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS'])
       .order('rdv_date', { ascending: true })
       .limit(10);
@@ -310,14 +291,14 @@ export async function getMaintenanceAlerts(): Promise<{ data?: MaintenanceAlert[
  */
 export async function getPendingInspections(): Promise<{ data?: InspectionPending[]; error?: string }> {
   try {
-    const companyId = await getCompanyId();
+    const isAuth = await checkAuth();
     
-    if (!companyId) return { data: [] };
+    if (!isAuth) return { data: [] };
 
-    const adminClient = createAdminClient();
+    const supabase = await createClient();
     const now = new Date();
 
-    const { data: inspections, error } = await adminClient
+    const { data: inspections, error } = await supabase
       .from('inspections')
       .select(`
         id,
@@ -330,7 +311,6 @@ export async function getPendingInspections(): Promise<{ data?: InspectionPendin
           model
         )
       `)
-      .eq('company_id', companyId)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
       .limit(10);
@@ -368,15 +348,15 @@ export async function getPendingInspections(): Promise<{ data?: InspectionPendin
  */
 export async function getScheduledAppointments(): Promise<{ data?: ScheduledAppointment[]; error?: string }> {
   try {
-    const companyId = await getCompanyId();
+    const isAuth = await checkAuth();
     
-    if (!companyId) return { data: [] };
+    if (!isAuth) return { data: [] };
 
-    const adminClient = createAdminClient();
+    const supabase = await createClient();
     const now = new Date();
     const sixtyDaysFromNow = addDays(new Date(), 60);
 
-    const { data: maintenances, error } = await adminClient
+    const { data: maintenances, error } = await supabase
       .from('maintenance_records')
       .select(`
         id,
@@ -390,7 +370,6 @@ export async function getScheduledAppointments(): Promise<{ data?: ScheduledAppo
           model
         )
       `)
-      .eq('company_id', companyId)
       .gte('rdv_date', now.toISOString().split('T')[0])
       .lte('rdv_date', sixtyDaysFromNow.toISOString().split('T')[0])
       .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS'])
@@ -432,22 +411,22 @@ export async function getScheduledAppointments(): Promise<{ data?: ScheduledAppo
  */
 export async function getRiskVehicles(): Promise<{ data?: RiskVehicle[]; error?: string }> {
   try {
-    const companyId = await getCompanyId();
+    const isAuth = await checkAuth();
     
-    if (!companyId) return { data: [] };
+    if (!isAuth) return { data: [] };
 
-    const adminClient = createAdminClient();
+    const supabase = await createClient();
 
-    const { data: companyVehicles } = await adminClient
+    // Récupérer les IDs des véhicules de l'entreprise (RLS filtre automatiquement)
+    const { data: companyVehicles } = await supabase
       .from('vehicles')
-      .select('id')
-      .eq('company_id', companyId);
+      .select('id');
 
     const vehicleIds = companyVehicles?.map(v => v.id) || [];
 
     if (vehicleIds.length === 0) return { data: [] };
 
-    const { data: predictions, error } = await adminClient
+    const { data: predictions, error } = await supabase
       .from('ai_predictions')
       .select(`
         id,
@@ -498,13 +477,13 @@ export async function getRiskVehicles(): Promise<{ data?: RiskVehicle[]; error?:
  */
 export async function getRecentActivity(): Promise<{ data?: ActivityItem[]; error?: string }> {
   try {
-    const companyId = await getCompanyId();
+    const isAuth = await checkAuth();
     
-    if (!companyId) return { data: [] };
+    if (!isAuth) return { data: [] };
 
-    const adminClient = createAdminClient();
+    const supabase = await createClient();
 
-    const { data: activities, error } = await adminClient
+    const { data: activities, error } = await supabase
       .from('activity_logs')
       .select(`
         id,
@@ -514,7 +493,6 @@ export async function getRecentActivity(): Promise<{ data?: ActivityItem[]; erro
         created_at,
         profiles:user_id (first_name, last_name)
       `)
-      .eq('company_id', companyId)
       .order('created_at', { ascending: false })
       .limit(10);
 

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { authActionClient, idSchema } from '@/lib/safe-action';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 
 // Types explicites pour les véhicules et chauffeurs
 interface Vehicle {
@@ -41,9 +41,9 @@ interface Alert {
 // Créer une alerte avec toutes les échéances réglementaires
 export const createAlert = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Récupérer tous les véhicules de l'entreprise
+    // Récupérer tous les véhicules de l'entreprise (RLS filtre automatiquement)
     const { data: vehiclesData } = await supabase
       .from('vehicles')
       .select(`
@@ -58,14 +58,12 @@ export const createAlert = authActionClient
         atp_expiry,
         atp_date,
         next_maintenance_date
-      `)
-      .eq('company_id', ctx.user.company_id);
+      `);
     
-    // Récupérer tous les chauffeurs
+    // Récupérer tous les chauffeurs (RLS filtre automatiquement)
     const { data: driversData } = await supabase
       .from('drivers')
-      .select('id, first_name, last_name, license_expiry')
-      .eq('company_id', ctx.user.company_id);
+      .select('id, first_name, last_name, license_expiry');
     
     const vehicles = (vehiclesData || []) as Vehicle[];
     const drivers = (driversData || []) as Driver[];
@@ -176,11 +174,10 @@ export const createAlert = authActionClient
       }
     }
     
-    // Supprimer les anciennes alertes
+    // Supprimer les anciennes alertes (RLS filtre automatiquement par company_id)
     await supabase
       .from('alerts')
-      .delete()
-      .eq('company_id', ctx.user.company_id);
+      .delete();
     
     // Insérer les nouvelles alertes
     if (alerts.length > 0) {
@@ -194,8 +191,9 @@ export const createAlert = authActionClient
 // Récupérer les alertes
 export const getAlerts = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
+    // RLS filtre automatiquement les alertes de l'entreprise
     const { data: alerts, error } = await supabase
       .from('alerts')
       .select(`
@@ -203,7 +201,6 @@ export const getAlerts = authActionClient
         vehicles:vehicle_id(registration_number, brand, model),
         drivers:driver_id(first_name, last_name)
       `)
-      .eq('company_id', ctx.user.company_id)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -215,13 +212,23 @@ export const getAlerts = authActionClient
 export const markAlertAsRead = authActionClient
   .schema(z.object({ id: z.string().uuid() }))
   .action(async ({ ctx, parsedInput }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
+    
+    // Vérifier que l'alerte existe et appartient à l'entreprise (RLS)
+    const { data: existing } = await supabase
+      .from('alerts')
+      .select('id')
+      .eq('id', (parsedInput as { id: string }).id)
+      .single();
+    
+    if (!existing) {
+      throw new Error('Alerte non trouvée');
+    }
     
     await supabase
       .from('alerts')
       .update({ status: 'read' } as any)
-      .eq('id', (parsedInput as { id: string }).id)
-      .eq('company_id', ctx.user.company_id);
+      .eq('id', (parsedInput as { id: string }).id);
     
     revalidatePath('/alerts');
     return { success: true };
@@ -231,13 +238,23 @@ export const markAlertAsRead = authActionClient
 export const deleteAlert = authActionClient
   .schema(z.object({ id: z.string().uuid() }))
   .action(async ({ ctx, parsedInput }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
+    
+    // Vérifier que l'alerte existe et appartient à l'entreprise (RLS)
+    const { data: existing } = await supabase
+      .from('alerts')
+      .select('id')
+      .eq('id', (parsedInput as { id: string }).id)
+      .single();
+    
+    if (!existing) {
+      throw new Error('Alerte non trouvée');
+    }
     
     await supabase
       .from('alerts')
       .delete()
-      .eq('id', (parsedInput as { id: string }).id)
-      .eq('company_id', ctx.user.company_id);
+      .eq('id', (parsedInput as { id: string }).id);
     
     revalidatePath('/alerts');
     return { success: true };
@@ -246,12 +263,12 @@ export const deleteAlert = authActionClient
 // Marquer toutes les alertes comme lues
 export const markAllAlertsAsRead = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
+    // RLS filtre automatiquement les alertes de l'entreprise
     await supabase
       .from('alerts')
       .update({ status: 'read' } as any)
-      .eq('company_id', ctx.user.company_id)
       .eq('status', 'unread');
     
     revalidatePath('/alerts');
@@ -261,13 +278,12 @@ export const markAllAlertsAsRead = authActionClient
 // Vérifier les alertes critiques (pour dashboard)
 export const getCriticalAlertsCount = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Récupérer les véhicules avec contrôles techniques expirant bientôt
+    // Récupérer les véhicules avec contrôles techniques expirant bientôt (RLS filtre automatiquement)
     const { data: vehiclesData } = await supabase
       .from('vehicles')
-      .select('id, technical_control_expiry, tachy_control_expiry')
-      .eq('company_id', ctx.user.company_id);
+      .select('id, technical_control_expiry, tachy_control_expiry');
     
     const vehicles = (vehiclesData || []) as Array<{
       id: string;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getUsers, getUserById, createUser, updateUser, toggleUserStatus, deleteUser, updateNotificationPreferences, type CreateUserData, type UpdateUserData } from '@/actions/users';
+import { getUsers, getUserById, createUser, updateUser, toggleUserStatus, deleteUser, updateNotificationPreferences, type CreateUserData, type UpdateUserData, type NotificationPreferences } from '@/actions/users';
 import { toast } from 'sonner';
 
 export interface User {
@@ -20,17 +20,7 @@ export interface User {
   last_login?: string;
 }
 
-export interface NotificationPreferences {
-  alert_maintenance: boolean;
-  alert_inspection: boolean;
-  alert_routes: boolean;
-  alert_documents_expiry: boolean;
-  alert_fuel: boolean;
-  alert_critical_only: boolean;
-  email_enabled: boolean;
-  sms_enabled: boolean;
-  push_enabled: boolean;
-}
+export { type NotificationPreferences } from '@/actions/users';
 
 // Hook pour récupérer tous les utilisateurs
 export function useUsers(companyId?: string) {

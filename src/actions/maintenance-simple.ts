@@ -1,6 +1,6 @@
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/lib/logger';
 
@@ -16,10 +16,10 @@ interface CreateMaintenanceData {
 
 export async function createMaintenanceSimple(data: CreateMaintenanceData, userId: string, companyId: string) {
   try {
-    const adminClient = createAdminClient();
+    const supabase = await createClient();
     
     // Vérifier le véhicule
-    const { data: vehicle, error: vehicleError } = await adminClient
+    const { data: vehicle, error: vehicleError } = await supabase
       .from('vehicles')
       .select('id, registration_number, brand, model, company_id')
       .eq('id', data.vehicleId)
@@ -31,7 +31,7 @@ export async function createMaintenanceSimple(data: CreateMaintenanceData, userI
     }
     
     // Créer la maintenance directement avec admin (bypass triggers)
-    const { data: maintenance, error } = await adminClient
+    const { data: maintenance, error } = await supabase
       .from('maintenance_records')
       .insert({
         vehicle_id: data.vehicleId,
@@ -56,7 +56,7 @@ export async function createMaintenanceSimple(data: CreateMaintenanceData, userI
     
     // Logger l'activité manuellement
     try {
-      await adminClient.from('activity_logs').insert({
+      await supabase.from('activity_logs').insert({
         company_id: companyId,
         user_id: userId,
         action_type: 'MAINTENANCE_CREATED',

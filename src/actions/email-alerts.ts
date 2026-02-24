@@ -1,7 +1,7 @@
 'use server';
 
 import { authActionClient } from '@/lib/safe-action';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email/client';
 import { 
   maintenanceAlertTemplate, 
@@ -25,7 +25,7 @@ interface MaintenanceAlertData {
  */
 export const sendMaintenanceAlerts = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     // Récupérer les utilisateurs avec notifications activées
     const { data: users } = await supabase

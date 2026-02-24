@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 interface Defect {
@@ -160,7 +160,7 @@ export async function createInspectionSafe(data: InspectionData) {
 
 // Fonction pour valider un contrôle (Dashboard uniquement - IDOR sécurisé)
 export async function validateInspection(inspectionId: string) {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   
   try {
     // 1. Vérifier l'authentification et récupérer le profil
@@ -244,7 +244,7 @@ export async function validateInspection(inspectionId: string) {
 
 // Fonction pour réfuser un contrôle (Dashboard uniquement - IDOR sécurisé)
 export async function rejectInspection(inspectionId: string, reason: string) {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   
   try {
     // 1. Vérifier l'authentification et récupérer le profil

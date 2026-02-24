@@ -1,8 +1,15 @@
 'use server';
 
+/**
+ * Actions Maintenance - VERSION SÉCURISÉE RLS
+ * 
+ * PRINCIPE : Utilise uniquement createClient() avec RLS activé
+ * Les policies PostgreSQL assurent l'isolation par company_id
+ */
+
 import { z } from 'zod';
 import { authActionClient, idSchema } from '@/lib/safe-action';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { maintenanceSchema } from '@/lib/schemas/maintenance';
 
@@ -20,11 +27,14 @@ const typeToDb: Record<string, string> = {
   'OTHER': 'repair',
 };
 
-// Créer une intervention
+/**
+ * Créer une intervention
+ * RLS : Vérifie que le véhicule appartient à la company
+ */
 export const createMaintenance = authActionClient
   .schema(maintenanceSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { 
       vehicleId, 
@@ -35,12 +45,11 @@ export const createMaintenance = authActionClient
       ...maintenanceData 
     } = parsedInput;
     
-    // Vérifier que le véhicule appartient à l'entreprise
+    // Vérifier que le véhicule appartient à l'entreprise (RLS)
     const { data: vehicle, error: vehicleError } = await supabase
       .from('vehicles')
-      .select('id, company_id')
+      .select('id')
       .eq('id', vehicleId)
-      .eq('company_id', ctx.user.company_id)
       .single();
     
     if (vehicleError || !vehicle) {
@@ -85,10 +94,13 @@ export const createMaintenance = authActionClient
     return { success: true, data: maintenance };
   });
 
-// Récupérer toutes les interventions
+/**
+ * Récupérer toutes les interventions
+ * RLS : Filtre automatiquement par company_id
+ */
 export const getMaintenances = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('maintenance_records')
@@ -96,7 +108,6 @@ export const getMaintenances = authActionClient
         *,
         vehicles(registration_number, brand, model, mileage, next_service_due, next_service_mileage)
       `)
-      .eq('company_id', ctx.user.company_id)
       .order('service_date', { ascending: false });
     
     if (error) {
@@ -106,11 +117,13 @@ export const getMaintenances = authActionClient
     return { success: true, data: data || [] };
   });
 
-// Récupérer les interventions d'un véhicule
+/**
+ * Récupérer les interventions d'un véhicule
+ */
 export const getMaintenancesByVehicle = authActionClient
   .schema(z.object({ vehicleId: z.string().uuid() }))
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('maintenance_with_details' as any)
@@ -125,11 +138,14 @@ export const getMaintenancesByVehicle = authActionClient
     return { success: true, data: data || [] };
   });
 
-// Récupérer une intervention
+/**
+ * Récupérer une intervention
+ * RLS : Filtre par company_id
+ */
 export const getMaintenanceById = authActionClient
   .schema(idSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('maintenance_records')
@@ -139,7 +155,6 @@ export const getMaintenanceById = authActionClient
         maintenance_documents(*)
       `)
       .eq('id', parsedInput.id)
-      .eq('company_id', ctx.user.company_id)
       .single();
     
     if (error) {
@@ -149,12 +164,26 @@ export const getMaintenanceById = authActionClient
     return { success: true, data };
   });
 
-// Mettre à jour une intervention
+/**
+ * Mettre à jour une intervention
+ * RLS : Vérifie l'appartenance à la company
+ */
 export const updateMaintenance = authActionClient
   .schema(maintenanceSchema.partial().extend({ id: z.string().uuid() }))
   .action(async ({ parsedInput, ctx }) => {
     const { id, vehicleId, documents, partsReplaced, ...updates } = parsedInput;
-    const supabase = createAdminClient();
+    const supabase = await createClient();
+    
+    // Vérifier que l'intervention existe
+    const { data: existing } = await supabase
+      .from('maintenance_records')
+      .select('id')
+      .eq('id', id)
+      .single();
+    
+    if (!existing) {
+      throw new Error('Intervention non trouvée');
+    }
     
     const { data, error } = await supabase
       .from('maintenance_records')
@@ -164,7 +193,6 @@ export const updateMaintenance = authActionClient
         parts_replaced: partsReplaced as any,
       } as any)
       .eq('id', id)
-      .eq('company_id', ctx.user.company_id)
       .select()
       .single();
     
@@ -177,17 +205,30 @@ export const updateMaintenance = authActionClient
     return { success: true, data };
   });
 
-// Supprimer une intervention
+/**
+ * Supprimer une intervention
+ * RLS : Vérifie l'appartenance
+ */
 export const deleteMaintenance = authActionClient
   .schema(idSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
+    
+    // Vérifier que l'intervention existe
+    const { data: existing } = await supabase
+      .from('maintenance_records')
+      .select('id')
+      .eq('id', parsedInput.id)
+      .single();
+    
+    if (!existing) {
+      throw new Error('Intervention non trouvée');
+    }
     
     const { error } = await supabase
       .from('maintenance_records')
       .delete()
-      .eq('id', parsedInput.id)
-      .eq('company_id', ctx.user.company_id);
+      .eq('id', parsedInput.id);
     
     if (error) {
       throw new Error(`Erreur suppression: ${error.message}`);
@@ -197,15 +238,17 @@ export const deleteMaintenance = authActionClient
     return { success: true };
   });
 
-// Récupérer les alertes maintenance
+/**
+ * Récupérer les alertes maintenance
+ * RLS : Filtre les véhicules par company_id
+ */
 export const getMaintenanceAlerts = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data: vehicles, error } = await supabase
       .from('vehicles')
       .select('id, registration_number, brand, model, mileage, next_service_due, next_service_mileage')
-      .eq('company_id', ctx.user.company_id)
       .eq('status', 'active');
     
     if (error) {
@@ -258,15 +301,17 @@ export const getMaintenanceAlerts = authActionClient
     return { success: true, data: alerts };
   });
 
-// Statistiques maintenance
+/**
+ * Statistiques maintenance
+ * RLS : Filtre par company_id
+ */
 export const getMaintenanceStats = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('maintenance_records')
       .select('cost, type, service_date')
-      .eq('company_id', ctx.user.company_id)
       .gte('service_date', new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
     
     if (error) {

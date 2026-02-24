@@ -1,6 +1,6 @@
 'use server';
 
-import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
 interface DashboardStats {
@@ -42,46 +42,35 @@ export async function getDashboardStats(): Promise<ActionResult<DashboardStats>>
       return { success: false, error: 'Non authentifié' };
     }
     
-    // Récupérer les données utilisateur avec admin client
-    const supabase = createAdminClient();
+    const companyId = authUser.user_metadata?.company_id;
     
-    const { data: userData, error: userError } = await supabase
-      .from('profiles')
-      .select('company_id')
-      .eq('id', authUser.id)
-      .single();
-    
-    if (userError || !userData?.company_id) {
-      logger.error('getDashboardStats: Pas de company_id', userError ? new Error(userError.message) : undefined);
+    if (!companyId) {
+      logger.error('getDashboardStats: Pas de company_id dans user_metadata');
       return { success: false, error: 'Entreprise non trouvée' };
     }
-    
-    const companyId = userData.company_id;
     logger.info('getDashboardStats: Chargement pour company', { companyId });
     
-    // Récupérer les véhicules
+    // Récupérer les véhicules (RLS gère le filtre company_id)
+    const supabase = await createClient();
     const { data: vehicles, error: vErr } = await supabase
       .from('vehicles')
       .select('id, registration_number, status, mileage, fuel_type, brand, model')
-      .eq('company_id', companyId)
       .order('created_at', { ascending: false });
     
     if (vErr) logger.error('Erreur véhicules', new Error(vErr.message));
     
-    // Récupérer les chauffeurs
+    // Récupérer les chauffeurs (RLS gère le filtre company_id)
     const { data: drivers, error: dErr } = await supabase
       .from('drivers')
-      .select('id, status, first_name, last_name')
-      .eq('company_id', companyId);
+      .select('id, status, first_name, last_name');
     
     if (dErr) logger.error('Erreur chauffeurs', new Error(dErr.message));
     
-    // Tournées du jour
+    // Tournées du jour (RLS gère le filtre company_id)
     const today = new Date().toISOString().split('T')[0];
     const { data: routes, error: rErr } = await supabase
       .from('routes')
       .select('id, status, name')
-      .eq('company_id', companyId)
       .gte('route_date', today);
     
     if (rErr) logger.error('Erreur routes', new Error(rErr.message));
@@ -93,13 +82,11 @@ export async function getDashboardStats(): Promise<ActionResult<DashboardStats>>
     const { data: fuel } = await supabase
       .from('fuel_records')
       .select('price_total')
-      .eq('company_id', companyId)
       .gte('date', startOfMonth.toISOString());
     
     const { data: maintenance } = await supabase
       .from('maintenance_records')
       .select('cost')
-      .eq('company_id', companyId)
       .gte('created_at', startOfMonth.toISOString());
     
     const totalFuel = fuel?.reduce((s, r) => s + (r.price_total || 0), 0) || 0;

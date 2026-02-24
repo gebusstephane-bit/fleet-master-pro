@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { authActionClient, idSchema } from '@/lib/safe-action';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 const createFuelRecordSchema = z.object({
@@ -21,14 +21,13 @@ const createFuelRecordSchema = z.object({
 export const createFuelRecord = authActionClient
   .schema(createFuelRecordSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Vérifier que le véhicule appartient à l'entreprise
+    // Vérifier que le véhicule appartient à l'entreprise (RLS gère la sécurité)
     const { data: vehicle } = await supabase
       .from('vehicles')
       .select('id, mileage')
       .eq('id', parsedInput.vehicle_id)
-      .eq('company_id', ctx.user.company_id)
       .single();
     
     if (!vehicle) {
@@ -88,7 +87,7 @@ export const createFuelRecord = authActionClient
 export const getFuelRecordsByVehicle = authActionClient
   .schema(idSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('fuel_records')
@@ -106,19 +105,12 @@ export const getFuelRecordsByVehicle = authActionClient
 // Récupérer tous les pleins de l'entreprise
 export const getAllFuelRecords = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    const { data: vehicles } = await supabase
-      .from('vehicles')
-      .select('id')
-      .eq('company_id', ctx.user.company_id);
-    
-    const vehicleIds = vehicles?.map(v => v.id) || [];
-    
+    // RLS filtre automatiquement les véhicules et pleins de l'entreprise
     const { data, error } = await supabase
       .from('fuel_records')
       .select('*, vehicles(registration_number, brand, model), drivers(first_name, last_name)')
-      .in('vehicle_id', vehicleIds)
       .order('date', { ascending: false })
       .limit(100);
     
@@ -132,12 +124,12 @@ export const getAllFuelRecords = authActionClient
 // Calculer les stats carburant
 export const getFuelStats = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
+    // RLS filtre automatiquement les véhicules de l'entreprise
     const { data: vehicles } = await supabase
       .from('vehicles')
-      .select('id, registration_number, brand, model, fuel_type')
-      .eq('company_id', ctx.user.company_id);
+      .select('id, registration_number, brand, model, fuel_type');
     
     const stats = [];
     

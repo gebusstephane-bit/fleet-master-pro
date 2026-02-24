@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { authActionClient } from '@/lib/safe-action';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { sendEmail } from '@/lib/email';
 import { format } from 'date-fns';
@@ -53,7 +53,7 @@ const completeMaintenanceSchema = z.object({
 // ============================================
 
 async function getUserCompanyData(userId: string) {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from('profiles')
     .select('id, first_name, last_name, email, role, company_id')
@@ -65,7 +65,7 @@ async function getUserCompanyData(userId: string) {
 }
 
 async function getCompanyDirectors(companyId: string) {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from('profiles')
     .select('id, email, first_name, last_name')
@@ -83,7 +83,7 @@ async function addStatusHistory(
   userId: string,
   notes?: string
 ) {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   await supabase
     .from('maintenance_status_history')
     .insert({
@@ -102,7 +102,7 @@ async function addStatusHistory(
 export const createMaintenanceRequest = authActionClient
   .schema(createRequestSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     // Création maintenance request
     
@@ -205,7 +205,7 @@ export const createMaintenanceRequest = authActionClient
 export const validateMaintenanceRequest = authActionClient
   .schema(validateRequestSchema.omit({ token: true }))
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     // Validation maintenance request
     
@@ -311,7 +311,7 @@ export const validateMaintenanceRequest = authActionClient
 export const scheduleMaintenanceRDV = authActionClient
   .schema(scheduleRDVSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     // Schedule maintenance RDV
     
@@ -443,7 +443,7 @@ export const scheduleMaintenanceRDV = authActionClient
 export const completeMaintenance = authActionClient
   .schema(completeMaintenanceSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data: maintenance, error } = await supabase
       .from('maintenance_records')
@@ -535,7 +535,7 @@ export const completeMaintenance = authActionClient
 
 export const getMaintenanceRequests = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('maintenance_with_details' as any)
@@ -553,7 +553,7 @@ export const getMaintenanceRequests = authActionClient
 export const getMaintenanceById = authActionClient
   .schema(z.object({ id: z.string().uuid() }))
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data: maintenance, error } = await supabase
       .from('maintenance_with_details' as any)
@@ -590,7 +590,7 @@ export const getAgendaEvents = authActionClient
     endDate: z.string().optional(),
   }).default({}))
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     let query = supabase
       .from('agenda_with_details' as any)
@@ -616,7 +616,7 @@ export const getAgendaEvents = authActionClient
 export const markMaintenanceInProgress = authActionClient
   .schema(z.object({ id: z.string().uuid() }))
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data: maintenance } = await supabase
       .from('maintenance_records')

@@ -5,7 +5,7 @@
 
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import { addDays, startOfMonth } from 'date-fns';
 
@@ -23,10 +23,10 @@ export async function getSimpleKPIs(): Promise<{ data?: SimpleKPIs; error?: stri
   try {
     logger.info('getSimpleKPIs: DEBUT - sans filtre company_id');
     
-    const adminClient = createAdminClient();
+    const supabase = await createClient();
 
-    // Récupérer TOUS les véhicules (sans filtre)
-    const { data: vehicles, error: vehiclesError, count } = await adminClient
+    // Récupérer les véhicules (RLS gère le filtre company_id)
+    const { data: vehicles, error: vehiclesError, count } = await supabase
       .from('vehicles')
       .select('*', { count: 'exact' });
 
@@ -45,8 +45,8 @@ export async function getSimpleKPIs(): Promise<{ data?: SimpleKPIs; error?: stri
       } : null
     });
 
-    // Chauffeurs
-    const { data: drivers, error: driversError } = await adminClient
+    // Chauffeurs (RLS gère le filtre company_id)
+    const { data: drivers, error: driversError } = await supabase
       .from('drivers')
       .select('id');
 
@@ -54,8 +54,8 @@ export async function getSimpleKPIs(): Promise<{ data?: SimpleKPIs; error?: stri
       logger.error('getSimpleKPIs: ERREUR CHAUFFEURS', { error: driversError.message });
     }
 
-    // Maintenances
-    const { data: maintenances, error: maintError } = await adminClient
+    // Maintenances (RLS gère le filtre company_id)
+    const { data: maintenances, error: maintError } = await supabase
       .from('maintenance_records')
       .select('id');
 
@@ -63,8 +63,8 @@ export async function getSimpleKPIs(): Promise<{ data?: SimpleKPIs; error?: stri
       logger.error('getSimpleKPIs: ERREUR MAINTENANCES', { error: maintError.message });
     }
 
-    // Inspections
-    const { data: inspections, error: inspectError } = await adminClient
+    // Inspections (RLS gère le filtre company_id)
+    const { data: inspections, error: inspectError } = await supabase
       .from('inspections')
       .select('id');
 
@@ -96,50 +96,38 @@ export async function getKPIsWithFallback(): Promise<{ data?: SimpleKPIs; error?
   try {
     logger.info('getKPIsWithFallback: DEBUT');
     
-    const adminClient = createAdminClient();
+    const supabase = await createClient();
 
-    // Trouver le premier company_id disponible
-    const { data: firstVehicle } = await adminClient
-      .from('vehicles')
-      .select('company_id')
-      .limit(1)
-      .single();
-
-    const companyId = firstVehicle?.company_id;
-    logger.info('getKPIsWithFallback: CompanyId trouve', { companyId });
-
-    if (!companyId) {
-      return { error: 'Aucun company_id trouve' };
+    // Vérifier l'authentification
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { error: 'Non authentifié' };
     }
 
-    // Véhicules avec filtre
-    const { data: vehicles, error: vehiclesError } = await adminClient
+    // Véhicules (RLS gère le filtre company_id)
+    const { data: vehicles, error: vehiclesError } = await supabase
       .from('vehicles')
-      .select('*')
-      .eq('company_id', companyId);
+      .select('*');
 
     if (vehiclesError) {
       logger.error('getKPIsWithFallback: ERREUR VEHICULES', { error: vehiclesError.message });
       throw vehiclesError;
     }
 
-    // Chauffeurs
-    const { data: drivers } = await adminClient
+    // Chauffeurs (RLS gère le filtre company_id)
+    const { data: drivers } = await supabase
       .from('drivers')
-      .select('id')
-      .eq('company_id', companyId);
+      .select('id');
 
-    // Maintenances
-    const { data: maintenances } = await adminClient
+    // Maintenances (RLS gère le filtre company_id)
+    const { data: maintenances } = await supabase
       .from('maintenance_records')
-      .select('id')
-      .eq('company_id', companyId);
+      .select('id');
 
-    // Inspections
-    const { data: inspections } = await adminClient
+    // Inspections (RLS gère le filtre company_id)
+    const { data: inspections } = await supabase
       .from('inspections')
-      .select('id')
-      .eq('company_id', companyId);
+      .select('id');
 
     const result = {
       vehicles: vehicles?.length || 0,
