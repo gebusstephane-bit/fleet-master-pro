@@ -24,7 +24,13 @@ export default function NewDriverPage() {
       <GlassCard glow="violet" className="p-6">
         <DriverForm
           onSubmit={async (data) => {
-            await createMutation.mutateAsync(data);
+            // Convertir undefined en null pour les champs optionnels
+            const submitData = {
+              ...data,
+              hire_date: data.hire_date ?? null,
+              cqc_expiry_date: data.cqc_expiry_date ?? null,
+            };
+            await createMutation.mutateAsync(submitData);
             router.push('/drivers');
           }}
           isSubmitting={createMutation.isPending}

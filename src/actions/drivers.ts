@@ -17,10 +17,10 @@ const createDriverSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   // Les champs date optionnels : "" → null pour éviter l'erreur PostgreSQL 22007
-  hire_date: z.string().optional().transform((val) => val === '' ? null : val ?? null),
+  hire_date: z.string().optional().nullable().transform((val) => val === '' ? null : val ?? null),
   status: z.enum(["active", "inactive", "on_leave", "terminated"]).default("active"),
   cqc_card_number: z.string().optional(),
-  cqc_expiry_date: z.string().optional().transform((val) => val === '' ? null : val ?? null),
+  cqc_expiry_date: z.string().optional().nullable().transform((val) => val === '' ? null : val ?? null),
   cqc_category: z.enum(["PASSENGER", "GOODS", "BOTH"]).optional(),
 });
 

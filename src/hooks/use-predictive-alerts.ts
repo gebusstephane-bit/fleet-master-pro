@@ -135,7 +135,7 @@ export function usePredictiveAlerts() {
 
       const supabase = getSupabaseClient();
       const { data, error } = await supabase
-        .from('predictive_alerts')
+        .from('predictive_alerts' as any)
         .select(`
           *,
           vehicle:vehicles(registration_number, brand, model, year)
@@ -146,7 +146,7 @@ export function usePredictiveAlerts() {
         .order('days_until_critical', { ascending: true });
 
       if (error) throw new Error(error.message);
-      return (data ?? []) as PredictiveAlert[];
+      return (data ?? []) as unknown as PredictiveAlert[];
     },
     enabled: !!companyId,
     staleTime: 5 * 60 * 1000,       // 5 minutes
@@ -185,7 +185,7 @@ export function useSubmitControl() {
   return useMutation({
     mutationFn: async (payload: SubmitControlPayload): Promise<SubmitControlResult> => {
       const supabase = getSupabaseClient();
-      const { data, error } = await supabase.rpc('submit_control_result', {
+      const { data, error } = await (supabase.rpc as any)('submit_control_result', {
         p_alert_id: payload.alertId,
         p_new_score: payload.newScore,
         p_control_result: payload.controlResult,
@@ -218,7 +218,7 @@ export function useMarkAlertUrgent() {
     mutationFn: async (alertId: string) => {
       const supabase = getSupabaseClient();
       const { error } = await supabase
-        .from('predictive_alerts')
+        .from('predictive_alerts' as any)
         .update({
           urgency_level: 'controle_urgent',
           urgency_score: 0.8,
@@ -246,7 +246,7 @@ export function useDeleteAlert() {
     mutationFn: async (alertId: string) => {
       const supabase = getSupabaseClient();
       const { error } = await supabase
-        .from('predictive_alerts')
+        .from('predictive_alerts' as any)
         .update({ status: 'cancelled', updated_at: new Date().toISOString() })
         .eq('id', alertId);
 

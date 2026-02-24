@@ -303,7 +303,7 @@ export function useVehiclePredictiveAlert(vehicleId: string) {
       const supabase = getSupabaseClient();
 
       const { data, error } = await supabase
-        .from('predictive_alerts')
+        .from('predictive_alerts' as any)
         .select('*')
         .eq('vehicle_id', vehicleId)
         .eq('status', 'active')
@@ -340,7 +340,7 @@ export function useAlertFeedback() {
     }) => {
       const supabase = getSupabaseClient();
       const { error } = await supabase
-        .from('predictive_alerts')
+        .from('predictive_alerts' as any)
         .update({
           status: 'control_done',
           control_result: result,

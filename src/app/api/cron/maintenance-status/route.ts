@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
       console.error('Étape A: erreur lecture maintenance_records', rdvErr);
     } else if (todayRdvs && todayRdvs.length > 0) {
       // Dédupliquer les véhicules (un véhicule peut avoir plusieurs records)
-      const vehicleIds = [...new Set(todayRdvs.map((r) => r.vehicle_id))];
+      const vehicleIds = Array.from(new Set(todayRdvs.map((r) => r.vehicle_id)));
       stats.vehicles_to_maintenance = vehicleIds.length;
 
       // 2. Parmi ces véhicules, ne prendre que ceux encore actifs

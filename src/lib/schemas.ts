@@ -70,7 +70,7 @@ export const driverSchema = z.object({
   license_expiry: z.string().min(1, "Date d'expiration requise"),
   address: z.string().optional(),
   city: z.string().optional(),
-  hire_date: z.string().optional(),
+  hire_date: z.string().optional().nullable(),
   status: z.enum(["active", "inactive", "on_leave", "terminated"]).default("active"),
 });
 

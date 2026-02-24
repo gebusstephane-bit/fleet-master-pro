@@ -45,7 +45,7 @@ export async function POST(request: Request) {
         try {
           // Vérifier s'il existe déjà une alerte active
           const { data: existing } = await supabase
-            .from('predictive_alerts')
+            .from('predictive_alerts' as any)
             .select('id')
             .eq('vehicle_id', vehicle.id)
             .eq('status', 'active')
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
           // Insertion
           const { error: insertError } = await supabase
-            .from('predictive_alerts')
+            .from('predictive_alerts' as any)
             .insert({
               company_id: company.id,
               vehicle_id: vehicle.id,

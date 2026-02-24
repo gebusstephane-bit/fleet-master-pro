@@ -214,7 +214,7 @@ export async function GET(request: NextRequest) {
     stats.rdvs_scanned = records.length;
 
     // ── 2. Véhicules actifs associés ──────────────────────────
-    const vehicleIds = [...new Set(records.map((r) => r.vehicle_id))];
+    const vehicleIds = Array.from(new Set(records.map((r) => r.vehicle_id)));
     const { data: vehicles } = await supabase
       .from('vehicles')
       .select('id, registration_number, brand, model, status')
@@ -223,7 +223,7 @@ export async function GET(request: NextRequest) {
     const vehicleMap = new Map((vehicles ?? []).map((v) => [v.id, v]));
 
     // ── 3. Destinataires par company (pré-chargement, évite N+1) ──
-    const companyIds = [...new Set(records.map((r) => r.company_id))];
+    const companyIds = Array.from(new Set(records.map((r) => r.company_id)));
     const recipientsByCompany = new Map<string, Array<{ email: string; role: string }>>();
 
     for (const companyId of companyIds) {
@@ -235,7 +235,7 @@ export async function GET(request: NextRequest) {
         .eq('is_active', true)
         .not('email', 'is', null);
 
-      const list = (profiles ?? []).filter((p): p is { email: string; role: string } => !!p.email);
+      const list = (profiles ?? []).filter((p): p is { email: string; role: 'ADMIN' | 'DIRECTEUR' | 'AGENT_DE_PARC' | 'EXPLOITANT' } => !!p.email);
       recipientsByCompany.set(companyId, list);
     }
 
@@ -256,8 +256,8 @@ export async function GET(request: NextRequest) {
       }
 
       const vehicleLabel = `${vehicle.brand} ${vehicle.model} — ${vehicle.registration_number}`;
-      const rdvDateFR = formatDateFR(record.rdv_date);
-      const rdvTime = formatTime(record.rdv_time);
+      const rdvDateFR = formatDateFR(record.rdv_date ?? '');
+      const rdvTime = formatTime(record.rdv_time ?? '');
       const durationLabel = formatDuration(record.estimated_days, record.estimated_hours);
 
       const { subject, html } = buildReminderEmail({
