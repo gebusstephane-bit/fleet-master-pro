@@ -63,10 +63,10 @@ export async function getUserWithCompany() {
       return null;
     }
     
-    // Récupérer le profil via RLS (policy doit permettre SELECT sur son propre profil)
+    // Récupérer le profil via RLS (sans jointure companies qui n'existe pas)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('*, companies(*)')
+      .select('*')
       .eq('id', user.id)
       .maybeSingle();
     
@@ -74,32 +74,20 @@ export async function getUserWithCompany() {
       console.error('getUserWithCompany: Profile fetch error', profileError);
     }
     
-    if (profile && profile.company_id) {
-      return {
-        ...profile,
-        companies: profile.companies || null,
-      };
-    }
+    // Construire l'objet user à partir du profil DB ou des metadata
+    const userData = {
+      id: user.id,
+      email: user.email || '',
+      first_name: profile?.first_name || user.user_metadata?.first_name || '',
+      last_name: profile?.last_name || user.user_metadata?.last_name || '',
+      role: profile?.role || user.user_metadata?.role || 'ADMIN',
+      is_active: profile?.is_active ?? true,
+      company_id: profile?.company_id || user.user_metadata?.company_id || null,
+      companies: null,
+      ...profile, // Écraser avec les données du profil si elles existent
+    };
     
-    // Fallback: si pas de profil en DB mais company_id dans metadata
-    if (user.user_metadata?.company_id) {
-      return {
-        id: user.id,
-        email: user.email || '',
-        first_name: user.user_metadata?.first_name || '',
-        last_name: user.user_metadata?.last_name || '',
-        role: user.user_metadata?.role || 'ADMIN',
-        is_active: true,
-        company_id: user.user_metadata.company_id,
-        companies: null,
-      };
-    }
-    
-    console.error('getUserWithCompany: Pas de company_id dans le profil ni dans metadata', { 
-      userId: user.id,
-      metadata: user.user_metadata 
-    });
-    return null;
+    return userData;
   } catch (e) {
     console.error('getUserWithCompany error:', e);
     return null;

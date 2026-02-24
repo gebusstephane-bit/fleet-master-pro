@@ -61,6 +61,8 @@ export const authActionClient = actionClient.use(async ({ next }) => {
     throw new Error(rateLimit.error);
   }
   
+  // Si pas de company_id, on autorise quand même (onboarding en cours)
+  // Les actions individuelles vérifieront si company_id est requis
   return next({ ctx: { user: userData } });
 });
 
@@ -92,7 +94,7 @@ export type ActionContext = {
     id: string;
     email: string;
     role: string;
-    company_id: string;
+    company_id: string | null;
     companies?: {
       id: string;
       name: string;

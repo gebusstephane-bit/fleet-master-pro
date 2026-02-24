@@ -41,6 +41,10 @@ interface Alert {
 // Créer une alerte avec toutes les échéances réglementaires
 export const createAlert = authActionClient
   .action(async ({ ctx }) => {
+    if (!ctx.user.company_id) {
+      throw new Error('Company ID manquant - onboarding requis');
+    }
+    
     const supabase = await createClient();
     
     // Récupérer tous les véhicules de l'entreprise (RLS filtre automatiquement)
