@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { Linkedin, Twitter } from "lucide-react";
+import { Linkedin, Twitter, Mail, Phone, MapPin } from "lucide-react";
 
 const footerLinks = {
   produit: [
@@ -25,19 +24,34 @@ const footerLinks = {
     { name: "CGV", href: "/cgv" },
     { name: "Cookies", href: "#" },
   ],
-  contact: [
-    { name: "hello@fleetmaster.pro", href: "mailto:hello@fleetmaster.pro" },
-    { name: "+33 1 23 45 67 89", href: "tel:+33123456789" },
-    { name: "Paris, France", href: "#" },
-  ],
 };
+
+/** Coordonnées mises à jour — contact@fleet-master.fr */
+const contactInfo = [
+  {
+    icon: Mail,
+    label: "contact@fleet-master.fr",
+    href: "mailto:contact@fleet-master.fr",
+  },
+  {
+    icon: Phone,
+    label: "06 58 08 27 25",
+    href: "tel:+33658082725",
+  },
+  {
+    icon: MapPin,
+    label: "Coume, France",
+    href: "#",
+  },
+];
 
 export function Footer() {
   return (
     <footer className="bg-[#09090b] text-[#a1a1aa] border-t border-white/[0.06]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
-          {/* Logo & description */}
+
+          {/* ── Logo & description ── */}
           <div className="col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4">
               <svg width="28" height="28" viewBox="0 0 32 32" fill="none" className="text-white">
@@ -61,25 +75,27 @@ export function Footer() {
               <span className="text-lg font-bold text-white">FleetMaster</span>
             </Link>
             <p className="text-[#71717a] text-sm mb-6 max-w-xs">
-              La plateforme de gestion de flotte qui anticipe les pannes et réduit vos coûts.
+              La plateforme de gestion de flotte qui anticipe les pannes et réduit vos coûts d'exploitation.
             </p>
             <div className="flex gap-4">
               <a
                 href="#"
                 className="w-10 h-10 rounded-full bg-[#27272a] flex items-center justify-center hover:bg-[#3f3f46] transition-colors"
+                aria-label="LinkedIn"
               >
                 <Linkedin className="h-5 w-5" />
               </a>
               <a
                 href="#"
                 className="w-10 h-10 rounded-full bg-[#27272a] flex items-center justify-center hover:bg-[#3f3f46] transition-colors"
+                aria-label="Twitter"
               >
                 <Twitter className="h-5 w-5" />
               </a>
             </div>
           </div>
 
-          {/* Links */}
+          {/* ── Liens produit ── */}
           <div>
             <h4 className="font-semibold text-white mb-4">Produit</h4>
             <ul className="space-y-3">
@@ -93,6 +109,7 @@ export function Footer() {
             </ul>
           </div>
 
+          {/* ── Liens ressources ── */}
           <div>
             <h4 className="font-semibold text-white mb-4">Ressources</h4>
             <ul className="space-y-3">
@@ -106,13 +123,18 @@ export function Footer() {
             </ul>
           </div>
 
+          {/* ── Coordonnées de contact ── */}
           <div>
             <h4 className="font-semibold text-white mb-4">Contact</h4>
             <ul className="space-y-3">
-              {footerLinks.contact.map((link) => (
-                <li key={link.name}>
-                  <Link href={link.href} className="text-sm hover:text-white transition-colors">
-                    {link.name}
+              {contactInfo.map((item) => (
+                <li key={item.label}>
+                  <Link
+                    href={item.href}
+                    className="flex items-center gap-2 text-sm hover:text-white transition-colors group"
+                  >
+                    <item.icon className="h-4 w-4 text-cyan-500/60 group-hover:text-cyan-400 flex-shrink-0 transition-colors" />
+                    {item.label}
                   </Link>
                 </li>
               ))}
@@ -120,10 +142,10 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom */}
+        {/* ── Bas de footer ── */}
         <div className="mt-12 pt-8 border-t border-white/[0.08] flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-[#71717a]">
-            © {new Date().getFullYear()} FleetMaster. Tous droits réservés.
+            © {new Date().getFullYear()} FleetMaster Pro. Tous droits réservés.
           </p>
           <div className="flex gap-6">
             {footerLinks.legal.map((link) => (
