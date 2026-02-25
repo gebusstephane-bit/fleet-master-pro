@@ -5,8 +5,9 @@
  * Calculs agrégés côté serveur pour éviter freeze UI
  */
 
-import { createClient } from "@/lib/supabase/server";
 import { cache } from "react";
+
+import { createClient } from "@/lib/supabase/server";
 
 export interface MonthlyCostData {
   month: string;

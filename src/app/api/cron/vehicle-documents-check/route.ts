@@ -25,6 +25,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email';
+import { logger } from '@/lib/logger';
 
 // ============================================================
 // CONFIGURATION
@@ -259,7 +260,7 @@ export async function GET(request: NextRequest) {
       .eq('status', 'active');
 
     if (vehiclesError || !vehicles) {
-      console.error('Cron: échec récupération véhicules', vehiclesError);
+      logger.error('Cron: échec récupération véhicules', { error: vehiclesError instanceof Error ? vehiclesError.message : String(vehiclesError) });
       return NextResponse.json(
         { error: 'Failed to fetch vehicles', details: vehiclesError?.message },
         { status: 500 }
@@ -351,21 +352,21 @@ export async function GET(request: NextRequest) {
             });
 
           stats.alerts_sent++;
-          console.log(
+          logger.info(
             `✅ Alert ${alertLevel} sent: ${vehicle.registration_number} / ${doc.type} / expires ${expiryDate}`
           );
         } catch (err: any) {
           // Ne jamais bloquer le cron si un email échoue
           stats.errors++;
-          console.error(
+          logger.error(
             `❌ Alert error: ${vehicle.registration_number} / ${doc.type}`,
-            err.message
+            { error: err instanceof Error ? err.message : String(err) }
           );
         }
       }
     }
 
-    console.log('Cron vehicle-documents-check completed:', stats);
+    logger.info('Cron vehicle-documents-check completed', stats);
 
     return NextResponse.json({
       success: true,
@@ -373,7 +374,7 @@ export async function GET(request: NextRequest) {
       ...stats,
     });
   } catch (err: any) {
-    console.error('Cron fatal error:', err);
+    logger.error('Cron fatal error', { error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: 'Cron job failed', details: err.message },
       { status: 500 }

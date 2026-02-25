@@ -7,10 +7,11 @@
  * Les policies PostgreSQL assurent l'isolation par company_id
  */
 
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+
 import { authActionClient, idSchema } from '@/lib/safe-action';
 import { createClient } from '@/lib/supabase/server';
-import { revalidatePath } from 'next/cache';
 
 // Schéma local (non exporté) — 'use server' n'autorise que les fonctions async en export
 const createDriverSchema = z.object({

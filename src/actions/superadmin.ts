@@ -5,8 +5,9 @@
 
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
+
+import { createAdminClient } from '@/lib/supabase/admin';
 import { isSuperadminEmail } from '@/lib/superadmin';
 
 // Vérification SuperAdmin
@@ -47,7 +48,7 @@ export async function getCompanies(filters?: { search?: string; plan?: string; s
 
   const { data, error } = await query;
   
-  if (error) throw error;
+  if (error) {throw error;}
   return data;
 }
 
@@ -61,7 +62,7 @@ export async function updateCompanyStatus(companyId: string, status: string) {
     .update({ subscription_status: status })
     .eq('id', companyId);
 
-  if (error) throw error;
+  if (error) {throw error;}
   
   revalidatePath('/superadmin/clients');
   return { success: true };
@@ -78,7 +79,7 @@ export async function deleteCompany(companyId: string) {
     .delete()
     .eq('id', companyId);
 
-  if (error) throw error;
+  if (error) {throw error;}
   
   revalidatePath('/superadmin/clients');
   return { success: true };
@@ -96,7 +97,7 @@ export async function getSubscriptions() {
     .select('*, companies:company_id(name, email)')
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (error) {throw error;}
   return data;
 }
 
@@ -121,7 +122,7 @@ export async function updateSubscriptionPlan(subscriptionId: string, plan: strin
     })
     .eq('id', subscriptionId);
 
-  if (error) throw error;
+  if (error) {throw error;}
   
   revalidatePath('/superadmin/subscriptions');
   return { success: true };
@@ -169,7 +170,7 @@ export async function getSupportTickets() {
     .select('*, companies:company_id(name, email)')
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (error) {throw error;}
   return data;
 }
 
@@ -183,7 +184,7 @@ export async function updateTicketStatus(ticketId: string, status: string) {
     .update({ status: status as any, updated_at: new Date().toISOString() })
     .eq('id', ticketId);
 
-  if (error) throw error;
+  if (error) {throw error;}
   
   revalidatePath('/superadmin/support');
   return { success: true };

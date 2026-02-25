@@ -1,12 +1,12 @@
 'use server';
 
-import { authActionClient } from '@/lib/safe-action';
-import { createClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email/client';
 import { 
   maintenanceAlertTemplate, 
   maintenanceAlertText
 } from '@/lib/email/templates/maintenance-alert';
+import { authActionClient } from '@/lib/safe-action';
+import { createClient } from '@/lib/supabase/server';
 
 interface MaintenanceAlertData {
   vehicleName: string;

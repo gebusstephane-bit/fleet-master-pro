@@ -8,9 +8,10 @@
  * - createAdminClient() UNIQUEMENT pour auth.admin.createUser/deleteUser (nécessite service role)
  */
 
-import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 // Schémas de validation
 const createUserSchema = z.object({

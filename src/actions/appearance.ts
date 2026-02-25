@@ -1,7 +1,8 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+
+import { createClient } from '@/lib/supabase/server';
 import { AppearanceSettings } from '@/types/appearance';
 
 export async function getAppearanceSettings(userId: string) {
@@ -41,9 +42,9 @@ export async function getAppearanceSettings(userId: string) {
     }
     
     return { data, error: null };
-  } catch (error: any) {
+  } catch (error) {
     console.error('getAppearanceSettings error:', error);
-    return { data: null, error: error.message };
+    return { data: null, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
@@ -61,24 +62,24 @@ export async function updateAppearanceSettings(
     }
     
     // Mapper les noms camelCase vers snake_case
-    const dbSettings: any = {};
-    if (settings.theme) dbSettings.theme = settings.theme;
-    if (settings.primaryColor) dbSettings.primary_color = settings.primaryColor;
-    if (settings.customColor) dbSettings.custom_color = settings.customColor;
-    if (settings.density) dbSettings.density = settings.density;
-    if (settings.font) dbSettings.font = settings.font;
-    if (settings.fontSize) dbSettings.font_size = settings.fontSize;
-    if (settings.language) dbSettings.language = settings.language;
-    if (settings.dateFormat) dbSettings.date_format = settings.dateFormat;
-    if (settings.timeFormat) dbSettings.time_format = settings.timeFormat;
-    if (settings.currency) dbSettings.currency = settings.currency;
-    if (settings.timezone) dbSettings.timezone = settings.timezone;
-    if (settings.sidebarStyle) dbSettings.sidebar_style = settings.sidebarStyle;
-    if (settings.sidebarAutoCollapse !== undefined) dbSettings.sidebar_auto_collapse = settings.sidebarAutoCollapse;
-    if (settings.sidebarIconsOnly !== undefined) dbSettings.sidebar_icons_only = settings.sidebarIconsOnly;
-    if (settings.reduceMotion !== undefined) dbSettings.reduce_motion = settings.reduceMotion;
-    if (settings.glassEffects !== undefined) dbSettings.glass_effects = settings.glassEffects;
-    if (settings.shadows !== undefined) dbSettings.shadows = settings.shadows;
+    const dbSettings: Record<string, unknown> = {};
+    if (settings.theme) {dbSettings.theme = settings.theme;}
+    if (settings.primaryColor) {dbSettings.primary_color = settings.primaryColor;}
+    if (settings.customColor) {dbSettings.custom_color = settings.customColor;}
+    if (settings.density) {dbSettings.density = settings.density;}
+    if (settings.font) {dbSettings.font = settings.font;}
+    if (settings.fontSize) {dbSettings.font_size = settings.fontSize;}
+    if (settings.language) {dbSettings.language = settings.language;}
+    if (settings.dateFormat) {dbSettings.date_format = settings.dateFormat;}
+    if (settings.timeFormat) {dbSettings.time_format = settings.timeFormat;}
+    if (settings.currency) {dbSettings.currency = settings.currency;}
+    if (settings.timezone) {dbSettings.timezone = settings.timezone;}
+    if (settings.sidebarStyle) {dbSettings.sidebar_style = settings.sidebarStyle;}
+    if (settings.sidebarAutoCollapse !== undefined) {dbSettings.sidebar_auto_collapse = settings.sidebarAutoCollapse;}
+    if (settings.sidebarIconsOnly !== undefined) {dbSettings.sidebar_icons_only = settings.sidebarIconsOnly;}
+    if (settings.reduceMotion !== undefined) {dbSettings.reduce_motion = settings.reduceMotion;}
+    if (settings.glassEffects !== undefined) {dbSettings.glass_effects = settings.glassEffects;}
+    if (settings.shadows !== undefined) {dbSettings.shadows = settings.shadows;}
     
     dbSettings.updated_at = new Date().toISOString();
     
@@ -118,9 +119,9 @@ export async function updateAppearanceSettings(
     revalidatePath('/settings/appearance');
     
     return { data: result.data, error: null };
-  } catch (error: any) {
+  } catch (error) {
     console.error('updateAppearanceSettings error:', error);
-    return { error: error.message, data: null };
+    return { error: error instanceof Error ? error.message : 'Unknown error', data: null };
   }
 }
 
@@ -179,9 +180,9 @@ export async function resetAppearanceSettings(userId: string) {
     revalidatePath('/settings/appearance');
     
     return { data, error: null };
-  } catch (error: any) {
+  } catch (error) {
     console.error('resetAppearanceSettings error:', error);
-    return { error: error.message, data: null };
+    return { error: error instanceof Error ? error.message : 'Unknown error', data: null };
   }
 }
 
@@ -216,8 +217,8 @@ export async function exportAppearanceSettings(userId: string) {
     };
     
     return { data: exportData, error: null };
-  } catch (error: any) {
+  } catch (error) {
     console.error('exportAppearanceSettings error:', error);
-    return { error: error.message, data: null };
+    return { error: error instanceof Error ? error.message : 'Unknown error', data: null };
   }
 }

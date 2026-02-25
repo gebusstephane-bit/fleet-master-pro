@@ -1,12 +1,14 @@
 'use server';
 
-import { z } from 'zod';
-import { authActionClient } from '@/lib/safe-action';
-import { createClient } from '@/lib/supabase/server';
-import { revalidatePath } from 'next/cache';
-import { sendEmail } from '@/lib/email';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+
+import { sendEmail } from '@/lib/email';
+import { authActionClient } from '@/lib/safe-action';
+import { createClient } from '@/lib/supabase/server';
+
 
 // ============================================
 // SCHÉMAS
@@ -60,7 +62,7 @@ async function getUserCompanyData(userId: string) {
     .eq('id', userId)
     .single();
 
-  if (error || !data) throw new Error('Utilisateur non trouvé');
+  if (error || !data) {throw new Error('Utilisateur non trouvé');}
   return data;
 }
 
@@ -72,7 +74,7 @@ async function getCompanyDirectors(companyId: string) {
     .eq('company_id', companyId)
     .in('role', ['ADMIN', 'DIRECTEUR']);
   
-  if (error) return [];
+  if (error) {return [];}
   return data || [];
 }
 

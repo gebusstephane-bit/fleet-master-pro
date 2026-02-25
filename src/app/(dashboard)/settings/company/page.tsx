@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useUserContext } from '@/components/providers/user-provider';
 import { ArrowLeft, Building2, MapPin, Phone, Mail, Save, Loader2, Camera, Trash2 } from 'lucide-react';
-import { getCompany, updateCompany, uploadCompanyLogo, deleteCompanyLogo, CompanyData } from '@/actions/company';
+import { getCompany, updateCompany, uploadCompanyLogo, deleteCompanyLogo, ICompanyData } from '@/actions/company';
 import { toast } from 'sonner';
 
 export default function CompanyPage() {
@@ -20,7 +20,7 @@ export default function CompanyPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [formData, setFormData] = useState<CompanyData>({
+  const [formData, setFormData] = useState<ICompanyData>({
     name: '',
     siret: '',
     address: '',

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/lib/logger';
 
 // Configuration sécurisée via variables d'environnement
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
   const authHeader = request.headers.get('Authorization');
   
   if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
-    console.error('[CRON PREDICTIVE] Unauthorized attempt');
+    logger.error('[CRON PREDICTIVE] Unauthorized attempt');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -128,20 +129,20 @@ export async function POST(request: Request) {
             });
 
           if (insertError) {
-            console.error(`[CRON] Insert error for ${vehicle.id}:`, insertError);
+            logger.error(`[CRON] Insert error for ${vehicle.id}:`, { error: insertError instanceof Error ? insertError.message : String(insertError) });
             errorsCount++;
           } else {
             createdCount++;
           }
 
         } catch (err) {
-          console.error(`[CRON] Error processing vehicle ${vehicle.id}:`, err);
+          logger.error(`[CRON] Error processing vehicle ${vehicle.id}:`, { error: err instanceof Error ? err.message : String(err) });
           errorsCount++;
         }
       }
     }
 
-    console.log(`[CRON PREDICTIVE] Created: ${createdCount}, Errors: ${errorsCount}`);
+    logger.info(`[CRON PREDICTIVE] Created: ${createdCount}, Errors: ${errorsCount}`);
     
     return NextResponse.json({
       success: true,
@@ -151,7 +152,7 @@ export async function POST(request: Request) {
     });
 
   } catch (error) {
-    console.error('[CRON PREDICTIVE] Critical error:', error);
+    logger.error('[CRON PREDICTIVE] Critical error:', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: 'Internal processing error' },
       { status: 500 }

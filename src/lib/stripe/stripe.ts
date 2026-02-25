@@ -36,6 +36,9 @@ export const stripe = secretKey
         update: async () => {
           throw new Error('Stripe is not configured. Set STRIPE_SECRET_KEY env variable.');
         },
+        cancel: async () => {
+          throw new Error('Stripe is not configured. Set STRIPE_SECRET_KEY env variable.');
+        },
       },
       webhooks: {
         constructEvent: () => {

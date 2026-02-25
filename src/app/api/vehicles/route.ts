@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createVehicleSchema, validateSchema } from '@/lib/validation/schemas';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/vehicles - Récupérer tous les véhicules de l'entreprise
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(vehicles);
   } catch (error: any) {
-    console.error('[API Vehicles] GET error:', error);
+    logger.error('[API Vehicles] GET error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }
@@ -119,13 +120,13 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      console.error('[API Vehicles] POST error:', error);
+      logger.error('[API Vehicles] POST error', { error: error instanceof Error ? error.message : String(error) });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json(vehicle, { status: 201 });
   } catch (error: any) {
-    console.error('[API Vehicles] POST error:', error);
+    logger.error('[API Vehicles] POST error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }
@@ -203,7 +204,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(vehicle);
   } catch (error: any) {
-    console.error('[API Vehicles] PATCH error:', error);
+    logger.error('[API Vehicles] PATCH error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }
@@ -276,7 +277,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('[API Vehicles] DELETE error:', error);
+    logger.error('[API Vehicles] DELETE error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }

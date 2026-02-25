@@ -3,8 +3,10 @@
  * Remplace les console.log sporadiques
  * 
  * En développement: logs détaillés dans la console
- * En production: envoi vers service de logging (Sentry, LogRocket, etc.)
+ * En production: envoi vers Sentry
  */
+
+import * as Sentry from '@sentry/nextjs';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -34,11 +36,6 @@ class Logger {
   }
 
   private log(level: LogLevel, message: string, context?: LogContext, error?: Error): void {
-    // Ne pas logger en production côté client (sauf erreurs)
-    if (this.isProduction && this.isClient && level !== 'error') {
-      return;
-    }
-
     const entry: LogEntry = {
       level,
       message,
@@ -47,10 +44,9 @@ class Logger {
       error,
     };
 
-    // En production, envoyer vers un service de logging
+    // En production, envoyer vers Sentry
     if (this.isProduction && !this.isClient) {
-      // TODO: Envoyer vers Sentry, Datadog, etc.
-      // Example: Sentry.captureMessage(message, { level, extra: context });
+      this.sendToSentry(level, message, context, error);
       return;
     }
 
@@ -73,6 +69,76 @@ class Logger {
       console.log(`%c${prefix} ${message}`, styles[level]);
       if (context) console.log('Context:', context);
     }
+  }
+
+  /**
+   * Envoie les logs vers Sentry en production
+   */
+  private sendToSentry(
+    level: LogLevel,
+    message: string,
+    context?: LogContext,
+    error?: Error
+  ): void {
+    // Configurer le scope avec le contexte
+    Sentry.withScope((scope) => {
+      // Ajouter le contexte utilisateur
+      if (context?.userId) {
+        scope.setUser({ id: context.userId });
+      }
+      
+      // Ajouter les tags
+      if (context?.action) {
+        scope.setTag('action', context.action);
+      }
+      if (context?.companyId) {
+        scope.setTag('companyId', context.companyId as string);
+      }
+      if (context?.path) {
+        scope.setTag('path', context.path);
+      }
+      
+      // Ajouter le contexte additionnel (sans données sensibles)
+      const safeContext = this.sanitizeContext(context);
+      scope.setContext('logContext', safeContext);
+      scope.setTag('logLevel', level);
+
+      // Envoyer selon le niveau et le type
+      if (error) {
+        // Si c'est une Error, utiliser captureException
+        Sentry.captureException(error);
+      } else if (level === 'error') {
+        // Erreur sans objet Error
+        Sentry.captureMessage(message, {
+          level: 'error',
+        });
+      } else if (level === 'warn') {
+        Sentry.captureMessage(message, {
+          level: 'warning',
+        });
+      }
+      // Les logs 'info' et 'debug' ne sont pas envoyés à Sentry pour éviter le bruit
+    });
+  }
+
+  /**
+   * Sanitize le contexte pour éviter d'envoyer des données sensibles à Sentry
+   */
+  private sanitizeContext(context?: LogContext): Record<string, unknown> {
+    if (!context) return {};
+    
+    const sensitiveKeys = ['password', 'token', 'secret', 'email', 'phone', 'ip', 'authorization'];
+    const sanitized: Record<string, unknown> = {};
+    
+    for (const [key, value] of Object.entries(context)) {
+      if (sensitiveKeys.some(sk => key.toLowerCase().includes(sk))) {
+        sanitized[key] = '[REDACTED]';
+      } else {
+        sanitized[key] = value;
+      }
+    }
+    
+    return sanitized;
   }
 
   debug(message: string, context?: LogContext): void {

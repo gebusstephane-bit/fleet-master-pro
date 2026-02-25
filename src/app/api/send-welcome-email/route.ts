@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { logger } from '@/lib/logger';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -45,14 +46,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      console.error('Resend error:', error);
+      logger.error('Resend error', { error: error instanceof Error ? error.message : String(error) });
       return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
-    console.error('Send welcome email error:', error);
+    logger.error('Send welcome email error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { addDays, startOfMonth } from 'date-fns';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -278,7 +279,7 @@ export async function GET() {
     });
 
   } catch (error) {
-    console.error('Dashboard API error:', error);
+    logger.error('Dashboard API error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: 'Server error', details: (error as Error).message },
       { status: 500 }

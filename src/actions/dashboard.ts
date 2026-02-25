@@ -7,8 +7,8 @@
  * Le company_id est récupéré depuis le profil en DB, pas depuis user_metadata
  */
 
-import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { createClient } from '@/lib/supabase/server';
 
 interface DashboardStats {
   vehicles: {
@@ -75,14 +75,14 @@ export async function getDashboardStats(): Promise<ActionResult<DashboardStats>>
       .select('id, registration_number, status, mileage, fuel_type, brand, model')
       .order('created_at', { ascending: false });
     
-    if (vErr) logger.error('Erreur véhicules', new Error(vErr.message));
+    if (vErr) {logger.error('Erreur véhicules', new Error(vErr.message));}
     
     // Récupérer les chauffeurs (RLS gère le filtre company_id)
     const { data: drivers, error: dErr } = await supabase
       .from('drivers')
       .select('id, status, first_name, last_name');
     
-    if (dErr) logger.error('Erreur chauffeurs', new Error(dErr.message));
+    if (dErr) {logger.error('Erreur chauffeurs', new Error(dErr.message));}
     
     // Tournées du jour (RLS gère le filtre company_id)
     const today = new Date().toISOString().split('T')[0];
@@ -91,7 +91,7 @@ export async function getDashboardStats(): Promise<ActionResult<DashboardStats>>
       .select('id, status, name')
       .gte('route_date', today);
     
-    if (rErr) logger.error('Erreur routes', new Error(rErr.message));
+    if (rErr) {logger.error('Erreur routes', new Error(rErr.message));}
     
     // Coûts ce mois
     const startOfMonth = new Date();

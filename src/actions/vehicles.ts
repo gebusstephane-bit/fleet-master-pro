@@ -7,9 +7,10 @@
  * Les policies PostgreSQL assurent l'isolation par company_id
  */
 
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+
 import { logger } from '@/lib/logger';
+import { createClient } from '@/lib/supabase/server';
 
 export interface CreateVehicleData {
   registration_number: string;
@@ -100,35 +101,6 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
       }
       
       return { success: false, error: vehicleError.message };
-    }
-    
-    // 5. Créer la prédiction AI (RLS permet INSERT si vehicle_id dans sa company)
-    try {
-      await supabase
-        .from('ai_predictions')
-        .insert({
-          vehicle_id: vehicleId,
-          failure_probability: 0.25 + Math.random() * 0.30,
-          predicted_failure_type: ['Freinage', 'Pneumatiques', 'Vidange'][Math.floor(Math.random() * 3)],
-          confidence_score: 0.70 + Math.random() * 0.15,
-          prediction_horizon_days: 14,
-          features_used: {
-            vehicle_age_years: 0,
-            current_mileage: data.mileage || 0,
-            days_since_last_maintenance: 0,
-            harsh_braking_30d: 0,
-            fault_code_count_30d: 0
-          },
-          recommended_action: 'Maintenance préventive : effectuer un contrôle initial sous 14 jours',
-          estimated_roi: Math.floor(500 + Math.random() * 1000),
-          urgency_level: 'low',
-          risk_factors: ['Nouveau véhicule - surveillance initiale'],
-          model_version: '1.0.0'
-        } as any);
-    } catch (predError) {
-      logger.warn('createVehicle: Prédiction non créée', { 
-        error: predError instanceof Error ? predError.message : String(predError) 
-      });
     }
     
     revalidatePath('/vehicles');
@@ -256,18 +228,7 @@ export async function deleteVehicle(id: string): Promise<ActionResult> {
       return { success: false, error: 'Véhicule non trouvé' };
     }
     
-    // 4. Supprimer les prédictions liées (RLS doit permettre DELETE sur ai_predictions)
-    const { error: predDeleteError } = await supabase
-      .from('ai_predictions')
-      .delete()
-      .eq('vehicle_id', id);
-    
-    if (predDeleteError) {
-      logger.warn('deleteVehicle: Erreur suppression prédictions', { error: predDeleteError.message });
-      // Continuer malgré l'erreur
-    }
-    
-    // 5. Supprimer le véhicule (RLS vérifie l'appartenance à la company)
+    // 4. Supprimer le véhicule (RLS vérifie l'appartenance à la company)
     const { error } = await supabase
       .from('vehicles')
       .delete()

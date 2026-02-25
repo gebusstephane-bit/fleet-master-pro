@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { ApifyClient } from 'apify-client';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,12 +32,12 @@ interface GeocodeResult {
  */
 async function geocodeWithApify(address: string): Promise<GeocodeResult | null> {
   if (!apifyClient) {
-    console.log('[Geocode] Apify not configured, skipping');
+    logger.info('[Geocode] Apify not configured, skipping');
     return null;
   }
 
   try {
-    console.log('[Geocode] Trying Apify for:', address);
+    logger.info('[Geocode] Trying Apify', { address });
     
     // Utilisation de l'actor Google Maps Scraper
     const input = {
@@ -56,7 +57,7 @@ async function geocodeWithApify(address: string): Promise<GeocodeResult | null> 
       const place = items[0] as any;
       
       if (place.location?.lat && place.location?.lng) {
-        console.log('[Geocode] Apify success:', place.title);
+        logger.info('[Geocode] Apify success', { title: place.title });
         return {
           lat: place.location.lat,
           lng: place.location.lng,
@@ -68,11 +69,11 @@ async function geocodeWithApify(address: string): Promise<GeocodeResult | null> 
       }
     }
     
-    console.log('[Geocode] Apify returned no results');
+    logger.info('[Geocode] Apify returned no results');
     return null;
     
   } catch (error: any) {
-    console.error('[Geocode] Apify error:', error.message);
+    logger.error('[Geocode] Apify error', { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -82,7 +83,7 @@ async function geocodeWithApify(address: string): Promise<GeocodeResult | null> 
  */
 async function geocodeWithNominatim(address: string): Promise<GeocodeResult | null> {
   try {
-    console.log('[Geocode] Trying Nominatim for:', address);
+    logger.info('[Geocode] Trying Nominatim', { address });
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -106,7 +107,7 @@ async function geocodeWithNominatim(address: string): Promise<GeocodeResult | nu
     const data = await response.json();
     
     if (data && data.length > 0) {
-      console.log('[Geocode] Nominatim success:', data[0].display_name);
+      logger.info('[Geocode] Nominatim success', { displayName: data[0].display_name });
       return {
         lat: parseFloat(data[0].lat),
         lng: parseFloat(data[0].lon),
@@ -119,7 +120,7 @@ async function geocodeWithNominatim(address: string): Promise<GeocodeResult | nu
     return null;
     
   } catch (error: any) {
-    console.error('[Geocode] Nominatim error:', error.message);
+    logger.error('[Geocode] Nominatim error', { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -129,7 +130,7 @@ async function geocodeWithNominatim(address: string): Promise<GeocodeResult | nu
  */
 async function reverseGeocodeWithNominatim(lat: number, lng: number): Promise<GeocodeResult | null> {
   try {
-    console.log('[Geocode] Reverse geocoding:', lat, lng);
+    logger.info('[Geocode] Reverse geocoding', { lat, lng });
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -166,7 +167,7 @@ async function reverseGeocodeWithNominatim(lat: number, lng: number): Promise<Ge
     return null;
     
   } catch (error: any) {
-    console.error('[Geocode] Reverse geocoding error:', error.message);
+    logger.error('[Geocode] Reverse geocoding error', { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -247,7 +248,7 @@ export async function POST(request: NextRequest) {
     );
 
   } catch (error: any) {
-    console.error('[Geocode] POST error:', error);
+    logger.error('[Geocode] POST error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: 'Erreur de traitement: ' + error.message },
       { status: 500 }

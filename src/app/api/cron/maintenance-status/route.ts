@@ -33,6 +33,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logger } from '@/lib/logger';
 
 // ============================================================
 // CONFIG
@@ -113,7 +114,7 @@ export async function GET(request: NextRequest) {
     errors: 0,
   };
 
-  console.log(`Cron maintenance-status: processing date = ${todayStr}`);
+  logger.info(`Cron maintenance-status: processing date = ${todayStr}`);
 
   // ============================================================
   // ÉTAPE A — Passage en maintenance
@@ -128,7 +129,7 @@ export async function GET(request: NextRequest) {
       .in('status', ['RDV_PRIS', 'VALIDEE_DIRECTEUR']);
 
     if (rdvErr) {
-      console.error('Étape A: erreur lecture maintenance_records', rdvErr);
+      logger.error('Étape A: erreur lecture maintenance_records', { error: rdvErr instanceof Error ? rdvErr.message : String(rdvErr) });
     } else if (todayRdvs && todayRdvs.length > 0) {
       // Dédupliquer les véhicules (un véhicule peut avoir plusieurs records)
       const vehicleIds = Array.from(new Set(todayRdvs.map((r) => r.vehicle_id)));
@@ -142,7 +143,7 @@ export async function GET(request: NextRequest) {
         .eq('status', 'active');
 
       if (vehicleErr) {
-        console.error('Étape A: erreur lecture vehicles', vehicleErr);
+        logger.error('Étape A: erreur lecture vehicles', { error: vehicleErr instanceof Error ? vehicleErr.message : String(vehicleErr) });
       } else if (activeVehicles && activeVehicles.length > 0) {
         const now = new Date().toISOString();
 
@@ -176,19 +177,19 @@ export async function GET(request: NextRequest) {
               });
 
             stats.vehicles_set_maintenance++;
-            console.log(
+            logger.info(
               `✅ Étape A: ${vehicle.registration_number} → maintenance (record: ${linkedRecord?.id ?? 'N/A'})`,
             );
           } catch (err: any) {
             stats.errors++;
-            console.error(`❌ Étape A: ${vehicle.registration_number}`, err.message);
+            logger.error(`❌ Étape A: ${vehicle.registration_number}`, { error: err instanceof Error ? err.message : String(err) });
           }
         }
       }
     }
   } catch (err: any) {
     stats.errors++;
-    console.error('Étape A fatal:', err.message);
+    logger.error('Étape A fatal', { error: err instanceof Error ? err.message : String(err) });
   }
 
   // ============================================================
@@ -203,7 +204,7 @@ export async function GET(request: NextRequest) {
       .eq('status', 'maintenance');
 
     if (mvErr) {
-      console.error('Étape B: erreur lecture vehicles en maintenance', mvErr);
+      logger.error('Étape B: erreur lecture vehicles en maintenance', { error: mvErr instanceof Error ? mvErr.message : String(mvErr) });
     } else if (maintenanceVehicles && maintenanceVehicles.length > 0) {
       stats.vehicles_checked_return = maintenanceVehicles.length;
 
@@ -227,7 +228,7 @@ export async function GET(request: NextRequest) {
           if (!record?.rdv_date) {
             // Aucun record trouvé → on ne force pas le retour automatique
             // (maintenance créée manuellement ou workflow non mis à jour)
-            console.warn(
+            logger.warn(
               `⚠️ Étape B: ${vehicle.registration_number} en maintenance sans record associé — ignoré`,
             );
             continue;
@@ -274,30 +275,30 @@ export async function GET(request: NextRequest) {
               });
 
             stats.vehicles_set_active++;
-            console.log(
+            logger.info(
               `✅ Étape B: ${vehicle.registration_number} → active (retour prévu: ${returnDate.toISOString().split('T')[0]})`,
             );
           } else {
-            console.log(
+            logger.info(
               `⏳ Étape B: ${vehicle.registration_number} — retour prévu le ${returnDate.toISOString().split('T')[0]} (pas encore)`,
             );
           }
         } catch (err: any) {
           stats.errors++;
-          console.error(`❌ Étape B: ${vehicle.registration_number}`, err.message);
+          logger.error(`❌ Étape B: ${vehicle.registration_number}`, { error: err instanceof Error ? err.message : String(err) });
         }
       }
     }
   } catch (err: any) {
     stats.errors++;
-    console.error('Étape B fatal:', err.message);
+    logger.error('Étape B fatal', { error: err instanceof Error ? err.message : String(err) });
   }
 
   // ============================================================
   // RÉPONSE
   // ============================================================
 
-  console.log('Cron maintenance-status completed:', stats);
+  logger.info('Cron maintenance-status completed', stats);
 
   return NextResponse.json({
     success: true,

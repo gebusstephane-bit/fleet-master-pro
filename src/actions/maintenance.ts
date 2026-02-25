@@ -7,11 +7,12 @@
  * Les policies PostgreSQL assurent l'isolation par company_id
  */
 
-import { z } from 'zod';
-import { authActionClient, idSchema } from '@/lib/safe-action';
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+
+import { authActionClient, idSchema } from '@/lib/safe-action';
 import { maintenanceSchema } from '@/lib/schemas/maintenance';
+import { createClient } from '@/lib/supabase/server';
 
 // Mapping des types frontend vers DB
 const typeToDb: Record<string, string> = {
@@ -61,7 +62,7 @@ export const createMaintenance = authActionClient
       .from('maintenance_records')
       .insert({
         vehicle_id: vehicleId,
-        type: (typeToDb[maintenanceData.type] || 'repair') as string,
+        type: (typeToDb[maintenanceData.type] || 'repair'),
         description: maintenanceData.description,
         cost: maintenanceData.cost || 0,
         mileage_at_service: maintenanceData.mileageAtService || 0,

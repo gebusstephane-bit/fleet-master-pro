@@ -23,6 +23,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email';
+import { logger } from '@/lib/logger';
 
 // ============================================================
 // CONFIG
@@ -190,7 +191,7 @@ export async function GET(request: NextRequest) {
   };
 
   const tomorrowStr = getTomorrowDateStr();
-  console.log(`Cron maintenance-reminders: scanning rdv_date = ${tomorrowStr}`);
+  logger.info(`Cron maintenance-reminders: scanning rdv_date = ${tomorrowStr}`);
 
   try {
     // ── 1. RDV de demain ──────────────────────────────────────
@@ -202,12 +203,12 @@ export async function GET(request: NextRequest) {
       .not('rdv_time', 'is', null);
 
     if (recordsErr) {
-      console.error('Cron: échec lecture maintenance_records', recordsErr);
+      logger.error('Cron: échec lecture maintenance_records', { error: recordsErr instanceof Error ? recordsErr.message : String(recordsErr) });
       return NextResponse.json({ error: recordsErr.message }, { status: 500 });
     }
 
     if (!records || records.length === 0) {
-      console.log('Cron maintenance-reminders: aucun RDV demain');
+      logger.info('Cron maintenance-reminders: aucun RDV demain');
       return NextResponse.json({ success: true, timestamp: new Date().toISOString(), ...stats });
     }
 
@@ -292,12 +293,12 @@ export async function GET(request: NextRequest) {
         try {
           await sendEmail({ to: recipient.email, subject, html });
           stats.emails_sent++;
-          console.log(`✅ Reminder sent: ${vehicle.registration_number} → ${recipient.email}`);
+          logger.info(`✅ Reminder sent: ${vehicle.registration_number} → ${recipient.email}`);
         } catch (err: any) {
           sendStatus = 'failed';
           errorMessage = err.message;
           stats.errors++;
-          console.error(`❌ Reminder error: ${vehicle.registration_number} → ${recipient.email}`, err.message);
+          logger.error(`❌ Reminder error: ${vehicle.registration_number} → ${recipient.email}`, { error: err instanceof Error ? err.message : String(err) });
         }
 
         // ── 6. Log dans maintenance_reminders (même si erreur) ──
@@ -315,7 +316,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log('Cron maintenance-reminders completed:', stats);
+    logger.info('Cron maintenance-reminders completed', stats);
 
     return NextResponse.json({
       success: true,
@@ -324,7 +325,7 @@ export async function GET(request: NextRequest) {
       ...stats,
     });
   } catch (err: any) {
-    console.error('Cron maintenance-reminders fatal error:', err);
+    logger.error('Cron maintenance-reminders fatal error', { error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: 'Cron job failed', details: err.message }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+
 import { authActionClient, idSchema } from '@/lib/safe-action';
 import { createClient } from '@/lib/supabase/server';
 
@@ -207,7 +208,7 @@ export const getAlerts = authActionClient
       `)
       .order('created_at', { ascending: false });
     
-    if (error) throw error;
+    if (error) {throw error;}
     
     return alerts || [];
   });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from "@/lib/supabase/server";
+import { logger } from '@/lib/logger';
 
 // Forcer le rendu dynamique
 export const dynamic = 'force-dynamic';
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
-      console.error("API Dashboard: Non authentifié", authError?.message);
+      logger.error("API Dashboard: Non authentifié", { error: authError?.message || 'Unknown auth error' });
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
     
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
       .single();
     
     if (userError || !userData?.company_id) {
-      console.error("API Dashboard: Pas de company_id dans profiles", userError?.message);
+      logger.error("API Dashboard: Pas de company_id dans profiles", { error: userError?.message || 'Unknown error' });
       // Essayer dans users comme fallback
       const { data: userData2, error: userError2 } = await adminClient
         .from('users')
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
         .single();
       
       if (userError2 || !userData2?.company_id) {
-        console.error("API Dashboard: Pas de company_id dans users non plus", userError2?.message);
+        logger.error("API Dashboard: Pas de company_id dans users non plus", { error: userError2?.message || 'Unknown error' });
         return NextResponse.json({ error: "Pas de company_id" }, { status: 400 });
       }
       
@@ -73,11 +74,11 @@ export async function GET(request: NextRequest) {
       .eq("company_id", companyId);
     
     if (vError) {
-      console.error("API Dashboard: Erreur véhicules:", vError);
+      logger.error("API Dashboard: Erreur véhicules", { error: vError instanceof Error ? vError.message : String(vError) });
     } else {
       (results as any).vehicles.total = vehicles?.length || 0;
       (results as any).vehicles.active = vehicles?.filter(v => v.status === "active").length || 0;
-      console.log("API Dashboard: Véhicules =", results.vehicles.total);
+      logger.info("API Dashboard: Véhicules", { total: results.vehicles.total });
     }
     
     // Chauffeurs
@@ -87,10 +88,10 @@ export async function GET(request: NextRequest) {
       .eq("company_id", companyId);
     
     if (dError) {
-      console.error("API Dashboard: Erreur chauffeurs:", dError);
+      logger.error("API Dashboard: Erreur chauffeurs", { error: dError instanceof Error ? dError.message : String(dError) });
     } else {
       (results as any).drivers = drivers?.length || 0;
-      console.log("API Dashboard: Chauffeurs =", results.drivers);
+      logger.info("API Dashboard: Chauffeurs", { total: results.drivers });
     }
     
     // Alertes
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
       .eq("is_read", false);
     
     if (aError) {
-      console.error("API Dashboard: Erreur alertes:", aError);
+      logger.error("API Dashboard: Erreur alertes", { error: aError instanceof Error ? aError.message : String(aError) });
     } else {
       (results as any).alerts = alerts?.length || 0;
     }
@@ -115,16 +116,16 @@ export async function GET(request: NextRequest) {
       .eq("route_date", today);
     
     if (rError) {
-      console.error("API Dashboard: Erreur routes:", rError);
+      logger.error("API Dashboard: Erreur routes", { error: rError instanceof Error ? rError.message : String(rError) });
     } else {
       (results as any).routes = routes?.length || 0;
     }
     
-    console.log("API Dashboard: Résultat =", results);
+    logger.info("API Dashboard: Résultat", { results });
     return NextResponse.json({ data: results });
     
   } catch (e) {
-    console.error("API Dashboard: Exception:", e);
+    logger.error("API Dashboard: Exception", { error: e instanceof Error ? e.message : String(e) });
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }

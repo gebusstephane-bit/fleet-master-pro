@@ -1,10 +1,11 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { logger } from '@/lib/logger';
 
-export interface CompanyData {
+import { logger } from '@/lib/logger';
+import { createClient } from '@/lib/supabase/server';
+
+export interface ICompanyData {
   id?: string;
   name: string;
   siret: string;
@@ -50,13 +51,13 @@ export async function getCompany(userId: string) {
     }
     
     return { data: company };
-  } catch (error: any) {
-    logger.error('[getCompany] error', error);
-    return { error: 'Erreur serveur: ' + error.message };
+  } catch (error) {
+    logger.error('[getCompany] error', error instanceof Error ? error : new Error(String(error)));
+    return { error: 'Erreur serveur: ' + (error instanceof Error ? error.message : String(error)) };
   }
 }
 
-export async function updateCompany(userId: string, data: Partial<CompanyData>) {
+export async function updateCompany(userId: string, data: Partial<ICompanyData>) {
   try {
     const supabase = await createClient();
     
@@ -193,9 +194,9 @@ export async function uploadCompanyLogo(userId: string, formData: FormData) {
     
     revalidatePath('/settings/company');
     return { data: { logo_url: publicUrl } };
-  } catch (error: any) {
-    logger.error('Server error', error as Error);
-    return { error: 'Erreur serveur: ' + error.message };
+  } catch (error) {
+    logger.error('Server error', error instanceof Error ? error : new Error(String(error)));
+    return { error: 'Erreur serveur: ' + (error instanceof Error ? error.message : String(error)) };
   }
 }
 
@@ -244,8 +245,8 @@ export async function deleteCompanyLogo(userId: string) {
     
     revalidatePath('/settings/company');
     return { success: true };
-  } catch (error: any) {
-    logger.error('Server error', error as Error);
-    return { error: 'Erreur serveur: ' + error.message };
+  } catch (error) {
+    logger.error('Server error', error instanceof Error ? error : new Error(String(error)));
+    return { error: 'Erreur serveur: ' + (error instanceof Error ? error.message : String(error)) };
   }
 }

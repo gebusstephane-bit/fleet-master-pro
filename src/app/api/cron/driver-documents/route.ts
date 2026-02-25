@@ -31,6 +31,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, type EmailOptions } from '@/lib/email';
+import { logger } from '@/lib/logger';
 
 // ============================================================
 // CONFIGURATION
@@ -389,7 +390,7 @@ export async function GET(request: NextRequest) {
       .eq('status', 'active');
 
     if (driversError || !driversRaw) {
-      console.error('Cron driver-documents: échec récupération conducteurs', driversError);
+      logger.error('Cron driver-documents: échec récupération conducteurs', { error: driversError instanceof Error ? driversError.message : String(driversError) });
       return NextResponse.json(
         { error: 'Failed to fetch drivers', details: driversError?.message },
         { status: 500 }
@@ -508,14 +509,14 @@ export async function GET(request: NextRequest) {
             });
 
           stats.alerts_sent++;
-          console.log(
+          logger.info(
             `✅ Driver alert ${alertLevel}: ${driver.first_name} ${driver.last_name} / ${doc.type} / expires ${expiryDate}`
           );
         } catch (err: any) {
           stats.errors++;
-          console.error(
+          logger.error(
             `❌ Driver alert error: ${driver.first_name} ${driver.last_name} / ${doc.type}`,
-            err.message
+            { error: err instanceof Error ? err.message : String(err) }
           );
           // Log Sentry si disponible
           if (typeof (globalThis as any).Sentry?.captureException === 'function') {
@@ -527,7 +528,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log('Cron driver-documents-check completed:', stats);
+    logger.info('Cron driver-documents-check completed', stats);
 
     return NextResponse.json({
       success: true,
@@ -535,7 +536,7 @@ export async function GET(request: NextRequest) {
       ...stats,
     });
   } catch (err: any) {
-    console.error('Cron driver-documents fatal error:', err);
+    logger.error('Cron driver-documents fatal error', { error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
       { error: 'Cron job failed', details: err.message },
       { status: 500 }

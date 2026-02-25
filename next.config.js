@@ -13,7 +13,7 @@ const nextConfig = {
   // ============================================
   compress: false,
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
     ignoreBuildErrors: false, // Build strict activé - erreurs résiduelles dans tests/

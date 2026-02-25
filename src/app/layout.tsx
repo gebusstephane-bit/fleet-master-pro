@@ -7,6 +7,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { Providers } from './providers';
 import { ServiceWorkerRegister } from '@/components/pwa/sw-register';
+import { CookieBanner } from '@/components/legal/CookieBanner';
 import './globals.css';
 
 const inter = Inter({
@@ -118,6 +119,7 @@ export default function RootLayout({
           {children}
         </Providers>
         <ServiceWorkerRegister />
+        <CookieBanner />
       </body>
     </html>
   );

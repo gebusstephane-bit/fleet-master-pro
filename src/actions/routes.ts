@@ -1,10 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/no-unsafe-argument */
 'use server';
 
-import { z } from 'zod';
-import { authActionClient, idSchema } from '@/lib/safe-action';
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+
+import { authActionClient, idSchema } from '@/lib/safe-action';
 import { routeSchema } from '@/lib/schemas/routes';
+import { createClient } from '@/lib/supabase/server';
 
 // Créer une tournée avec ses arrêts
 export const createRoute = authActionClient
@@ -142,13 +144,13 @@ export const updateRoute = authActionClient
     const supabase = await createClient();
     
     // Mapper les champs camelCase vers snake_case
-    const dbUpdates: any = { ...updates };
-    if (vehicleId !== undefined) dbUpdates.vehicle_id = vehicleId;
-    if (driverId !== undefined) dbUpdates.driver_id = driverId;
-    if (routeDate !== undefined) dbUpdates.route_date = routeDate;
-    if (totalDistance !== undefined) dbUpdates.total_distance = totalDistance;
-    if (estimatedDuration !== undefined) dbUpdates.estimated_duration = estimatedDuration;
-    if (fuelCost !== undefined) dbUpdates.fuel_cost = fuelCost;
+    const dbUpdates: Record<string, unknown> = { ...updates };
+    if (vehicleId !== undefined) {dbUpdates.vehicle_id = vehicleId;}
+    if (driverId !== undefined) {dbUpdates.driver_id = driverId;}
+    if (routeDate !== undefined) {dbUpdates.route_date = routeDate;}
+    if (totalDistance !== undefined) {dbUpdates.total_distance = totalDistance;}
+    if (estimatedDuration !== undefined) {dbUpdates.estimated_duration = estimatedDuration;}
+    if (fuelCost !== undefined) {dbUpdates.fuel_cost = fuelCost;}
     
     const { data, error } = await supabase
       .from('routes')

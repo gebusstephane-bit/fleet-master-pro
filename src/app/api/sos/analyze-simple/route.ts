@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
         .order('priority', { ascending: true }),
     ]);
 
-    console.log('[SOS V4] Analyse:', {
+    logger.info('[SOS V4] Analyse', {
       breakdownType,
       distanceCategory,
       vehicleState,
@@ -121,13 +122,13 @@ export async function POST(request: NextRequest) {
         location_text: location,
       });
     } catch (e) {
-      console.error('[SOS V4] Erreur log historique:', e);
+      logger.error('[SOS V4] Erreur log historique', { error: e instanceof Error ? e.message : String(e) });
     }
 
     return NextResponse.json(result);
 
   } catch (error: any) {
-    console.error('[SOS V4] Erreur:', error);
+    logger.error('[SOS V4] Erreur', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: 'Erreur serveur: ' + error.message },
       { status: 500 }

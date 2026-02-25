@@ -6,9 +6,10 @@
 
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
-import { logger } from '@/lib/logger';
 import { addDays, startOfMonth } from 'date-fns';
+
+import { logger } from '@/lib/logger';
+import { createClient } from '@/lib/supabase/server';
 
 export interface DashboardKPIs {
   vehicles: {
@@ -226,7 +227,7 @@ export async function getMaintenanceAlerts(): Promise<{ data?: MaintenanceAlert[
   try {
     const isAuth = await checkAuth();
     
-    if (!isAuth) return { data: [] };
+    if (!isAuth) {return { data: [] };}
 
     const supabase = await createClient();
     const now = new Date();
@@ -261,9 +262,9 @@ export async function getMaintenanceAlerts(): Promise<{ data?: MaintenanceAlert[
       const daysUntil = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
       let priority: 'critical' | 'high' | 'medium' = 'medium';
-      if (daysUntil < 0) priority = 'critical';
-      else if (daysUntil <= 3) priority = 'critical';
-      else if (daysUntil <= 7) priority = 'high';
+      if (daysUntil < 0) {priority = 'critical';}
+      else if (daysUntil <= 3) {priority = 'critical';}
+      else if (daysUntil <= 7) {priority = 'high';}
 
       const vehicle = (m as any).vehicles;
 
@@ -271,7 +272,7 @@ export async function getMaintenanceAlerts(): Promise<{ data?: MaintenanceAlert[
         id: m.id,
         vehicle_id: m.vehicle_id,
         vehicle_name: vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.registration_number})` : 'Véhicule inconnu',
-        service_type: translateMaintenanceType(m.type as string),
+        service_type: translateMaintenanceType(m.type),
         due_date: rdvDate || '',
         days_until: daysUntil,
         priority,
@@ -293,7 +294,7 @@ export async function getPendingInspections(): Promise<{ data?: InspectionPendin
   try {
     const isAuth = await checkAuth();
     
-    if (!isAuth) return { data: [] };
+    if (!isAuth) {return { data: [] };}
 
     const supabase = await createClient();
     const now = new Date();
@@ -350,7 +351,7 @@ export async function getScheduledAppointments(): Promise<{ data?: ScheduledAppo
   try {
     const isAuth = await checkAuth();
     
-    if (!isAuth) return { data: [] };
+    if (!isAuth) {return { data: [] };}
 
     const supabase = await createClient();
     const now = new Date();
@@ -391,7 +392,7 @@ export async function getScheduledAppointments(): Promise<{ data?: ScheduledAppo
         id: m.id,
         vehicle_id: m.vehicle_id,
         vehicle_name: vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.registration_number})` : 'Véhicule inconnu',
-        service_type: translateMaintenanceType(m.type as string),
+        service_type: translateMaintenanceType(m.type),
         service_date: rdvDate || '',
         description: (m as any).description || '',
         days_until: daysUntil,
@@ -413,7 +414,7 @@ export async function getRiskVehicles(): Promise<{ data?: RiskVehicle[]; error?:
   try {
     const isAuth = await checkAuth();
     
-    if (!isAuth) return { data: [] };
+    if (!isAuth) {return { data: [] };}
 
     const supabase = await createClient();
 
@@ -424,7 +425,7 @@ export async function getRiskVehicles(): Promise<{ data?: RiskVehicle[]; error?:
 
     const vehicleIds = companyVehicles?.map(v => v.id) || [];
 
-    if (vehicleIds.length === 0) return { data: [] };
+    if (vehicleIds.length === 0) {return { data: [] };}
 
     const { data: predictions, error } = await supabase
       .from('ai_predictions')
@@ -451,8 +452,8 @@ export async function getRiskVehicles(): Promise<{ data?: RiskVehicle[]; error?:
       return { data: [] };
     }
 
-    const riskVehicles: RiskVehicle[] = (predictions || []).map((p: any) => {
-      const vehicle = p.vehicles as any;
+    const riskVehicles: RiskVehicle[] = (predictions || []).map((p) => {
+      const vehicle = p.vehicles as { brand?: string; model?: string; registration_number?: string } | null;
       return {
         id: p.id,
         vehicle_id: p.vehicle_id,
@@ -479,7 +480,7 @@ export async function getRecentActivity(): Promise<{ data?: ActivityItem[]; erro
   try {
     const isAuth = await checkAuth();
     
-    if (!isAuth) return { data: [] };
+    if (!isAuth) {return { data: [] };}
 
     const supabase = await createClient();
 
@@ -505,8 +506,8 @@ export async function getRecentActivity(): Promise<{ data?: ActivityItem[]; erro
       return { data: [] };
     }
 
-    const items: ActivityItem[] = (activities || []).map((a: any) => {
-      const user = a.profiles as any;
+    const items: ActivityItem[] = (activities || []).map((a) => {
+      const user = a.profiles as { first_name?: string; last_name?: string } | null;
       return {
         id: a.id,
         action_type: a.action_type,
