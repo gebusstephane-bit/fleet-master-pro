@@ -4,7 +4,7 @@
  * Version : incrémentée à chaque déploiement (change le CACHE_NAME pour forcer le refresh)
  */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_STATIC  = `fleetmaster-static-${CACHE_VERSION}`;
 const CACHE_PAGES   = `fleetmaster-pages-${CACHE_VERSION}`;
 
@@ -54,11 +54,13 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   // Ignorer les requêtes non-GET, les extensions Chrome, les hot-reload Next.js
+  // et les requêtes Next.js internes (image optimizer, webpack HMR)
   if (
     request.method !== 'GET' ||
     url.protocol === 'chrome-extension:' ||
     url.pathname.startsWith('/_next/webpack-hmr') ||
-    url.pathname.startsWith('/_next/static/development')
+    url.pathname.startsWith('/_next/static/development') ||
+    url.pathname.startsWith('/_next/image')
   ) {
     return;
   }

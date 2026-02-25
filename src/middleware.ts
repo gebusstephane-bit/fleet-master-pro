@@ -514,7 +514,7 @@ export const config = {
     "/api/admin/:path*",
     // Protection des routes superadmin
     "/superadmin/:path*",
-    // Routes protégées générales (excluant les assets statiques)
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    // Routes protégées générales (excluant les assets statiques et les fichiers publics)
+    "/((?!_next/static|_next/image|favicon.ico|images/|icons/).*)",
   ],
 };
