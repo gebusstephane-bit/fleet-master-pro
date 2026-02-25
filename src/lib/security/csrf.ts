@@ -18,6 +18,8 @@ const defaultConfig: CSRFConfig = {
   allowedOrigins: [
     'https://fleetmaster.pro',
     'https://www.fleetmaster.pro',
+    // Domaine principal depuis la variable d'environnement
+    ...(process.env.NEXT_PUBLIC_APP_URL ? [process.env.NEXT_PUBLIC_APP_URL] : []),
     // Ajouter les domaines de preview Vercel si nécessaire
     ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
   ],
