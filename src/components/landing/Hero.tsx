@@ -57,14 +57,14 @@ export function Hero() {
           alt="Flotte de camions FleetMaster Pro"
           fill
           priority
-          className="object-cover object-center opacity-20"
+          className="object-cover object-center opacity-40"
           sizes="100vw"
         />
         <div
           className="absolute inset-0"
           style={{
             background: `
-              linear-gradient(to bottom, rgba(10,15,26,0.88) 0%, rgba(10,15,26,0.5) 40%, rgba(10,15,26,0.97) 100%),
+              linear-gradient(to bottom, rgba(10,15,26,0.72) 0%, rgba(10,15,26,0.35) 40%, rgba(10,15,26,0.90) 100%),
               radial-gradient(at 0% 0%, rgba(6,182,212,0.18) 0px, transparent 50%),
               radial-gradient(at 100% 0%, rgba(59,130,246,0.18) 0px, transparent 50%)
             `,
