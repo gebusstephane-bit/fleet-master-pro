@@ -22,6 +22,7 @@ export default function AuthLayout({
           src="/images/hero-fleet.jpg"
           alt="Fleet background"
           fill
+          sizes="100vw"
           className="object-cover"
           priority
         />
