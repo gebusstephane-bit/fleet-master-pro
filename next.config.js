@@ -67,11 +67,17 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com",
+              // worker-src blob: requis par Mapbox GL JS pour ses Web Workers
+              "worker-src blob: 'self'",
+              // style-src : Mapbox charge sa CSS depuis son CDN
+              "style-src 'self' 'unsafe-inline' https://api.mapbox.com https://js.stripe.com",
               "img-src 'self' blob: data: https:",
-              "font-src 'self'",
-              "connect-src 'self' https://*.supabase.co https://api.mapbox.com https://events.mapbox.com https://*.sentry.io https://*.ingest.sentry.io",
+              "font-src 'self' data:",
+              // connect-src : Supabase + Mapbox + Sentry + PostHog (EU) + Stripe
+              "connect-src 'self' https://*.supabase.co https://api.mapbox.com https://events.mapbox.com https://*.sentry.io https://*.ingest.sentry.io https://eu.posthog.com https://*.posthog.com https://api.stripe.com",
+              // frame-src : Stripe iframes (3D Secure, Checkout)
+              "frame-src https://js.stripe.com https://hooks.stripe.com",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

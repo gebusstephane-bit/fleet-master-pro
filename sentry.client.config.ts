@@ -7,17 +7,11 @@ Sentry.init({
   // Performance monitoring — 10% en prod, 100% en dev
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
 
-  // Session Replay : uniquement en cas d'erreur (RGPD friendly)
+  // NOTE: replayIntegration retiré ici — withSentryConfig (next.config.js) injecte
+  // déjà Replay automatiquement. Deux instances simultanées causent un Uncaught Error
+  // qui empêche React de s'hydrater → page blanche.
   replaysOnErrorSampleRate: 1.0,
   replaysSessionSampleRate: 0.05,
-
-  integrations: [
-    Sentry.replayIntegration({
-      // Masque toutes les données utilisateur dans les replays
-      maskAllText: true,
-      blockAllMedia: true,
-    }),
-  ],
 
   // N'envoie rien si DSN absent (dev sans config Sentry)
   enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -29,5 +23,7 @@ Sentry.init({
     /^AbortError/,
     /^NetworkError/,
     "Non-Error promise rejection captured",
+    // Ignore le cas où Sentry Replay est déjà initialisé (double init guard)
+    "Multiple Sentry Session Replay instances are not supported",
   ],
 });
