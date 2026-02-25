@@ -1,0 +1,159 @@
+name: E2E — Vercel Preview
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Déclencheurs :
+#   • push → main : après chaque merge, on attend le déploiement Vercel
+#                   puis on lance les 3 specs E2E contre l'URL de preview
+#   • workflow_dispatch : permet un lancement manuel avec URL override
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "URL de base Vercel à tester (ex: https://my-deployment.vercel.app)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  deployments: read
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  e2e:
+    name: E2E — 3 specs (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Cache node_modules
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      # Installe uniquement Chromium : allège l'image de 600 Mo (Firefox/WebKit
+      # sont couverts dans la PR par le job de build ; ici on valide le déploiement).
+      - name: Install Playwright (Chromium only)
+        run: npx playwright install --with-deps chromium
+
+      # ───────────────────────────────────────────────────────────────────────
+      # Attendre le déploiement Vercel et récupérer son URL.
+      # Stratégie : poll l'API Vercel toutes les 10 s jusqu'à ce qu'un
+      # déploiement en état READY existe pour le commit courant.
+      # Fallback sur VERCEL_PRODUCTION_URL si rien trouvé après 5 min.
+      # ───────────────────────────────────────────────────────────────────────
+      - name: Wait for Vercel deployment & get URL
+        id: vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          # Permet un override manuel (workflow_dispatch)
+          if [ -n "${{ inputs.base_url }}" ]; then
+            echo "url=${{ inputs.base_url }}" >> $GITHUB_OUTPUT
+            echo "✅ URL override: ${{ inputs.base_url }}"
+            exit 0
+          fi
+
+          SHA="${{ github.sha }}"
+          MAX_RETRIES=30
+          DELAY=10
+          FOUND_URL=""
+
+          echo "⏳ Polling Vercel for deployment of commit ${SHA:0:8}..."
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            TEAM_PARAM=""
+            [ -n "$VERCEL_TEAM_ID" ] && TEAM_PARAM="&teamId=$VERCEL_TEAM_ID"
+
+            RESPONSE=$(curl -sf \
+              -H "Authorization: Bearer $VERCEL_TOKEN" \
+              "https://api.vercel.com/v6/deployments?limit=10&projectId=$VERCEL_PROJECT_ID${TEAM_PARAM}" \
+              2>/dev/null || echo '{"deployments":[]}')
+
+            FOUND_URL=$(echo "$RESPONSE" | \
+              jq -r --arg sha "$SHA" \
+              '.deployments[] | select(.meta.githubCommitSha == $sha and .state == "READY") | .url' \
+              2>/dev/null | head -1)
+
+            if [ -n "$FOUND_URL" ]; then
+              DEPLOYMENT_URL="https://${FOUND_URL}"
+              echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+              echo "✅ Deployment ready: $DEPLOYMENT_URL"
+              exit 0
+            fi
+
+            echo "  Attempt $i/$MAX_RETRIES — not ready yet, retrying in ${DELAY}s..."
+            sleep $DELAY
+          done
+
+          # Fallback : utilise l'URL de production configurée dans les secrets
+          FALLBACK="${{ secrets.VERCEL_PRODUCTION_URL }}"
+          echo "⚠️  Deployment not found after $MAX_RETRIES attempts — using fallback: $FALLBACK"
+          echo "url=$FALLBACK" >> $GITHUB_OUTPUT
+
+      # ───────────────────────────────────────────────────────────────────────
+      # Lance les 3 specs E2E contre l'URL Vercel
+      # ───────────────────────────────────────────────────────────────────────
+      - name: Run E2E — login.spec.ts
+        run: npx playwright test e2e/login.spec.ts --project=chromium
+        env:
+          CI: true
+          PLAYWRIGHT_TEST_BASE_URL: ${{ steps.vercel.outputs.url }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+
+      - name: Run E2E — dashboard.spec.ts
+        run: npx playwright test e2e/dashboard.spec.ts --project=chromium
+        env:
+          CI: true
+          PLAYWRIGHT_TEST_BASE_URL: ${{ steps.vercel.outputs.url }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+
+      - name: Run E2E — critical-flows.spec.ts
+        run: npx playwright test e2e/critical-flows.spec.ts --project=critical-chromium
+        env:
+          CI: true
+          PLAYWRIGHT_TEST_BASE_URL: ${{ steps.vercel.outputs.url }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+
+      # ───────────────────────────────────────────────────────────────────────
+      # Artifacts : screenshots + vidéos uploadés UNIQUEMENT en cas d'échec
+      # Rétention 14 jours pour investigation post-mortem
+      # ───────────────────────────────────────────────────────────────────────
+      - name: Upload failure artifacts (screenshots + videos)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 14
+          if-no-files-found: ignore
