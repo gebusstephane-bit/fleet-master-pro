@@ -327,6 +327,7 @@ export interface Database {
           tachy_control_date: string | null;
           atp_expiry: string | null;
           atp_date: string | null;
+          purchase_date: string | null;
           driver_id: string | null;
           fuel_consumption_avg: number | null;
           current_latitude: number | null;
@@ -367,6 +368,7 @@ export interface Database {
           tachy_control_date?: string | null;
           atp_expiry?: string | null;
           atp_date?: string | null;
+          purchase_date?: string | null;
           driver_id?: string | null;
           fuel_consumption_avg?: number | null;
           current_latitude?: number | null;
@@ -407,6 +409,7 @@ export interface Database {
           tachy_control_date?: string | null;
           atp_expiry?: string | null;
           atp_date?: string | null;
+          purchase_date?: string | null;
           driver_id?: string | null;
           fuel_consumption_avg?: number | null;
           current_latitude?: number | null;

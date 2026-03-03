@@ -87,11 +87,12 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
       return { success: false, error: 'Impossible de vérifier les limites d\'abonnement' };
     }
     
-    // Compter les véhicules actuels
+    // Compter les véhicules actuels (exclure les supprimés)
     const { count: vehicleCount, error: countError } = await supabase
       .from('vehicles')
       .select('*', { count: 'exact', head: true })
-      .eq('company_id', profile.company_id);
+      .eq('company_id', profile.company_id)
+      .is('deleted_at', null);
     
     if (countError) {
       logger.error('createVehicle: Erreur comptage véhicules', new Error(countError.message));
@@ -193,6 +194,7 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
       .from('vehicles')
       .select('id')
       .eq('id', id)
+      .is('deleted_at', null)
       .single();
     
     if (checkError || !existingVehicle) {
@@ -201,6 +203,7 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
     
     // 3. Préparer les données
     const VEHICLE_DATE_FIELDS = [
+      'purchase_date',
       'insurance_expiry',
       'technical_control_date',
       'technical_control_expiry',
@@ -214,8 +217,6 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
       ...data,
       updated_at: new Date().toISOString(),
     };
-
-    delete updateData['purchase_date'];
 
     for (const field of VEHICLE_DATE_FIELDS) {
       if (field in updateData && updateData[field] === '') {
@@ -280,19 +281,22 @@ export async function deleteVehicle(id: string): Promise<ActionResult> {
     // 3. Vérifier que le véhicule existe et est accessible (RLS)
     const { data: vehicle, error: vehicleError } = await supabase
       .from('vehicles')
-      .select('id')
+      .select('id, company_id')
       .eq('id', id)
+      .is('deleted_at', null)
       .single();
     
     if (vehicleError || !vehicle) {
       return { success: false, error: 'Véhicule non trouvé' };
     }
     
-    // 4. Supprimer le véhicule (RLS vérifie l'appartenance à la company)
+    // 4. SOFT DELETE - Marquer le véhicule comme supprimé (pas de suppression physique)
+    // Les données liées (maintenance, pneus, etc.) sont conservées pour l'historique
     const { error } = await supabase
       .from('vehicles')
-      .delete()
-      .eq('id', id);
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('company_id', profile.company_id); // sécurité double vérification
     
     if (error) {
       return { success: false, error: error.message };

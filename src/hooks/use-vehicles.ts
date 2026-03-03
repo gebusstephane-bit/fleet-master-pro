@@ -173,9 +173,9 @@ export function useCreateVehicle() {
   });
 }
 
-// Champs DATE réellement présents dans la table vehicles
-// purchase_date est volontairement absent : la colonne n'existe pas en DB
+// Champs DATE de la table vehicles (convertir "" → null avant envoi)
 const VEHICLE_DATE_FIELDS = [
+  'purchase_date',
   'technical_control_date',
   'technical_control_expiry',
   'tachy_control_date',
@@ -186,8 +186,6 @@ const VEHICLE_DATE_FIELDS = [
 
 function sanitizeVehicleDates(data: Record<string, unknown>): Record<string, unknown> {
   const cleaned = { ...data };
-  // Supprimer purchase_date : colonne absente de la table vehicles en DB
-  delete cleaned['purchase_date'];
   // Convertir "" → null uniquement pour les champs déjà présents dans le payload
   for (const field of VEHICLE_DATE_FIELDS) {
     if (field in cleaned && cleaned[field] === '') {
