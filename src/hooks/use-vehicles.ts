@@ -12,7 +12,7 @@ import { logger } from '@/lib/logger';
 import { createVehicle, deleteVehicle as deleteVehicleAction, type CreateVehicleData } from '@/actions/vehicles';
 import { cacheTimes } from '@/lib/query-config';
 import { toast } from 'sonner';
-import { safeQuery } from '@/lib/supabase/client-safe';
+
 
 // Types
 export interface Vehicle {
@@ -93,36 +93,13 @@ export function useVehicles(options?: { enabled?: boolean }) {
         .eq('company_id', companyId)
         .order('created_at', { ascending: false });
       
-      if (!error) {
-        console.log('[useVehicles] Direct query SUCCESS:', data?.length, 'records');
-        return (data || []) as unknown as VehicleWithDriver[];
+      if (error) {
+        console.error('[useVehicles] Direct query failed:', error.code, error.message?.slice(0, 100));
+        throw new Error(error.message);
       }
       
-      // Tentative 2 : Fallback avec safeQuery si RLS error
-      console.warn('[useVehicles] Direct query failed:', error.code, error.message?.slice(0, 50));
-      
-      if (error.message?.includes('infinite recursion') || error.code === '42P17') {
-        console.warn('[useVehicles] RLS recursion, trying safeQuery fallback...');
-        
-        const { data: vehiclesData, error: vehiclesError, debug } = await safeQuery<Vehicle>('vehicles', companyId, {
-          orderBy: { column: 'created_at', ascending: false },
-          limit: 1000,
-        });
-        
-        console.log('[useVehicles] safeQuery result:', { 
-          count: vehiclesData?.length, 
-          error: vehiclesError?.message?.slice(0, 50),
-          debug 
-        });
-        
-        if (vehiclesError) {
-          throw new Error(vehiclesError.message);
-        }
-        
-        return (vehiclesData || []) as VehicleWithDriver[];
-      }
-      
-      throw new Error(error.message);
+      console.log('[useVehicles] Direct query SUCCESS:', data?.length, 'records');
+      return (data || []) as unknown as VehicleWithDriver[];
     },
     enabled: options?.enabled !== false && !!companyId,
     retry: 1,
