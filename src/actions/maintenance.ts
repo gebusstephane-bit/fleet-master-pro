@@ -11,8 +11,8 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { authActionClient, idSchema } from '@/lib/safe-action';
-import { maintenanceSchema } from '@/lib/schemas/maintenance';
 import { createClient } from '@/lib/supabase/server';
+import { maintenanceSchema } from '@/lib/schemas/maintenance';
 
 // Mapping des types frontend vers DB
 const typeToDb: Record<string, string> = {
@@ -411,3 +411,125 @@ export const getMaintenanceStats = authActionClient
     
     return { success: true, data: stats };
   });
+
+
+// ============================================
+// WORKFLOW DE STATUT - Gestion des transitions
+// ============================================
+
+const ALLOWED_MANAGER_ROLES = ['ADMIN', 'MANAGER', 'DIRECTEUR'];
+
+/**
+ * Met à jour le statut d'une maintenance avec validation des transitions
+ * Visible UNIQUEMENT pour roles admin et manager
+ */
+export async function updateMaintenanceStatus(
+  maintenanceId: string,
+  newStatus: string,
+  additionalData?: { scheduled_date?: string; notes?: string }
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  
+  // Vérifier l'authentification et le rôle
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'Non authentifié' };
+  }
+  
+  // Récupérer le profil pour vérifier le rôle
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role, company_id')
+    .eq('id', user.id)
+    .single();
+  
+  if (profileError || !profile) {
+    return { success: false, error: 'Profil utilisateur non trouvé' };
+  }
+  
+  if (!ALLOWED_MANAGER_ROLES.includes(profile.role)) {
+    return { success: false, error: 'Accès refusé - Réservé aux administrateurs et managers' };
+  }
+  
+  // Définition des transitions valides
+  const TRANSITIONS: Record<string, string[]> = {
+    'DEMANDE_CREEE': ['VALIDEE', 'REFUSEE'],
+    'VALIDEE': ['RDV_PRIS'],
+    'VALIDEE_DIRECTEUR': ['RDV_PRIS'],
+    'RDV_PRIS': ['EN_COURS'],
+    'EN_COURS': ['TERMINEE'],
+    'TERMINEE': [],
+    'REFUSEE': ['DEMANDE_CREEE']
+  };
+  
+  // Récupérer le statut actuel
+  const { data: current, error: fetchError } = await supabase
+    .from('maintenance_records')
+    .select('status, company_id')
+    .eq('id', maintenanceId)
+    .single();
+  
+  if (fetchError || !current) {
+    return { success: false, error: 'Intervention non trouvée' };
+  }
+  
+  // Vérifier l'appartenance à la company
+  if (current.company_id !== profile.company_id && profile.role !== 'ADMIN') {
+    return { success: false, error: 'Accès non autorisé à cette intervention' };
+  }
+  
+  // Vérifier que la transition est valide
+  const allowedTransitions = TRANSITIONS[current.status] || [];
+  if (!allowedTransitions.includes(newStatus)) {
+    return { success: false, error: `Transition de statut invalide: ${current.status} → ${newStatus}` };
+  }
+  
+  // Préparer les données de mise à jour
+  const updateData: Record<string, unknown> = {
+    status: newStatus,
+    updated_at: new Date().toISOString(),
+  };
+  
+  // Ajouter les données additionnelles
+  if (additionalData?.scheduled_date) {
+    updateData.scheduled_date = additionalData.scheduled_date;
+  }
+  if (additionalData?.notes) {
+    updateData.notes = additionalData.notes;
+  }
+  
+  // Si passage à TERMINEE, ajouter completed_at
+  if (newStatus === 'TERMINEE') {
+    updateData.completed_at = new Date().toISOString();
+  }
+  
+  // Si passage à VALIDEE, enregistrer validated_at
+  if (newStatus === 'VALIDEE') {
+    updateData.validated_at = new Date().toISOString();
+  }
+  
+  // Exécuter la mise à jour
+  const { error: updateError } = await supabase
+    .from('maintenance_records')
+    .update(updateData)
+    .eq('id', maintenanceId);
+  
+  if (updateError) {
+    return { success: false, error: updateError.message };
+  }
+  
+  // Ajouter l'historique de statut
+  await supabase.from('maintenance_status_history').insert({
+    maintenance_id: maintenanceId,
+    old_status: current.status,
+    new_status: newStatus,
+    changed_by: user.id,
+    notes: additionalData?.notes,
+  });
+  
+  // Revalidation des chemins
+  revalidatePath('/maintenance');
+  revalidatePath(`/maintenance/${maintenanceId}`);
+  
+  return { success: true };
+}

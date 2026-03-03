@@ -12,7 +12,8 @@ import {
   ArrowLeft, Calendar, MapPin, Phone, User, 
   Clock, Euro, FileText, Wrench, CheckCircle2 
 } from 'lucide-react';
-import { getMaintenanceById, validateMaintenanceRequest, markMaintenanceInProgress } from '@/actions/maintenance-workflow';
+import { updateMaintenanceStatus } from '@/actions/maintenance';
+import { getMaintenanceById } from '@/actions/maintenance-workflow';
 import { MaintenanceStatusBadge } from '@/components/maintenance/maintenance-status-badge';
 import { MaintenanceTypeBadge } from '@/components/maintenance/maintenance-type-badge';
 import { MaintenanceTimeline } from '@/components/maintenance/maintenance-timeline';
@@ -31,7 +32,7 @@ interface MaintenanceDetail {
   type: 'PREVENTIVE' | 'CORRECTIVE' | 'PNEUMATIQUE' | 'CARROSSERIE';
   description: string;
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
-  status: 'DEMANDE_CREEE' | 'VALIDEE_DIRECTEUR' | 'RDV_PRIS' | 'EN_COURS' | 'TERMINEE' | 'REFUSEE';
+  status: 'DEMANDE_CREEE' | 'VALIDEE' | 'VALIDEE_DIRECTEUR' | 'RDV_PRIS' | 'EN_COURS' | 'TERMINEE' | 'REFUSEE';
   requested_at: string;
   validated_at?: string;
   rdv_date?: string;
@@ -69,16 +70,16 @@ export default function MaintenanceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { data: user, isLoading: userLoading } = useUser();
 
-  const isDirector = user?.role === 'ADMIN' || user?.role === 'DIRECTEUR';
-  
-  console.log('Debug - User:', user);
-  console.log('Debug - Role:', user?.role);
-  console.log('Debug - isDirector:', isDirector);
+  // Rôles autorisés à voir les boutons de transition
+  const isManagerOrAbove = ['ADMIN', 'MANAGER', 'DIRECTEUR'].includes(user?.role || '');
 
   const loadMaintenance = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const result = await getMaintenanceById({ id });
       if (result?.data?.success) {
@@ -95,21 +96,21 @@ export default function MaintenanceDetailPage() {
     loadMaintenance();
   }, [id]);
 
-  const handleValidate = async (action: 'validate' | 'reject') => {
+  const handleStatusChange = async (newStatus: string, additionalData?: { notes?: string }) => {
+    setActionLoading(true);
+    setErrorMessage(null);
     try {
-      await validateMaintenanceRequest({ id, action });
-      loadMaintenance();
+      const result = await updateMaintenanceStatus(id, newStatus, additionalData);
+      if (result.success) {
+        loadMaintenance();
+      } else {
+        setErrorMessage(result.error || 'Erreur lors de la transition');
+      }
     } catch (error) {
       console.error('Erreur:', error);
-    }
-  };
-
-  const handleStartWork = async () => {
-    try {
-      await markMaintenanceInProgress({ id });
-      loadMaintenance();
-    } catch (error) {
-      console.error('Erreur:', error);
+      setErrorMessage('Erreur inattendue');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -134,10 +135,11 @@ export default function MaintenanceDetailPage() {
     );
   }
 
-  const showValidateButtons = maintenance.status === 'DEMANDE_CREEE' && isDirector;
-  const showScheduleButton = maintenance.status === 'VALIDEE_DIRECTEUR';
-  const showStartButton = maintenance.status === 'RDV_PRIS';
-  const showCompleteButton = ['RDV_PRIS', 'EN_COURS'].includes(maintenance.status);
+  // Déterminer quels boutons afficher selon le statut
+  const showValidateButtons = maintenance.status === 'DEMANDE_CREEE' && isManagerOrAbove;
+  const showScheduleButton = (maintenance.status === 'VALIDEE' || maintenance.status === 'VALIDEE_DIRECTEUR') && isManagerOrAbove;
+  const showStartButton = maintenance.status === 'RDV_PRIS' && isManagerOrAbove;
+  const showCompleteButton = maintenance.status === 'EN_COURS' && isManagerOrAbove;
 
   return (
     <div className="space-y-6 p-6">
@@ -160,24 +162,28 @@ export default function MaintenanceDetailPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* DEBUG INFO */}
-          <div className="text-xs text-gray-400 mr-4">
-            Role: {user?.role || 'N/A'} | Admin: {isDirector ? 'OUI' : 'NON'}
-          </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Message d'erreur */}
+          {errorMessage && (
+            <div className="text-sm text-red-400 mr-2">
+              {errorMessage}
+            </div>
+          )}
           
           {showValidateButtons && (
             <>
               <Button
                 variant="outline"
                 className="text-red-600"
-                onClick={() => handleValidate('reject')}
+                onClick={() => handleStatusChange('REFUSEE')}
+                disabled={actionLoading}
               >
                 Refuser
               </Button>
               <Button
-                className="bg-emerald-600 hover:bg-emerald-700"
-                onClick={() => handleValidate('validate')}
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => handleStatusChange('VALIDEE')}
+                disabled={actionLoading}
               >
                 <CheckCircle2 className="h-4 w-4 mr-1" />
                 Valider
@@ -186,16 +192,16 @@ export default function MaintenanceDetailPage() {
           )}
 
           {showScheduleButton && (
-            <Button onClick={() => setScheduleDialogOpen(true)}>
+            <Button onClick={() => setScheduleDialogOpen(true)} disabled={actionLoading}>
               <Calendar className="h-4 w-4 mr-1" />
               Prendre RDV
             </Button>
           )}
 
           {showStartButton && (
-            <Button onClick={handleStartWork}>
+            <Button onClick={() => handleStatusChange('EN_COURS')} disabled={actionLoading}>
               <Wrench className="h-4 w-4 mr-1" />
-              Marquer en cours
+              Commencer
             </Button>
           )}
 
@@ -203,9 +209,10 @@ export default function MaintenanceDetailPage() {
             <Button 
               className="bg-emerald-600 hover:bg-emerald-700"
               onClick={() => setCompleteDialogOpen(true)}
+              disabled={actionLoading}
             >
               <CheckCircle2 className="h-4 w-4 mr-1" />
-              Terminer
+              Marquer Terminée
             </Button>
           )}
         </div>
@@ -355,7 +362,7 @@ export default function MaintenanceDetailPage() {
               <div className="text-center py-8 text-gray-300">
                 <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>Aucun rendez-vous planifié</p>
-                {maintenance.status === 'VALIDEE_DIRECTEUR' && (
+                {(maintenance.status === 'VALIDEE' || maintenance.status === 'VALIDEE_DIRECTEUR') && isManagerOrAbove && (
                   <Button 
                     className="mt-4" 
                     onClick={() => setScheduleDialogOpen(true)}
