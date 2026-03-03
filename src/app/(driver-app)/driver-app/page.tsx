@@ -8,14 +8,16 @@ import { fr } from 'date-fns/locale';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  CheckCircle, 
-  AlertTriangle, 
-  Wrench, 
+import {
+  CheckCircle,
+  AlertTriangle,
+  Wrench,
   ClipboardCheck,
   Car,
   Fuel,
   ArrowRight,
+  ListChecks,
+  TriangleAlert,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -264,9 +266,31 @@ export default async function DriverHomePage() {
         </Card>
       )}
       
-      {/* Boutons d'action rapide */}
+      {/* Boutons d'action rapide — Checklist + Incident */}
       <div className="grid grid-cols-2 gap-3">
-        <Button 
+        <Button
+          className="h-auto py-5 bg-green-600 hover:bg-green-500 flex flex-col items-center gap-2 text-white"
+          asChild
+        >
+          <Link href="/driver-app/driver-app/checklist">
+            <ListChecks className="h-7 w-7" />
+            <span className="text-sm font-semibold">Checklist départ</span>
+          </Link>
+        </Button>
+        <Button
+          className="h-auto py-5 bg-red-600 hover:bg-red-500 flex flex-col items-center gap-2 text-white"
+          asChild
+        >
+          <Link href="/driver-app/driver-app/incident/new">
+            <TriangleAlert className="h-7 w-7" />
+            <span className="text-sm font-semibold">Signaler incident</span>
+          </Link>
+        </Button>
+      </div>
+
+      {/* Boutons d'action secondaires */}
+      <div className="grid grid-cols-2 gap-3">
+        <Button
           className="h-auto py-4 bg-blue-600 hover:bg-blue-500 flex flex-col items-center gap-2"
           asChild
         >
@@ -275,7 +299,7 @@ export default async function DriverHomePage() {
             <span>Nouvelle inspection</span>
           </Link>
         </Button>
-        <Button 
+        <Button
           className="h-auto py-4 bg-emerald-600 hover:bg-emerald-500 flex flex-col items-center gap-2"
           asChild
         >
