@@ -42,6 +42,17 @@ interface CleanlinessItem {
 
 const isPL = (type: string) => type === 'POIDS_LOURD' || type === 'POIDS_LOURD_FRIGO';
 const isPLFrigo = (type: string) => type === 'POIDS_LOURD_FRIGO';
+const isTracteurRoutier = (type: string) => type === 'TRACTEUR_ROUTIER';
+const isRemorque = (type: string) => type === 'REMORQUE' || type === 'REMORQUE_FRIGO';
+const isRemorqueFrigo = (type: string) => type === 'REMORQUE_FRIGO';
+// Jauges carburant : toutes sauf les remorques
+const needsFuelGauge = (type: string) => !isRemorque(type);
+// AdBlue : PL, PL Frigo, Tracteur Routier
+const needsAdBlue = (type: string) => isPL(type) || isTracteurRoutier(type);
+// GNR : PL Frigo, Remorque Frigo
+const needsGNR = (type: string) => isPLFrigo(type) || isRemorqueFrigo(type);
+// Températures frigo : PL Frigo, Remorque Frigo
+const needsTemperature = (type: string) => isPLFrigo(type) || isRemorqueFrigo(type);
 
 // Points de contrôle ESSENTIELS uniquement
 const getEssentialChecks = (vehicleType: string): CheckItem[] => {
@@ -64,36 +75,72 @@ const getEssentialChecks = (vehicleType: string): CheckItem[] => {
     { id: 'spare_tire', label: 'Roue de secours / Kit anti-crevaison', category: 'STANDARD', status: 'OK' },
   ];
   
-  // Ajouts PL
+  // Ajouts PL (POIDS_LOURD et POIDS_LOURD_FRIGO)
   if (isPL(vehicleType)) {
     checks.push(
       { id: 'tachograph', label: 'Tachygraphe (carte, fonctionnement)', category: 'IMPORTANT', status: 'OK' },
       { id: 'tail_lift', label: 'Hayon élévateur (si équipé)', category: 'IMPORTANT', status: 'OK' },
     );
   }
-  
+
+  // Ajouts Tracteur Routier
+  if (isTracteurRoutier(vehicleType)) {
+    checks.push(
+      { id: 'tachograph', label: 'Tachygraphe (carte, fonctionnement)', category: 'IMPORTANT', status: 'OK' },
+      { id: 'tail_lift', label: 'Hayon élévateur (si équipé)', category: 'IMPORTANT', status: 'OK' },
+      { id: 'fifth_wheel', label: 'Contrôle sellette — graissage', category: 'CRITICAL', status: 'OK' },
+    );
+  }
+
   // Ajouts PL Frigo
   if (isPLFrigo(vehicleType)) {
     checks.push(
+      { id: 'fridge_motor', label: 'Contrôle frigo / Moteur', category: 'CRITICAL', status: 'OK' },
       { id: 'fridge_temp', label: 'Groupe frigorifique (température)', category: 'CRITICAL', status: 'OK' },
     );
   }
-  
+
+  return checks;
+};
+
+// Points de contrôle spécifiques Remorque (formulaire différent du PL)
+const getRemorqueChecks = (vehicleType: string): CheckItem[] => {
+  const checks: CheckItem[] = [
+    { id: 'brakes',       label: 'Freinage',                                      category: 'CRITICAL',  status: 'OK' },
+    { id: 'tires',        label: 'Pneus (usure, pression, hernie)',               category: 'CRITICAL',  status: 'OK' },
+    { id: 'lights',       label: 'Éclairage (feux, clignotants)',                 category: 'CRITICAL',  status: 'OK' },
+    { id: 'documents',    label: 'Documents (carte grise, assurance, CT)',        category: 'IMPORTANT', status: 'OK' },
+    { id: 'ext_body',     label: 'Carrosserie extérieure',                        category: 'STANDARD',  status: 'OK' },
+    { id: 'safety_kit',   label: 'Kit de sécurité (triangle, gilet, extincteur)', category: 'STANDARD',  status: 'OK' },
+    { id: 'spare_tire',   label: 'Roue de secours / Kit anti-crevaison',          category: 'STANDARD',  status: 'OK' },
+    { id: 'floor_clean',  label: 'Propreté plancher',                             category: 'STANDARD',  status: 'OK' },
+    { id: 'stabilizers',  label: 'État des béquilles',                            category: 'STANDARD',  status: 'OK' },
+  ];
+
+  if (isRemorqueFrigo(vehicleType)) {
+    checks.push(
+      { id: 'fridge_unit', label: 'État du frigo (groupe frigorifique)', category: 'CRITICAL', status: 'OK' },
+    );
+  }
+
   return checks;
 };
 
 // Propreté simplifiée
 const getCleanlinessChecks = (vehicleType: string): CleanlinessItem[] => {
+  // Les remorques n'ont pas de cabine : la propreté est gérée via les CheckItems (plancher, etc.)
+  if (isRemorque(vehicleType)) return [];
+
   const items: CleanlinessItem[] = [
     { id: 'ext_body', label: 'Carrosserie extérieure', status: 'CLEAN' },
     { id: 'windows', label: 'Vitres et rétroviseurs', status: 'CLEAN' },
     { id: 'int_cabin', label: 'Habitacle (sièges, sol, tableau)', status: 'CLEAN' },
   ];
-  
+
   if (isPL(vehicleType)) {
     items.push({ id: 'cargo_area', label: 'Caisse / Soute', status: 'CLEAN' });
   }
-  
+
   return items;
 };
 
@@ -117,16 +164,16 @@ const calculateScore = (checks: CheckItem[]): { score: number; status: 'excellen
 };
 
 const statusConfig = {
-  excellent: { color: 'bg-green-500', label: 'Excellent', badge: 'bg-green-100 text-green-800' },
-  good: { color: 'bg-blue-500', label: 'Bon', badge: 'bg-blue-100 text-blue-800' },
-  warning: { color: 'bg-amber-500', label: 'À surveiller', badge: 'bg-amber-100 text-amber-800' },
-  critical: { color: 'bg-red-500', label: 'Critique', badge: 'bg-red-100 text-red-800' },
+  excellent: { color: 'bg-green-500', label: 'Excellent', badge: 'bg-green-500/20 text-green-400' },
+  good: { color: 'bg-blue-500', label: 'Bon', badge: 'bg-blue-500/20 text-blue-400' },
+  warning: { color: 'bg-amber-500', label: 'À surveiller', badge: 'bg-amber-500/20 text-amber-400' },
+  critical: { color: 'bg-red-500', label: 'Critique', badge: 'bg-red-500/20 text-red-400' },
 };
 
 const cleanlinessConfig = {
-  CLEAN: { label: 'Propre', icon: Sparkles, color: 'text-green-600 bg-green-50 border-green-200' },
-  DIRTY: { label: 'Sale', icon: AlertTriangle, color: 'text-amber-600 bg-amber-50 border-amber-200' },
-  DAMAGED: { label: 'Abîmé', icon: AlertOctagon, color: 'text-red-600 bg-red-50 border-red-200' },
+  CLEAN: { label: 'Propre', icon: Sparkles, color: 'text-green-400 bg-green-500/20 border-green-500/40' },
+  DIRTY: { label: 'Sale', icon: AlertTriangle, color: 'text-amber-400 bg-amber-500/20 border-amber-500/40' },
+  DAMAGED: { label: 'Abîmé', icon: AlertOctagon, color: 'text-red-400 bg-red-500/20 border-red-500/40' },
 };
 
 export default function InspectionPage() {
@@ -147,6 +194,8 @@ export default function InspectionPage() {
   const [driverName, setDriverName] = useState('');
   const [notes, setNotes] = useState('');
   const [location, setLocation] = useState('Dépôt');
+  const [compartmentC1Temp, setCompartmentC1Temp] = useState('');
+  const [compartmentC2Temp, setCompartmentC2Temp] = useState('');
   
   // Points de contrôle
   const [checks, setChecks] = useState<CheckItem[]>([]);
@@ -154,8 +203,9 @@ export default function InspectionPage() {
   
   useEffect(() => {
     if (vehicle) {
-      setChecks(getEssentialChecks(vehicle.type));
-      setCleanliness(getCleanlinessChecks(vehicle.type));
+      const vType = vehicle.type;
+      setChecks(isRemorque(vType) ? getRemorqueChecks(vType) : getEssentialChecks(vType));
+      setCleanliness(getCleanlinessChecks(vType));
     }
   }, [vehicle]);
   
@@ -173,6 +223,15 @@ export default function InspectionPage() {
   const handleSubmit = async () => {
     if (!mileage || !driverName) {
       setError('Veuillez remplir le kilométrage et le nom du conducteur');
+      return;
+    }
+    
+    // Validation du kilométrage (doit être >= au kilométrage actuel)
+    const currentMileage = (vehicle as any)?.mileage || 0;
+    const inputMileage = parseInt(mileage, 10);
+    
+    if (inputMileage < currentMileage) {
+      setError(`Kilométrage invalide : ${inputMileage.toLocaleString('fr-FR')} km est inférieur au kilométrage actuel (${currentMileage.toLocaleString('fr-FR')} km)`);
       return;
     }
     
@@ -204,12 +263,14 @@ export default function InspectionPage() {
         vehicleId,
         mileage: parseInt(mileage) || 0,
         fuelLevel,
-        adblueLevel: isPL((vehicle as any)?.type) ? adblueLevel : undefined,
-        gnrLevel: isPLFrigo((vehicle as any)?.type) ? gnrLevel : undefined,
+        adblueLevel: needsAdBlue((vehicle as any)?.type) ? adblueLevel : undefined,
+        gnrLevel: needsGNR((vehicle as any)?.type) ? gnrLevel : undefined,
         cleanlinessExterior: 3,
         cleanlinessInterior: 3,
-        compartmentC1Temp: undefined,
-        compartmentC2Temp: undefined,
+        compartmentC1Temp: needsTemperature((vehicle as any)?.type) && compartmentC1Temp !== ''
+          ? parseFloat(compartmentC1Temp) : undefined,
+        compartmentC2Temp: needsTemperature((vehicle as any)?.type) && compartmentC2Temp !== ''
+          ? parseFloat(compartmentC2Temp) : undefined,
         tiresCondition: {
           frontLeft: 'GOOD',
           frontRight: 'GOOD',
@@ -240,30 +301,25 @@ export default function InspectionPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8">
-        <div className="max-w-3xl mx-auto px-4">
-          <Skeleton className="h-32" />
-        </div>
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <Skeleton className="h-32" />
       </div>
     );
   }
 
   if (!vehicle) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8">
-        <div className="max-w-3xl mx-auto px-4">
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>Véhicule non trouvé</AlertDescription>
-          </Alert>
-        </div>
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>Véhicule non trouvé</AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-6">
-      <div className="max-w-3xl mx-auto px-4">
+    <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Header Élégant */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
@@ -279,13 +335,13 @@ export default function InspectionPage() {
           
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Contrôle technique</h1>
-              <p className="text-slate-500 mt-1">
+              <h1 className="text-3xl font-bold text-white">Contrôle technique</h1>
+              <p className="text-slate-400 mt-1">
                 {(vehicle as any)?.registration_number || ''} • {(vehicle as any)?.brand || ''} {(vehicle as any)?.model || ''}
               </p>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-bold">{score}%</div>
+              <div className="text-3xl font-bold text-white">{score}%</div>
               <Badge className={config.badge}>{config.label}</Badge>
             </div>
           </div>
@@ -298,12 +354,12 @@ export default function InspectionPage() {
                 <button
                   key={s}
                   onClick={() => setStep(s)}
-                  className={`flex items-center gap-2 text-sm ${step === s ? 'text-blue-600 font-medium' : 'text-slate-400'}`}
+                  className={`flex items-center gap-2 text-sm ${step === s ? 'text-cyan-400 font-medium' : 'text-slate-400'}`}
                 >
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                    step > s ? 'bg-green-500 text-white' : 
-                    step === s ? 'bg-blue-600 text-white' : 
-                    'bg-slate-200'
+                    step > s ? 'bg-green-500 text-white' :
+                    step === s ? 'bg-cyan-500 text-white' :
+                    'bg-slate-700 text-slate-500'
                   }`}>
                     {step > s ? <CheckCircle2 className="h-4 w-4" /> : s}
                   </div>
@@ -329,23 +385,36 @@ export default function InspectionPage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
             >
-              <Card className="border-0 shadow-lg">
+              <Card>
                 <CardContent className="p-6 space-y-6">
-                  <h2 className="text-xl font-semibold flex items-center gap-2">
-                    <Gauge className="h-5 w-5 text-blue-600" />
+                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <Gauge className="h-5 w-5 text-cyan-400" />
                     Informations générales
                   </h2>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Kilométrage *</Label>
+                      <Label className="flex items-center justify-between">
+                        <span>Kilométrage *</span>
+                        {(vehicle as any)?.mileage > 0 && (
+                          <span className="text-xs text-slate-400 font-normal">
+                            Actuel: <span className="text-amber-400">{(vehicle as any)?.mileage?.toLocaleString('fr-FR')} km</span>
+                          </span>
+                        )}
+                      </Label>
                       <Input
                         type="number"
-                        placeholder={(vehicle as any)?.mileage?.toString()}
+                        min={(vehicle as any)?.mileage || 0}
+                        placeholder={(vehicle as any)?.mileage > 0 ? `Min: ${(vehicle as any)?.mileage}` : 'Ex: 125000'}
                         value={mileage}
                         onChange={(e) => setMileage(e.target.value)}
                         className="text-lg"
                       />
+                      {(vehicle as any)?.mileage > 0 && (
+                        <p className="text-xs text-slate-500">
+                          Le kilométrage doit être supérieur ou égal à {(vehicle as any)?.mileage?.toLocaleString('fr-FR')} km
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label>Lieu</Label>
@@ -356,42 +425,30 @@ export default function InspectionPage() {
                     </div>
                   </div>
 
-                  {/* Niveau carburant - TOUS les véhicules */}
+                  {/* Niveaux carburant — logique par type de véhicule */}
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <Fuel className="h-4 w-4 text-red-500" />
-                        Niveau carburant (gasoil/essence): {fuelLevel}%
-                      </Label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={fuelLevel}
-                        onChange={(e) => setFuelLevel(parseInt(e.target.value))}
-                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                      />
-                      <div className="flex justify-between text-xs text-slate-400">
-                        <span>Vide</span>
-                        <span>1/2</span>
-                        <span>Plein</span>
-                      </div>
-                    </div>
 
-                    {/* AdBlue - PL et PL Frigo uniquement */}
-                    {isPL((vehicle as any)?.type) && (
-                      <div className="space-y-2 pt-4 border-t">
-                        <Label className="flex items-center gap-2">
-                          <Fuel className="h-4 w-4 text-blue-500" />
-                          Niveau AdBlue: {adblueLevel}%
+                    {/* Remorque Normale : aucun niveau */}
+                    {(vehicle as any)?.type === 'REMORQUE' && (
+                      <div className="p-3 bg-slate-800/50 rounded-lg text-sm text-slate-400 text-center border border-slate-700/50">
+                        Aucun niveau carburant applicable pour une remorque
+                      </div>
+                    )}
+
+                    {/* Gasoil / Essence — tous sauf Remorques */}
+                    {needsFuelGauge((vehicle as any)?.type) && (
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-slate-300">
+                          <Fuel className="h-4 w-4 text-red-400" />
+                          Niveau gasoil / essence : {fuelLevel}%
                         </Label>
                         <input
                           type="range"
                           min="0"
                           max="100"
-                          value={adblueLevel}
-                          onChange={(e) => setAdblueLevel(parseInt(e.target.value))}
-                          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                          value={fuelLevel}
+                          onChange={(e) => setFuelLevel(parseInt(e.target.value))}
+                          className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
                         />
                         <div className="flex justify-between text-xs text-slate-400">
                           <span>Vide</span>
@@ -401,12 +458,35 @@ export default function InspectionPage() {
                       </div>
                     )}
 
-                    {/* GNR - PL Frigo uniquement */}
-                    {isPLFrigo((vehicle as any)?.type) && (
-                      <div className="space-y-2 pt-4 border-t">
-                        <Label className="flex items-center gap-2">
-                          <Fuel className="h-4 w-4 text-green-500" />
-                          Niveau GNR (groupe frigo): {gnrLevel}%
+                    {/* AdBlue — PL, PL Frigo, Tracteur Routier */}
+                    {needsAdBlue((vehicle as any)?.type) && (
+                      <div className="space-y-2 pt-4 border-t border-slate-700/50">
+                        <Label className="flex items-center gap-2 text-slate-300">
+                          <Fuel className="h-4 w-4 text-blue-400" />
+                          Niveau AdBlue : {adblueLevel}%
+                        </Label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={adblueLevel}
+                          onChange={(e) => setAdblueLevel(parseInt(e.target.value))}
+                          className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <div className="flex justify-between text-xs text-slate-400">
+                          <span>Vide</span>
+                          <span>1/2</span>
+                          <span>Plein</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* GNR — PL Frigo, Remorque Frigo */}
+                    {needsGNR((vehicle as any)?.type) && (
+                      <div className="space-y-2 pt-4 border-t border-slate-700/50">
+                        <Label className="flex items-center gap-2 text-slate-300">
+                          <Fuel className="h-4 w-4 text-green-400" />
+                          Niveau GNR (groupe frigo) : {gnrLevel}%
                         </Label>
                         <input
                           type="range"
@@ -414,7 +494,7 @@ export default function InspectionPage() {
                           max="100"
                           value={gnrLevel}
                           onChange={(e) => setGnrLevel(parseInt(e.target.value))}
-                          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                          className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
                         />
                         <div className="flex justify-between text-xs text-slate-400">
                           <span>Vide</span>
@@ -443,29 +523,67 @@ export default function InspectionPage() {
               className="space-y-6"
             >
               {/* Points critiques */}
-              <Card className="border-0 shadow-lg">
+              <Card>
                 <CardContent className="p-6">
-                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <AlertOctagon className="h-5 w-5 text-red-600" />
+                  <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <AlertOctagon className="h-5 w-5 text-red-400" />
                     Points critiques
                   </h2>
                   <div className="space-y-3">
                     {checks.filter(c => c.category === 'CRITICAL').map(check => (
-                      <CheckItemRow 
-                        key={check.id} 
-                        check={check} 
+                      <CheckItemRow
+                        key={check.id}
+                        check={check}
                         onUpdate={updateCheck}
                       />
                     ))}
                   </div>
+
+                  {/* Températures compartiments — PL Frigo & Remorque Frigo */}
+                  {needsTemperature((vehicle as any)?.type) && (
+                    <div className="mt-4 pt-4 border-t border-slate-700/50 space-y-4">
+                      <p className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <Thermometer className="h-4 w-4 text-cyan-400" />
+                        Températures frigorifiques relevées
+                      </p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <Label className="text-sm">Compartiment 1 (°C)</Label>
+                          <Input
+                            type="number"
+                            min="-30"
+                            max="15"
+                            step="0.5"
+                            placeholder="ex : -18"
+                            value={compartmentC1Temp}
+                            onChange={(e) => setCompartmentC1Temp(e.target.value)}
+                          />
+                          <p className="text-xs text-slate-400">Entre -30°C et +15°C</p>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-sm">Compartiment 2 (°C)</Label>
+                          <Input
+                            type="number"
+                            min="-30"
+                            max="15"
+                            step="0.5"
+                            placeholder="ex : -18"
+                            value={compartmentC2Temp}
+                            onChange={(e) => setCompartmentC2Temp(e.target.value)}
+                          />
+                          <p className="text-xs text-slate-400">Entre -30°C et +15°C</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
               {/* Points importants */}
-              <Card className="border-0 shadow-lg">
+              <Card>
                 <CardContent className="p-6">
-                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-amber-600" />
+                  <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-amber-400" />
                     Points importants
                   </h2>
                   <div className="space-y-3">
@@ -481,16 +599,16 @@ export default function InspectionPage() {
               </Card>
 
               {/* Propreté - Nouveau système */}
-              <Card className="border-0 shadow-lg">
+              <Card>
                 <CardContent className="p-6">
-                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-purple-600" />
+                  <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-purple-400" />
                     État de propreté
                   </h2>
                   <div className="space-y-3">
                     {cleanliness.map(item => (
-                      <div key={item.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                        <span className="font-medium text-slate-900">{item.label}</span>
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg">
+                        <span className="font-medium text-slate-200">{item.label}</span>
                         <div className="flex gap-2">
                           {(['CLEAN', 'DIRTY', 'DAMAGED'] as CleanlinessStatus[]).map(status => {
                             const config = cleanlinessConfig[status];
@@ -499,9 +617,9 @@ export default function InspectionPage() {
                                 key={status}
                                 onClick={() => updateCleanliness(item.id, status)}
                                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                                  item.status === status 
-                                    ? config.color + ' ring-2 ring-offset-1' 
-                                    : 'bg-white border hover:bg-slate-50'
+                                  item.status === status
+                                    ? config.color + ' ring-2 ring-offset-1'
+                                    : 'bg-slate-800 border border-slate-700 hover:bg-slate-700'
                                 }`}
                               >
                                 <config.icon className="h-4 w-4 inline mr-1" />
@@ -517,9 +635,9 @@ export default function InspectionPage() {
               </Card>
 
               {/* Points standard */}
-              <Card className="border-0 shadow-lg">
+              <Card>
                 <CardContent className="p-6">
-                  <h2 className="text-xl font-semibold mb-4">Équipement</h2>
+                  <h2 className="text-xl font-semibold text-white mb-4">Équipement</h2>
                   <div className="grid grid-cols-1 gap-3">
                     {checks.filter(c => c.category === 'STANDARD').map(check => (
                       <CheckItemRow 
@@ -552,30 +670,30 @@ export default function InspectionPage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
             >
-              <Card className="border-0 shadow-lg">
+              <Card>
                 <CardContent className="p-6 space-y-6">
-                  <h2 className="text-xl font-semibold flex items-center gap-2">
-                    <Pen className="h-5 w-5 text-blue-600" />
+                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <Pen className="h-5 w-5 text-cyan-400" />
                     Validation
                   </h2>
 
                   {/* Récap visuel */}
-                  <div className="bg-slate-50 p-4 rounded-xl">
+                  <div className="bg-slate-800/40 p-4 rounded-xl">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <p className="text-sm text-slate-500">État du véhicule</p>
-                        <p className="text-2xl font-bold">{config.label}</p>
+                        <p className="text-sm text-slate-400">État du véhicule</p>
+                        <p className="text-2xl font-bold text-white">{config.label}</p>
                       </div>
                       <div className={`w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold ${config.color}`}>
                         {score}%
                       </div>
                     </div>
-                    
+
                     {checks.filter(c => c.status !== 'OK').length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-slate-700">Points à vérifier:</p>
+                        <p className="text-sm font-medium text-slate-300">Points à vérifier:</p>
                         {checks.filter(c => c.status !== 'OK').map(c => (
-                          <div key={c.id} className={`text-sm p-2 rounded ${c.status === 'CRITICAL' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                          <div key={c.id} className={`text-sm p-2 rounded ${c.status === 'CRITICAL' ? 'bg-red-900/30 text-red-400' : 'bg-amber-900/30 text-amber-400'}`}>
                             • {c.label}
                           </div>
                         ))}
@@ -630,7 +748,6 @@ export default function InspectionPage() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
     </div>
   );
 }
@@ -647,23 +764,23 @@ function CheckItemRow({
 }) {
   return (
     <div className={`flex items-center justify-between p-3 rounded-lg border ${
-      check.status === 'CRITICAL' ? 'bg-red-50 border-red-200' :
-      check.status === 'WARNING' ? 'bg-amber-50 border-amber-200' :
-      'bg-white border-slate-200'
+      check.status === 'CRITICAL' ? 'bg-red-900/20 border-red-500/40' :
+      check.status === 'WARNING' ? 'bg-amber-900/20 border-amber-500/40' :
+      'bg-slate-800/40 border-slate-700/50'
     }`}>
       <div className="flex items-center gap-3">
-        {check.status === 'OK' && <CircleCheck className="h-5 w-5 text-green-600" />}
-        {check.status === 'WARNING' && <CircleAlert className="h-5 w-5 text-amber-600" />}
-        {check.status === 'CRITICAL' && <CircleX className="h-5 w-5 text-red-600" />}
-        <span className="font-medium text-slate-900">{check.label}</span>
+        {check.status === 'OK' && <CircleCheck className="h-5 w-5 text-green-400" />}
+        {check.status === 'WARNING' && <CircleAlert className="h-5 w-5 text-amber-400" />}
+        {check.status === 'CRITICAL' && <CircleX className="h-5 w-5 text-red-400" />}
+        <span className="font-medium text-slate-200">{check.label}</span>
       </div>
       <div className="flex gap-1">
         <button
           onClick={() => onUpdate(check.id, 'OK')}
           className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-            check.status === 'OK' 
-              ? 'bg-green-600 text-white' 
-              : 'bg-slate-100 text-slate-600 hover:bg-green-100'
+            check.status === 'OK'
+              ? 'bg-green-600 text-white'
+              : 'bg-slate-800 text-slate-300 hover:bg-green-900/40'
           }`}
         >
           OK
@@ -671,9 +788,9 @@ function CheckItemRow({
         <button
           onClick={() => onUpdate(check.id, 'WARNING')}
           className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-            check.status === 'WARNING' 
-              ? 'bg-amber-600 text-white' 
-              : 'bg-slate-100 text-slate-600 hover:bg-amber-100'
+            check.status === 'WARNING'
+              ? 'bg-amber-600 text-white'
+              : 'bg-slate-800 text-slate-300 hover:bg-amber-900/40'
           }`}
         >
           À surveiller
@@ -681,9 +798,9 @@ function CheckItemRow({
         <button
           onClick={() => onUpdate(check.id, 'CRITICAL')}
           className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-            check.status === 'CRITICAL' 
-              ? 'bg-red-600 text-white' 
-              : 'bg-slate-100 text-slate-600 hover:bg-red-100'
+            check.status === 'CRITICAL'
+              ? 'bg-red-600 text-white'
+              : 'bg-slate-800 text-slate-300 hover:bg-red-900/40'
           }`}
         >
           Critique

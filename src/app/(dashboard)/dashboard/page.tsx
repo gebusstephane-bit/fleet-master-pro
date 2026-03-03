@@ -15,7 +15,12 @@ import {
   TrendingUp,
   Activity,
   Zap,
+  ShieldAlert,
 } from "lucide-react";
+import { CriticalVehiclesWidget } from "@/components/vehicles/ReliabilityScore";
+import { MaintenanceUrgenciesWidget } from "@/components/dashboard/MaintenanceUrgenciesWidget";
+import { IncidentStatsWidget } from "@/components/dashboard/IncidentStatsWidget";
+import { MaintenanceFleetOverview } from "@/components/dashboard/MaintenanceFleetOverview";
 import { DashboardSkeleton } from "@/components/ui/skeletons";
 import { GlassCard, MetricCard } from "@/components/ui/glass-card";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -242,6 +247,25 @@ export default function DashboardPage() {
           </GlassCard>
         </motion.div>
 
+        {/* Widget maintenance préventive — Vue d'ensemble flotte */}
+        <motion.div variants={itemVariants} className="col-span-12 lg:col-span-6">
+          <MaintenanceFleetOverview />
+        </motion.div>
+
+        {/* Widget maintenance urgences — top 5 */}
+        <motion.div variants={itemVariants} className="col-span-12 lg:col-span-6">
+          <GlassCard className="p-6 h-full">
+            <MaintenanceUrgenciesWidget />
+          </GlassCard>
+        </motion.div>
+
+        {/* Widget Sinistralité */}
+        <motion.div variants={itemVariants} className="col-span-12 lg:col-span-6">
+          <GlassCard className="p-6">
+            <IncidentStatsWidget />
+          </GlassCard>
+        </motion.div>
+
         {/* Activity Chart - Réel ou Message */}
         <motion.div variants={itemVariants} className="col-span-12 lg:col-span-6">
           <GlassCard className="h-full p-6">
@@ -339,6 +363,26 @@ export default function DashboardPage() {
           </GlassCard>
         </motion.div>
       </div>
+
+      {/* Véhicules critiques */}
+      <motion.div variants={itemVariants} className="grid grid-cols-12 gap-6">
+        <div className="col-span-12 lg:col-span-4">
+          <GlassCard className="h-full p-6" glow="red">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 rounded-lg bg-red-500/20">
+                <ShieldAlert className="h-5 w-5 text-red-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">Fiabilité critique</h2>
+                <p className="text-sm text-slate-500">3 véhicules les plus à risque</p>
+              </div>
+            </div>
+            <CriticalVehiclesWidget
+              vehicles={(vehicles as Array<{ id: string; registration_number: string; brand: string; model: string }>)}
+            />
+          </GlassCard>
+        </div>
+      </motion.div>
 
       {/* Analytics Section - Graphiques Recharts */}
       <AnalyticsSection

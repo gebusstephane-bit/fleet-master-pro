@@ -3,25 +3,25 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import {
-  Layers,
+  QrCode,
   Brain,
-  Smartphone,
   ShieldCheck,
   TrendingDown,
+  Smartphone,
 } from "lucide-react";
 
 // =============================================================================
-// Données — 5 avantages compétitifs
+// Données — 5 avantages compétitifs réels
 // =============================================================================
 
 const advantages = [
   {
-    icon: Layers,
-    title: "Tout-en-un, enfin",
+    icon: QrCode,
+    title: "Inspections QR sans application",
     description:
-      "Fini les 5 outils différents qui ne se parlent pas. FleetMaster Pro couvre l'intégralité de votre gestion de flotte dans une seule interface intuitive, accessible depuis n'importe quel appareil.",
-    stat: "1",
-    statLabel: "seule plateforme",
+      "La seule solution du marché où les chauffeurs scannent un QR avec leur téléphone (sans installer d'app) et remplissent l'inspection dans le navigateur. Zéro friction, 100% adoption.",
+    stat: "UNIQUE",
+    statLabel: "sur le marché",
     accentColor: "cyan",
     iconBg: "bg-cyan-500/10 border-cyan-500/20",
     iconColor: "text-cyan-400",
@@ -31,42 +31,27 @@ const advantages = [
     gradientTo: "#3b82f6",
   },
   {
-    icon: Brain,
-    title: "IA embarquée nativement",
+    icon: TrendingDown,
+    title: "Jusqu'à 10x moins cher",
     description:
-      "Le seul outil du marché qui prédit vos pannes avant qu'elles surviennent. Une intelligence artificielle propriétaire entraînée sur des millions de données moteur réelles.",
-    stat: "14j",
-    statLabel: "d'anticipation",
-    accentColor: "blue",
-    iconBg: "bg-blue-500/10 border-blue-500/20",
-    iconColor: "text-blue-400",
-    statColor: "text-blue-400",
-    border: "border-blue-500/15",
-    gradientFrom: "#3b82f6",
-    gradientTo: "#8b5cf6",
-  },
-  {
-    icon: Smartphone,
-    title: "100% mobile, partout",
-    description:
-      "Votre bureau de gestion dans votre poche. Interface native optimisée pour smartphone et tablette. Gérez votre flotte 24h/24 depuis le bureau, le dépôt ou la route.",
-    stat: "24h",
-    statLabel: "disponibilité",
-    accentColor: "violet",
-    iconBg: "bg-violet-500/10 border-violet-500/20",
-    iconColor: "text-violet-400",
-    statColor: "text-violet-400",
-    border: "border-violet-500/15",
-    gradientFrom: "#8b5cf6",
-    gradientTo: "#06b6d4",
+      "Pas de boîtier OBD à acheter, pas d'abonnement GPS coûteux. FleetMaster coûte 49€/mois pour 20 véhicules où Webfleet facture 400€+ pour les mêmes fonctionnalités. Le ROI est immédiat.",
+    stat: "10x",
+    statLabel: "moins cher",
+    accentColor: "orange",
+    iconBg: "bg-orange-500/10 border-orange-500/20",
+    iconColor: "text-orange-400",
+    statColor: "text-orange-400",
+    border: "border-orange-500/15",
+    gradientFrom: "#f97316",
+    gradientTo: "#f59e0b",
   },
   {
     icon: ShieldCheck,
-    title: "Conformité automatique",
+    title: "100% conforme RGPD",
     description:
-      "Plus jamais d'amende, plus jamais de PV de contrôle. Chaque document réglementaire — assurance, CT, permis conducteur — est suivi, renouvelé et archivé automatiquement.",
+      "Pas de géolocalisation permanente = pas de surveillance des conducteurs. Vos chauffeurs sont tranquilles, vous êtes en règle. Les données sont hébergées en France.",
     stat: "0",
-    statLabel: "amende oubliée",
+    statLabel: "traqueur GPS",
     accentColor: "emerald",
     iconBg: "bg-emerald-500/10 border-emerald-500/20",
     iconColor: "text-emerald-400",
@@ -76,19 +61,34 @@ const advantages = [
     gradientTo: "#06b6d4",
   },
   {
-    icon: TrendingDown,
-    title: "ROI dès le 1er mois",
+    icon: Brain,
+    title: "IA embarquée nativement",
     description:
-      "Une seule panne évitée rembourse plusieurs mois d'abonnement. Nos clients économisent en moyenne 2 340 € par mois sur leurs coûts d'exploitation et de maintenance.",
-    stat: "-30%",
-    statLabel: "de coûts en moyenne",
-    accentColor: "orange",
-    iconBg: "bg-orange-500/10 border-orange-500/20",
-    iconColor: "text-orange-400",
-    statColor: "text-orange-400",
-    border: "border-orange-500/15",
-    gradientFrom: "#f97316",
-    gradientTo: "#f59e0b",
+      "Maintenance prédictive qui analyse vos données et anticipe les pannes. SOS Garage intelligent qui trouve le bon garage selon votre situation. Votre flotte devient intelligente.",
+    stat: "14j",
+    statLabel: "d'anticipation",
+    accentColor: "violet",
+    iconBg: "bg-violet-500/10 border-violet-500/20",
+    iconColor: "text-violet-400",
+    statColor: "text-violet-400",
+    border: "border-violet-500/15",
+    gradientFrom: "#8b5cf6",
+    gradientTo: "#6366f1",
+  },
+  {
+    icon: Smartphone,
+    title: "Fonctionne sur tous les téléphones",
+    description:
+      "Chauffeurs avec iPhone, Android, ancien téléphone... Peu importe. Un QR code, un navigateur, c'est tout. Fini les problèmes de compatibilité et de mises à jour forcées.",
+    stat: "100%",
+    statLabel: "compatible",
+    accentColor: "blue",
+    iconBg: "bg-blue-500/10 border-blue-500/20",
+    iconColor: "text-blue-400",
+    statColor: "text-blue-400",
+    border: "border-blue-500/15",
+    gradientFrom: "#3b82f6",
+    gradientTo: "#06b6d4",
   },
 ];
 
@@ -125,14 +125,14 @@ export function WhyFleetMaster() {
             Pourquoi FleetMaster
           </span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white">
-            Ce que les autres outils{" "}
+            Ce que les solutions GPS{" "}
             <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
               ne font pas
             </span>
           </h2>
           <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
-            FleetMaster Pro n'est pas qu'un tableau de bord. C'est l'outil de
-            pilotage que les transporteurs attendaient depuis des années.
+            FleetMaster Pro n'est pas un traqueur GPS. C'est un outil de gestion 
+            complet qui respecte vos chauffeurs et votre budget.
           </p>
         </motion.div>
 

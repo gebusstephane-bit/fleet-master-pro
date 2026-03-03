@@ -83,15 +83,60 @@ export interface Driver {
   phone: string;
   license_number: string;
   license_expiry: string;
-  status: 'ACTIF' | 'INACTIF';
-  address?: string;
-  city?: string;
-  postal_code?: string;
+  license_type?: string | null;
+  status: 'active' | 'inactive' | 'on_leave' | 'suspended' | 'terminated';
+  is_active: boolean;
+  address?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
+  birth_date?: string | null;
+  hire_date?: string | null;
+  nationality?: string | null;
+  contract_type?: 'CDI' | 'CDD' | 'Intérim' | 'Gérant' | 'Autre' | null;
+  social_security_number?: string | null;
+  // Carte conducteur (tachographe)
+  driver_card_number?: string | null;
+  driver_card_expiry?: string | null;
+  // Formations obligatoires
+  fimo_date?: string | null;
+  fimo_expiry?: string | null;
+  fcos_expiry?: string | null;
+  qi_date?: string | null;
+  // Aptitude médicale
+  medical_certificate_expiry?: string | null;
+  // ADR (transport matières dangereuses)
+  adr_certificate_expiry?: string | null;
+  adr_classes?: string[] | null;
+  // CQC
+  cqc_card_number?: string | null;
+  cqc_expiry?: string | null;
+  cqc_category?: string | null;
+  // Scores
+  safety_score?: number | null;
+  fuel_efficiency_score?: number | null;
+  total_distance_driven?: number | null;
+  avatar_url?: string | null;
+  current_vehicle_id?: string | null;
   created_at: string;
   updated_at: string;
-  license_type?: string | null;
-  safety_score?: number | null;
   vehicles?: Pick<Vehicle, 'registration_number'> | null;
+}
+
+// ==================== TYPES AFFECTATION CONDUCTEUR-VÉHICULE ====================
+export interface DriverAssignment {
+  id: string;
+  vehicle_id: string;
+  driver_id: string;
+  company_id: string;
+  is_primary: boolean;
+  start_date: string;
+  end_date: string | null;
+  notes: string | null;
+  assigned_by: string | null;
+  created_at: string;
+  // Joined (optionnel selon la requête)
+  drivers?: Pick<Driver, 'id' | 'first_name' | 'last_name' | 'email' | 'phone'> | null;
+  vehicles?: Pick<Vehicle, 'id' | 'registration_number' | 'brand' | 'model' | 'year'> | null;
 }
 
 // ==================== TYPES MAINTENANCE ====================

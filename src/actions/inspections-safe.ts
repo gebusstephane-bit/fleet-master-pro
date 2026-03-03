@@ -75,54 +75,44 @@ export async function createInspectionSafe(data: InspectionData) {
     const score = data.score || Math.max(0, 100 - (criticalCount * 20) - (warningCount * 10));
     const grade = data.grade || (score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : 'D');
     
-    // Déterminer le statut - par défaut PENDING pour validation admin
-    const status = data.status || (criticalCount > 0 ? 'CRITICAL_ISSUES' : 'PENDING');
+    // TOUJOURS PENDING à la création - le directeur/agent doit valider
+    const status = 'PENDING';
 
-    // Score calculé
+    // Créer l'inspection via RPC (sécurisé, avec validation km)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: result, error: inspectionError } = await (supabase as any)
+      .rpc('create_inspection_safe', {
+        p_vehicle_id: data.vehicleId,
+        p_company_id: vehicle.company_id,
+        p_mileage: data.mileage,
+        p_fuel_level: data.fuelLevel,
+        p_adblue_level: data.adblueLevel,
+        p_gnr_level: data.gnrLevel,
+        p_cleanliness_exterior: data.cleanlinessExterior,
+        p_cleanliness_interior: data.cleanlinessInterior,
+        p_cleanliness_cargo_area: data.cleanlinessCargoArea,
+        p_compartment_c1_temp: data.compartmentC1Temp,
+        p_compartment_c2_temp: data.compartmentC2Temp,
+        p_tires_condition: data.tiresCondition,
+        p_reported_defects: data.reportedDefects,
+        p_photos: data.photos || [],
+        p_driver_name: data.driverName,
+        p_driver_signature: data.driverSignature,
+        p_inspector_notes: data.inspectorNotes,
+        p_location: data.location,
+        p_created_by: user.id,
+        p_score: score,
+        p_grade: grade,
+        p_status: status
+      });
 
-    // Créer l'inspection
-    const inspectionData: Record<string, unknown> = {
-      vehicle_id: data.vehicleId,
-      company_id: vehicle.company_id,
-      mileage: data.mileage,
-      fuel_level: data.fuelLevel,
-      adblue_level: data.adblueLevel,
-      gnr_level: data.gnrLevel,
-      cleanliness_exterior: data.cleanlinessExterior,
-      cleanliness_interior: data.cleanlinessInterior,
-      cleanliness_cargo_area: data.cleanlinessCargoArea,
-      compartment_c1_temp: data.compartmentC1Temp,
-      compartment_c2_temp: data.compartmentC2Temp,
-      driver_name: data.driverName,
-      driver_signature: data.driverSignature,
-      inspector_notes: data.inspectorNotes,
-      location: data.location,
-      created_by: user.id,
-      score: score,
-      grade: grade,
-      defects_count: data.reportedDefects.length,
-      reported_defects: data.reportedDefects,  // ← AJOUT: Stocker les détails des défauts
-      status: status,
-    };
-    
-    const { data: inspection, error: inspectionError } = await supabase
-      .from('vehicle_inspections')
-      .insert(inspectionData as never)
-      .select()
-      .single();
-
-    if (inspectionError) {
-      console.error('createInspectionSafe: Insert error', inspectionError);
-      return { error: `Erreur lors de la création: ${inspectionError.message}`, data: null };
+    if (inspectionError || !result?.success) {
+      console.error('createInspectionSafe: Error', inspectionError || result?.error);
+      return { error: inspectionError?.message || result?.error || 'Erreur lors de la création', data: null };
     }
 
-    // Inspection créée
-
-    // Mettre à jour le kilométrage
-    await supabase
-      .from('vehicles')
-      .update({ mileage: data.mileage })
-      .eq('id', data.vehicleId);
+    // Récupérer l'ID de l'inspection créée
+    const inspectionId = result.inspection_id;
 
     // Créer les maintenances pour les défauts critiques
     const criticalDefects = data.reportedDefects.filter(d => d.severity === 'CRITIQUE');
@@ -134,7 +124,7 @@ export async function createInspectionSafe(data: InspectionData) {
           company_id: vehicle.company_id,
           type: 'CORRECTIVE',
           status: 'DEMANDE_CREEE',
-          description: `[Contrôle #${inspection.id}] ${defect.description}`,
+          description: `[Contrôle #${inspectionId}] ${defect.description}`,
           requested_by: user.id,
         });
     }
@@ -145,8 +135,8 @@ export async function createInspectionSafe(data: InspectionData) {
     return { 
       data: { 
         success: true, 
-        inspectionId: inspection.id,
-        status: inspection.status,
+        inspectionId: inspectionId,
+        status: status,
         criticalDefectsCount: criticalDefects.length,
       }, 
       error: null 

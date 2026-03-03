@@ -18,6 +18,7 @@ import {
 import { CommandPalette } from "@/components/ui/command-palette";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./sidebar-context";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 function DigitalClock() {
   const [time, setTime] = useState(new Date());
@@ -42,8 +43,40 @@ function DigitalClock() {
 function Breadcrumbs() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
+  const [vehicleLabel, setVehicleLabel] = useState<string | null>(null);
 
-  const getLabel = (segment: string) => {
+  // Récupérer l'immatriculation du véhicule si on est sur une page véhicule
+  useEffect(() => {
+    const fetchVehicleLabel = async () => {
+      // Pattern: /vehicles/[id] ou /vehicles/[id]/edit
+      if (segments[0] === 'vehicles' && segments[1] && segments[1] !== 'new') {
+        const vehicleId = segments[1];
+        // Vérifier si c'est un UUID (format simple)
+        if (vehicleId.length > 20 && vehicleId.includes('-')) {
+          try {
+            const supabase = getSupabaseClient();
+            const { data } = await supabase
+              .from('vehicles')
+              .select('registration_number')
+              .eq('id', vehicleId)
+              .single();
+            
+            if (data?.registration_number) {
+              setVehicleLabel(data.registration_number.toUpperCase());
+              return;
+            }
+          } catch {
+            // Ignorer les erreurs, fallback sur l'ID
+          }
+        }
+      }
+      setVehicleLabel(null);
+    };
+
+    fetchVehicleLabel();
+  }, [segments]);
+
+  const getLabel = (segment: string, index: number) => {
     const labels: Record<string, string> = {
       dashboard: "Dashboard",
       vehicles: "Véhicules",
@@ -55,6 +88,12 @@ function Breadcrumbs() {
       alerts: "Alertes",
       settings: "Paramètres",
     };
+
+    // Si c'est un ID de véhicule et qu'on a l'immatriculation, l'utiliser
+    if (segments[0] === 'vehicles' && index === 1 && vehicleLabel) {
+      return vehicleLabel;
+    }
+
     return labels[segment] || segment;
   };
 
@@ -62,7 +101,7 @@ function Breadcrumbs() {
     <nav className="flex items-center gap-2 text-sm">
       <span className="text-[#71717a]">FleetMaster</span>
       {segments.map((segment, index) => (
-        <div key={segment} className="flex items-center gap-2">
+        <div key={`${segment}-${index}`} className="flex items-center gap-2">
           <ChevronDown className="h-3 w-3 -rotate-90 text-[#71717a]" />
           <motion.span
             initial={{ opacity: 0, x: -5 }}
@@ -72,7 +111,7 @@ function Breadcrumbs() {
               index === segments.length - 1 ? "text-cyan-400" : "text-slate-500"
             )}
           >
-            {getLabel(segment)}
+            {getLabel(segment, index)}
           </motion.span>
         </div>
       ))}
@@ -113,7 +152,9 @@ export function Header({ user }: HeaderProps) {
     : user?.email?.split('@')[0] || "Utilisateur";
   const userRole = user?.role || "Admin";
   const companyName = user?.companies?.name || "Transport";
-  const planName = user?.companies?.plan || "Pro";
+  // Capitaliser le nom du plan (pro -> Pro, essential -> Essential, unlimited -> Unlimited)
+  const rawPlan = user?.companies?.plan || "essential";
+  const planName = rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1).toLowerCase();
 
   return (
     <>

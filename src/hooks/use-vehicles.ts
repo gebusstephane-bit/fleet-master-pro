@@ -33,6 +33,12 @@ export interface Vehicle {
   vin?: string;
   year?: number;
   color?: string;
+  technical_control_date?: string;
+  technical_control_expiry?: string;
+  tachy_control_date?: string;
+  tachy_control_expiry?: string;
+  atp_date?: string;
+  atp_expiry?: string;
   drivers?: {
     id: string;
     first_name: string;

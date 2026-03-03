@@ -20,42 +20,44 @@ import {
   getRateLimitHeaders,
 } from "@/lib/security/rate-limiter";
 import { logger } from "@/lib/logger";
-// PlanType: 'ESSENTIAL' | 'PRO' | 'UNLIMITED'
-type PlanType = "ESSENTIAL" | "PRO" | "UNLIMITED";
+import { PLAN_LIMITS, PlanType } from "@/lib/plans";
 
-// Mapping des plans vers les limites
-const PLAN_LIMITS: Record<
+// Mapping des plans vers les limites (utilise la source de vérité centralisée)
+const WEBHOOK_PLAN_LIMITS: Record<
   PlanType,
   { maxVehicles: number; maxDrivers: number; features: string[] }
 > = {
   ESSENTIAL: {
-    maxVehicles: 3,
-    maxDrivers: 2,
+    maxVehicles: PLAN_LIMITS.ESSENTIAL.vehicleLimit,
+    maxDrivers: PLAN_LIMITS.ESSENTIAL.userLimit,
     features: [
-      "3 véhicules maximum",
-      "2 utilisateurs",
+      `${PLAN_LIMITS.ESSENTIAL.vehicleLimit} véhicules maximum`,
+      `${PLAN_LIMITS.ESSENTIAL.userLimit} utilisateurs`,
       "Support email (48h)",
       "Tableau de bord",
     ],
   },
   PRO: {
-    maxVehicles: 15,
-    maxDrivers: 5,
+    maxVehicles: PLAN_LIMITS.PRO.vehicleLimit,
+    maxDrivers: PLAN_LIMITS.PRO.userLimit,
     features: [
-      "15 véhicules maximum",
-      "5 utilisateurs",
+      `${PLAN_LIMITS.PRO.vehicleLimit} véhicules maximum`,
+      `${PLAN_LIMITS.PRO.userLimit} utilisateurs`,
       "Support prioritaire (24h)",
-      "API d'accès",
+      "Webhooks personnalisés",
+      "Rapports avancés",
     ],
   },
   UNLIMITED: {
-    maxVehicles: 999,
-    maxDrivers: 999,
+    maxVehicles: PLAN_LIMITS.UNLIMITED.vehicleLimit,
+    maxDrivers: PLAN_LIMITS.UNLIMITED.userLimit,
     features: [
       "Véhicules illimités",
       "Utilisateurs illimités",
+      "API publique complète",
+      "Assistant IA réglementaire",
       "Support dédié 24/7",
-      "Personnalisation complète",
+      "Account manager",
     ],
   },
 };
@@ -500,8 +502,8 @@ async function handleNewRegistration(
         email,
         subscription_plan: plan.toLowerCase(),
         subscription_status: "active", // ✅ ACTIF car paiement réussi
-        max_vehicles: PLAN_LIMITS[plan]?.maxVehicles || 3,
-        max_drivers: PLAN_LIMITS[plan]?.maxDrivers || 2,
+        max_vehicles: WEBHOOK_PLAN_LIMITS[plan]?.maxVehicles || 3,
+        max_drivers: WEBHOOK_PLAN_LIMITS[plan]?.maxDrivers || 2,
         stripe_customer_id: session.customer as string,
       })
       .select()
@@ -550,9 +552,9 @@ async function handleNewRegistration(
         current_period_end: new Date(
           (subData as unknown as { current_period_end: number }).current_period_end * 1000
         ).toISOString(),
-        vehicle_limit: PLAN_LIMITS[plan]?.maxVehicles || 3,
-        user_limit: PLAN_LIMITS[plan]?.maxDrivers || 2,
-        features: PLAN_LIMITS[plan]?.features || [],
+        vehicle_limit: WEBHOOK_PLAN_LIMITS[plan]?.maxVehicles || 3,
+        user_limit: WEBHOOK_PLAN_LIMITS[plan]?.maxDrivers || 2,
+        features: WEBHOOK_PLAN_LIMITS[plan]?.features || [],
         trial_ends_at: subData.trial_end
           ? new Date(subData.trial_end * 1000).toISOString()
           : null,
@@ -699,9 +701,9 @@ async function handleSubscriptionUpdate(
       current_period_end: new Date(
         (subData as unknown as { current_period_end: number }).current_period_end * 1000
       ).toISOString(),
-      vehicle_limit: PLAN_LIMITS[plan]?.maxVehicles || 3,
-      user_limit: PLAN_LIMITS[plan]?.maxDrivers || 2,
-      features: PLAN_LIMITS[plan]?.features || [],
+      vehicle_limit: WEBHOOK_PLAN_LIMITS[plan]?.maxVehicles || 3,
+      user_limit: WEBHOOK_PLAN_LIMITS[plan]?.maxDrivers || 2,
+      features: WEBHOOK_PLAN_LIMITS[plan]?.features || [],
     },
     {
       onConflict: "company_id",
@@ -714,8 +716,8 @@ async function handleSubscriptionUpdate(
     .update({
       subscription_plan: plan.toLowerCase(),
       subscription_status: "active",
-      max_vehicles: PLAN_LIMITS[plan]?.maxVehicles || 3,
-      max_drivers: PLAN_LIMITS[plan]?.maxDrivers || 2,
+      max_vehicles: WEBHOOK_PLAN_LIMITS[plan]?.maxVehicles || 3,
+      max_drivers: WEBHOOK_PLAN_LIMITS[plan]?.maxDrivers || 2,
     })
     .eq("id", companyId);
 
@@ -860,9 +862,9 @@ async function handleSubscriptionUpdated(
       .from("subscriptions")
       .update({
         plan: plan,
-        vehicle_limit: PLAN_LIMITS[plan].maxVehicles,
-        user_limit: PLAN_LIMITS[plan].maxDrivers,
-        features: PLAN_LIMITS[plan].features,
+        vehicle_limit: WEBHOOK_PLAN_LIMITS[plan].maxVehicles,
+        user_limit: WEBHOOK_PLAN_LIMITS[plan].maxDrivers,
+        features: WEBHOOK_PLAN_LIMITS[plan].features,
         current_period_start: new Date(
           (updatedSub as unknown as { current_period_start: number }).current_period_start *
             1000
@@ -873,12 +875,16 @@ async function handleSubscriptionUpdated(
       })
       .eq("stripe_subscription_id", updatedSub.id);
 
+    // La table companies est maintenant synchronisée automatiquement via trigger
+    // Mais on met à jour quand même pour être sûr (en cas de trigger désactivé)
     await supabase
       .from("companies")
       .update({
-        subscription_plan: plan.toLowerCase(),
-        max_vehicles: PLAN_LIMITS[plan].maxVehicles,
-        max_drivers: PLAN_LIMITS[plan].maxDrivers,
+        subscription_plan: plan, // Utilise le format UPPERCASE (ESSENTIAL, PRO, UNLIMITED)
+        subscription_status: "active",
+        max_vehicles: WEBHOOK_PLAN_LIMITS[plan].maxVehicles,
+        max_drivers: WEBHOOK_PLAN_LIMITS[plan].maxDrivers,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", sub.company_id);
   }

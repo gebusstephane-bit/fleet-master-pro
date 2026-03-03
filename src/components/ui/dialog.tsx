@@ -41,6 +41,8 @@ const DialogContent = React.forwardRef<
         // Centrage forcé avec !important pour éviter les conflits CSS
         "!fixed !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2",
         "z-50 grid w-full max-w-lg gap-4 p-6",
+        // Gestion du scroll pour contenus longs (ex: tableaux de maintenance)
+        "max-h-[90vh] overflow-y-auto",
         // Style glassmorphism du projet
         "bg-[#0f172a]/95 backdrop-blur-xl",
         "border border-cyan-500/20",

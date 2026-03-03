@@ -289,14 +289,23 @@ export async function checkGeneralApiRateLimit(ip?: string): Promise<RateLimitRe
 export async function rateLimitMiddleware({
   userId,
   isSensitive = false,
+  customLimit,
+  windowSeconds,
 }: {
   userId?: string;
   isSensitive?: boolean;
+  customLimit?: number;
+  windowSeconds?: number;
 }): Promise<{ allowed: true } | { allowed: false; error: string }> {
   try {
     let result: RateLimitResult;
 
-    if (isSensitive) {
+    // Si des limites personnalisées sont fournies, utiliser rate limit mémoire spécifique
+    if (customLimit && windowSeconds) {
+      const ip = await getClientIP();
+      const customConfig = { limit: customLimit, windowMs: windowSeconds * 1000 };
+      result = checkRateLimitMemory(`custom:${ip}`, customConfig);
+    } else if (isSensitive) {
       const ip = await getClientIP();
       result = await checkSensitiveRateLimit(ip);
     } else if (userId) {

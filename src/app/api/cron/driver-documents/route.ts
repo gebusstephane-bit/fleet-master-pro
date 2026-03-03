@@ -6,8 +6,12 @@
  * Parallèle  : système indépendant du cron véhicules (vehicle-documents-check)
  *
  * Documents contrôlés :
- *   - LICENSE → license_expiry  (requis, jamais null)
- *   - CQC     → cqc_expiry_date (optionnel, peut être null → ignoré)
+ *   - LICENSE      → license_expiry           (requis, jamais null)
+ *   - CQC          → cqc_expiry_date          (optionnel)
+ *   - DRIVER_CARD  → driver_card_expiry       (optionnel) — Carte conducteur numérique
+ *   - FCOS         → fcos_expiry              (optionnel) — FCO Formation Continue Obligatoire
+ *   - MEDICAL      → medical_certificate_expiry (optionnel) — Aptitude médicale
+ *   - ADR          → adr_certificate_expiry   (optionnel, conditionnel : seulement si adr_classes non vide)
  *
  * Niveaux d'alerte :
  *   - J60 : ≤ 60 jours → rappel standard
@@ -15,7 +19,7 @@
  *   - J0  : ≤ 0 jours  → document périmé / immobilisation
  *
  * Destinataires :
- *   - ADMIN + DIRECTEUR de la même company
+ *   - ADMIN + DIRECTEUR de la même company (email + notification in-app)
  *   - Le conducteur lui-même (driver.email)
  *   - Si driver.email vide : ADMIN+DIRECTEUR uniquement + mention "non joignable"
  *
@@ -24,7 +28,10 @@
  *
  * Retry : 3 tentatives avec backoff linéaire (1s, 2s, 3s)
  *
- * Test local :
+ * Test local (dry_run — simule sans envoyer) :
+ *   GET http://localhost:3000/api/cron/driver-documents?secret=fleet_cron_2026_secret&dry_run=true
+ *
+ * Test local (exécution réelle) :
  *   GET http://localhost:3000/api/cron/driver-documents?secret=fleet_cron_2026_secret
  */
 
@@ -44,15 +51,41 @@ const DRIVER_DOCUMENTS = [
     field: 'license_expiry' as const,
     type: 'LICENSE' as const,
     label: 'Permis de conduire',
+    adrOnly: false,
   },
   {
     field: 'cqc_expiry_date' as const,
     type: 'CQC' as const,
     label: 'CQC (Certificat de Qualification Complémentaire)',
+    adrOnly: false,
+  },
+  {
+    field: 'driver_card_expiry' as const,
+    type: 'DRIVER_CARD' as const,
+    label: 'Carte conducteur numérique',
+    adrOnly: false,
+  },
+  {
+    field: 'fcos_expiry' as const,
+    type: 'FCOS' as const,
+    label: 'FCO — Formation Continue Obligatoire',
+    adrOnly: false,
+  },
+  {
+    field: 'medical_certificate_expiry' as const,
+    type: 'MEDICAL' as const,
+    label: 'Aptitude médicale',
+    adrOnly: false,
+  },
+  {
+    field: 'adr_certificate_expiry' as const,
+    type: 'ADR' as const,
+    label: 'Certificat ADR (matières dangereuses)',
+    adrOnly: true, // Ignoré si le conducteur n'a pas de classes ADR
   },
 ] as const;
 
-type DocumentType = 'LICENSE' | 'CQC';
+type DocumentType = 'LICENSE' | 'CQC' | 'DRIVER_CARD' | 'FCOS' | 'MEDICAL' | 'ADR';
 type AlertLevel = 'J60' | 'J30' | 'J0';
 
 // ============================================================
@@ -343,18 +376,129 @@ function buildCqcEmail(
   };
 }
 
-function buildEmailContent(
-  docType: DocumentType,
+// ============================================================
+// TEMPLATE EMAIL — Générique (Carte conducteur, FCO, Médical, ADR)
+// ============================================================
+
+function buildGenericDocumentEmail(
+  docLabel: string,
   alertLevel: AlertLevel,
   driver: { first_name: string; last_name: string },
   daysLeft: number,
   expiryDate: string,
   isDriverRecipient: boolean
 ): { subject: string; html: string } {
+  const driverName = `${driver.first_name} ${driver.last_name}`;
+  const formattedExpiry = formatDate(expiryDate);
+  const overdue = Math.abs(daysLeft);
+  const subject = `[FleetMaster] Alertes documents conducteur — ${driverName}`;
+  const personalNote = isDriverRecipient
+    ? `<p>Bonjour <strong>${driver.first_name}</strong>,</p>`
+    : `<p>Alerte concernant le conducteur <strong>${driverName}</strong> :</p>`;
+
+  if (alertLevel === 'J0') {
+    const msg = isDriverRecipient
+      ? `Votre <strong>${docLabel}</strong> est <strong style="color:#dc2626;">EXPIRÉ</strong>. Renouvellement obligatoire avant toute reprise d'activité.`
+      : `Le document <strong>${docLabel}</strong> de <strong>${driverName}</strong> est <strong style="color:#dc2626;">EXPIRÉ depuis ${overdue} jour(s)</strong>.`;
+    return {
+      subject,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border-left:4px solid #dc2626;">
+          <div style="background:#fef2f2;padding:20px;">
+            <h2 style="color:#dc2626;margin:0;">🚨 ${docLabel} EXPIRÉ — ACTION IMMÉDIATE</h2>
+          </div>
+          <div style="padding:24px;">
+            ${personalNote}
+            <p>${msg}</p>
+            <div style="background:#fef2f2;border:1px solid #fecaca;padding:16px;border-radius:8px;margin:20px 0;">
+              <p style="margin:0;color:#dc2626;font-weight:bold;">⛔ Renouvellement obligatoire avant toute reprise d'activité.</p>
+            </div>
+            <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+              <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;width:40%;">Conducteur</td><td style="padding:8px;">${driverName}</td></tr>
+              <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;">Document</td><td style="padding:8px;">${docLabel}</td></tr>
+              <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;">Date d'expiration</td><td style="padding:8px;color:#dc2626;font-weight:bold;">${formattedExpiry}</td></tr>
+              <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;">Statut</td><td style="padding:8px;color:#dc2626;font-weight:bold;">EXPIRÉ (${overdue} j)</td></tr>
+            </table>
+          </div>
+          <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">FleetMaster Pro — Alerte automatique documents conducteurs</div>
+        </div>
+      `,
+    };
+  }
+
+  if (alertLevel === 'J30') {
+    const msg = isDriverRecipient
+      ? `⚠️ Votre <strong>${docLabel}</strong> expire dans <strong style="color:#d97706;">${daysLeft} jours</strong>. Action urgente requise.`
+      : `⚠️ Le document <strong>${docLabel}</strong> de <strong>${driverName}</strong> expire dans <strong style="color:#d97706;">${daysLeft} jours</strong>.`;
+    return {
+      subject,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border-left:4px solid #f59e0b;">
+          <div style="background:#fffbeb;padding:20px;">
+            <h2 style="color:#d97706;margin:0;">⚠️ ${docLabel} — Échéance dans ${daysLeft} jours</h2>
+          </div>
+          <div style="padding:24px;">
+            ${personalNote}
+            <p>${msg}</p>
+            <div style="background:#fffbeb;border:1px solid #fde68a;padding:16px;border-radius:8px;margin:20px 0;">
+              <p style="margin:0;color:#92400e;">Planifiez le renouvellement de ce document dès maintenant pour éviter toute interruption d'activité.</p>
+            </div>
+            <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+              <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;width:40%;">Conducteur</td><td style="padding:8px;">${driverName}</td></tr>
+              <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;">Document</td><td style="padding:8px;">${docLabel}</td></tr>
+              <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;">Expiration</td><td style="padding:8px;color:#d97706;font-weight:bold;">${formattedExpiry}</td></tr>
+              <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;">Jours restants</td><td style="padding:8px;color:#d97706;font-weight:bold;">${daysLeft} jours</td></tr>
+            </table>
+          </div>
+          <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">FleetMaster Pro — Alerte automatique documents conducteurs</div>
+        </div>
+      `,
+    };
+  }
+
+  // J60
+  const msg = isDriverRecipient
+    ? `Votre <strong>${docLabel}</strong> arrive à échéance dans <strong>${daysLeft} jours</strong>. Pensez à planifier le renouvellement.`
+    : `Le document <strong>${docLabel}</strong> de <strong>${driverName}</strong> arrive à échéance dans <strong>${daysLeft} jours</strong>.`;
+  return {
+    subject,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border-left:4px solid #3b82f6;">
+        <div style="background:#eff6ff;padding:20px;">
+          <h2 style="color:#1d4ed8;margin:0;">📅 Rappel — ${docLabel} dans ${daysLeft} jours</h2>
+        </div>
+        <div style="padding:24px;">
+          ${personalNote}
+          <p>${msg}</p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+            <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;width:40%;">Conducteur</td><td style="padding:8px;">${driverName}</td></tr>
+            <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;">Document</td><td style="padding:8px;">${docLabel}</td></tr>
+            <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;">Expiration</td><td style="padding:8px;">${formattedExpiry}</td></tr>
+            <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;">Jours restants</td><td style="padding:8px;">${daysLeft} jours</td></tr>
+          </table>
+        </div>
+        <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">FleetMaster Pro — Alerte automatique documents conducteurs</div>
+      </div>
+    `,
+  };
+}
+
+function buildEmailContent(
+  docType: DocumentType,
+  alertLevel: AlertLevel,
+  driver: { first_name: string; last_name: string },
+  daysLeft: number,
+  expiryDate: string,
+  isDriverRecipient: boolean,
+  docLabel?: string
+): { subject: string; html: string } {
   if (docType === 'LICENSE') {
     return buildLicenseEmail(alertLevel, driver, daysLeft, expiryDate, isDriverRecipient);
   }
-  return buildCqcEmail(alertLevel, driver, daysLeft, expiryDate, isDriverRecipient);
+  if (docType === 'CQC') {
+    return buildCqcEmail(alertLevel, driver, daysLeft, expiryDate, isDriverRecipient);
+  }
+  return buildGenericDocumentEmail(docLabel ?? docType, alertLevel, driver, daysLeft, expiryDate, isDriverRecipient);
 }
 
 // ============================================================
@@ -371,6 +515,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Mode dry_run : simule sans envoyer ni persister
+  // Usage : GET /api/cron/driver-documents?dry_run=true&secret=XXX
+  const isDryRun = request.nextUrl.searchParams.get('dry_run') === 'true';
+
   const supabase = createAdminClient();
   const stats = {
     drivers_scanned: 0,
@@ -378,15 +526,28 @@ export async function GET(request: NextRequest) {
     skipped_no_date: 0,
     skipped_already_sent: 0,
     skipped_no_threshold: 0,
+    skipped_adr_no_classes: 0,
     driver_unreachable: 0,
     errors: 0,
   };
+
+  // Collecte des alertes simulées (dry_run uniquement)
+  const dryRunAlerts: Array<{
+    driver_name: string;
+    driver_id: string;
+    document_type: string;
+    document_label: string;
+    alert_level: AlertLevel;
+    days_left: number;
+    expiry_date: string;
+    emails_to_notify: string[];
+  }> = [];
 
   try {
     // 1. Récupérer tous les conducteurs actifs
     const { data: driversRaw, error: driversError } = await supabase
       .from('drivers')
-      .select('id, company_id, first_name, last_name, email, license_expiry, cqc_expiry_date')
+      .select('id, company_id, first_name, last_name, email, license_expiry, cqc_expiry_date, driver_card_expiry, fcos_expiry, medical_certificate_expiry, adr_certificate_expiry, adr_classes')
       .eq('status', 'active');
 
     if (driversError || !driversRaw) {
@@ -406,32 +567,40 @@ export async function GET(request: NextRequest) {
       email: string | null;
       license_expiry: string | null;
       cqc_expiry_date?: string | null;
+      driver_card_expiry?: string | null;
+      fcos_expiry?: string | null;
+      medical_certificate_expiry?: string | null;
+      adr_certificate_expiry?: string | null;
+      adr_classes?: string[] | null;
     }>;
 
     stats.drivers_scanned = drivers.length;
 
     // 2. Pré-charger ADMIN+DIRECTEUR par company (éviter N+1)
+    //    On récupère id + email pour : email → envoi email, id → notification in-app
     const companyIds = Array.from(new Set(drivers.map((d) => d.company_id)));
-    const managersByCompany = new Map<string, string[]>();
+    const managersByCompany = new Map<string, Array<{ id: string; email: string }>>();
 
     for (const companyId of companyIds) {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('email')
+        .select('id, email')
         .eq('company_id', companyId)
         .in('role', ['ADMIN', 'DIRECTEUR'])
         .not('email', 'is', null);
 
-      const emails = (profiles || [])
-        .map((p) => p.email)
-        .filter((e): e is string => !!e);
+      const managers = (profiles || []).filter(
+        (p): p is { id: string; email: string } => !!p.id && !!p.email
+      );
 
-      managersByCompany.set(companyId, emails);
+      managersByCompany.set(companyId, managers);
     }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
 
     // 3. Scanner chaque conducteur × chaque document
     for (const driver of drivers) {
-      const managerEmails = managersByCompany.get(driver.company_id) ?? [];
+      const managers = managersByCompany.get(driver.company_id) ?? [];
       const driverEmail = driver.email?.trim() || null;
       const driverHasEmail = !!driverEmail;
 
@@ -440,9 +609,15 @@ export async function GET(request: NextRequest) {
       }
 
       for (const doc of DRIVER_DOCUMENTS) {
+        // Règle ADR : ignorer si le conducteur ne transporte pas de matières dangereuses
+        if (doc.adrOnly && (!driver.adr_classes || driver.adr_classes.length === 0)) {
+          stats.skipped_adr_no_classes++;
+          continue;
+        }
+
         const expiryDate = driver[doc.field] as string | null;
 
-        // Règle : date null → pas d'alerte (CQC non renseigné = normal)
+        // Règle : date null → pas d'alerte (document non renseigné = normal)
         if (!expiryDate) {
           stats.skipped_no_date++;
           continue;
@@ -472,8 +647,29 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
+        // Mode dry_run : collecter sans envoyer
+        if (isDryRun) {
+          dryRunAlerts.push({
+            driver_name: `${driver.first_name} ${driver.last_name}`,
+            driver_id: driver.id,
+            document_type: doc.type,
+            document_label: doc.label,
+            alert_level: alertLevel,
+            days_left: daysLeft,
+            expiry_date: expiryDate,
+            emails_to_notify: [
+              ...(driverHasEmail ? [driverEmail!] : []),
+              ...managers.map((m) => m.email),
+            ],
+          });
+          stats.alerts_sent++;
+          continue;
+        }
+
         // 5. Construire et envoyer les emails
         try {
+          const driverLink = `${appUrl}/drivers/${driver.id}`;
+
           // Email personnalisé pour le conducteur (si email disponible)
           if (driverHasEmail) {
             const driverContent = buildEmailContent(
@@ -482,22 +678,55 @@ export async function GET(request: NextRequest) {
               driver,
               daysLeft,
               expiryDate,
-              true // isDriverRecipient
+              true, // isDriverRecipient
+              doc.label
             );
             await sendEmailWithRetry({ to: driverEmail!, ...driverContent });
           }
 
           // Email pour ADMIN + DIRECTEUR
-          for (const managerEmail of managerEmails) {
+          for (const manager of managers) {
             // Si conducteur injoignable, mentionner dans le message manager
             const managerContent = driverHasEmail
-              ? buildEmailContent(doc.type, alertLevel, driver, daysLeft, expiryDate, false)
-              : buildNoEmailWarningContent(doc.type, alertLevel, driver, daysLeft, expiryDate);
+              ? buildEmailContent(doc.type, alertLevel, driver, daysLeft, expiryDate, false, doc.label)
+              : buildNoEmailWarningContent(doc.label, alertLevel, driver, daysLeft, expiryDate);
 
-            await sendEmailWithRetry({ to: managerEmail, ...managerContent });
+            await sendEmailWithRetry({ to: manager.email, ...managerContent });
           }
 
-          // 6. Logger l'alerte pour éviter les doublons futurs
+          // 6. Notification in-app pour chaque ADMIN+DIRECTEUR
+          const notifPriority: 'critical' | 'high' | 'normal' =
+            alertLevel === 'J0' ? 'critical' : alertLevel === 'J30' ? 'high' : 'normal';
+          const notifTitle =
+            alertLevel === 'J0'
+              ? `${doc.label} de ${driver.first_name} ${driver.last_name} EXPIRÉ`
+              : `${doc.label} de ${driver.first_name} ${driver.last_name} expire dans ${daysLeft} j`;
+          const notifMessage =
+            alertLevel === 'J0'
+              ? `Le document ${doc.label} est expiré depuis ${Math.abs(daysLeft)} jour(s). Action immédiate requise.`
+              : `Le document ${doc.label} expire le ${formatDate(expiryDate)} (dans ${daysLeft} jours).`;
+
+          for (const manager of managers) {
+            await supabase
+              .from('notifications')
+              .insert({
+                user_id: manager.id,
+                type: 'driver_document_expiry',
+                title: notifTitle,
+                message: notifMessage,
+                link: driverLink,
+                priority: notifPriority,
+                data: {
+                  driver_id: driver.id,
+                  document_type: doc.type,
+                  expiry_date: expiryDate,
+                  days_left: daysLeft,
+                  alert_level: alertLevel,
+                } as any,
+              });
+          }
+
+          // 7. Logger l'alerte pour éviter les doublons futurs
           await supabase
             .from('driver_alert_logs' as any)
             .insert({
@@ -528,12 +757,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    logger.info('Cron driver-documents-check completed', stats);
+    logger.info('Cron driver-documents-check completed', { ...stats, dry_run: isDryRun });
 
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
+      dry_run: isDryRun,
       ...stats,
+      ...(isDryRun ? { simulated_alerts: dryRunAlerts } : {}),
     });
   } catch (err: any) {
     logger.error('Cron driver-documents fatal error', { error: err instanceof Error ? err.message : String(err) });
@@ -549,7 +780,7 @@ export async function GET(request: NextRequest) {
 // ============================================================
 
 function buildNoEmailWarningContent(
-  docType: DocumentType,
+  docLabel: string,
   alertLevel: AlertLevel,
   driver: { first_name: string; last_name: string },
   daysLeft: number,
@@ -557,7 +788,6 @@ function buildNoEmailWarningContent(
 ): { subject: string; html: string } {
   const driverName = `${driver.first_name} ${driver.last_name}`;
   const formattedExpiry = formatDate(expiryDate);
-  const docLabel = docType === 'LICENSE' ? 'Permis de conduire' : 'CQC';
   const levelLabel = alertLevel === 'J0' ? 'EXPIRÉ' : `dans ${daysLeft} jours`;
   const levelColor = alertLevel === 'J0' ? '#dc2626' : alertLevel === 'J30' ? '#d97706' : '#1d4ed8';
 

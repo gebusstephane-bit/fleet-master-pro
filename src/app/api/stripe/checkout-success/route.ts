@@ -12,12 +12,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { PLAN_LIMITS, PlanType } from '@/lib/plans';
 
-// PlanType mapping
-const PLAN_LIMITS: Record<string, { maxVehicles: number; maxDrivers: number }> = {
-  ESSENTIAL: { maxVehicles: 3, maxDrivers: 2 },
-  PRO: { maxVehicles: 15, maxDrivers: 5 },
-  UNLIMITED: { maxVehicles: 999, maxDrivers: 999 },
+// Mapping local pour compatibilité
+const CHECKOUT_PLAN_LIMITS: Record<PlanType, { maxVehicles: number; maxDrivers: number }> = {
+  ESSENTIAL: { maxVehicles: PLAN_LIMITS.ESSENTIAL.vehicleLimit, maxDrivers: PLAN_LIMITS.ESSENTIAL.userLimit },
+  PRO: { maxVehicles: PLAN_LIMITS.PRO.vehicleLimit, maxDrivers: PLAN_LIMITS.PRO.userLimit },
+  UNLIMITED: { maxVehicles: PLAN_LIMITS.UNLIMITED.vehicleLimit, maxDrivers: PLAN_LIMITS.UNLIMITED.userLimit },
 };
 
 export async function GET(request: NextRequest) {
@@ -179,10 +180,10 @@ export async function GET(request: NextRequest) {
           country: 'France',
           phone: (pending.phone || '')?.substring(0, 20),
           email: pending.email?.substring(0, 100),
-          subscription_plan: planType.toLowerCase().substring(0, 20),
+          subscription_plan: planType.toUpperCase().substring(0, 20), // ESSENTIAL, PRO, ou UNLIMITED
           subscription_status: 'active',
-          max_vehicles: PLAN_LIMITS[plan]?.maxVehicles || 3,
-          max_drivers: PLAN_LIMITS[plan]?.maxDrivers || 2,
+          max_vehicles: CHECKOUT_PLAN_LIMITS[plan as PlanType]?.maxVehicles || 3,
+          max_drivers: CHECKOUT_PLAN_LIMITS[plan as PlanType]?.maxDrivers || 2,
           stripe_customer_id: stripeCustomerId?.substring(0, 100),
         };
         
@@ -242,8 +243,8 @@ export async function GET(request: NextRequest) {
             status: 'ACTIVE',
             current_period_start: new Date(subscriptionData.current_period_start * 1000).toISOString(),
             current_period_end: new Date(subscriptionData.current_period_end * 1000).toISOString(),
-            vehicle_limit: PLAN_LIMITS[plan]?.maxVehicles || 3,
-            user_limit: PLAN_LIMITS[plan]?.maxDrivers || 2,
+            vehicle_limit: CHECKOUT_PLAN_LIMITS[plan as PlanType]?.maxVehicles || 3,
+            user_limit: CHECKOUT_PLAN_LIMITS[plan as PlanType]?.maxDrivers || 2,
             features: [],
           });
         }

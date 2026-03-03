@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         country: 'France',
         phone,
         email,
-        subscription_plan: planType,
+        subscription_plan: planType.toUpperCase(), // ESSENTIAL, PRO, ou UNLIMITED
         subscription_status: 'active', // ✅ Early adopter = actif immédiatement
         max_vehicles: plan.maxVehicles,
         max_drivers: plan.maxDrivers,
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       message: 'Compte créé avec succès',
       companyId: company.id,
       requiresPayment: false,
-      plan: planType,
+      plan: planType.toUpperCase(),
     });
 
   } catch (error: any) {

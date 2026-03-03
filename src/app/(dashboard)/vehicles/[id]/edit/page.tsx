@@ -64,6 +64,17 @@ export default function EditVehiclePage() {
               mileage: vehicle.mileage,
               vin: vehicle.vin || undefined,
               status: vehicle.status as any,
+              // Assurance
+              insurance_company: (vehicle as any).insurance_company ?? '',
+              insurance_policy_number: (vehicle as any).insurance_policy_number ?? '',
+              insurance_expiry: (vehicle as any).insurance_expiry ?? '',
+              // Échéances réglementaires
+              technical_control_date: (vehicle as any).technical_control_date ?? '',
+              technical_control_expiry: (vehicle as any).technical_control_expiry ?? '',
+              tachy_control_date: (vehicle as any).tachy_control_date ?? '',
+              tachy_control_expiry: (vehicle as any).tachy_control_expiry ?? '',
+              atp_date: (vehicle as any).atp_date ?? '',
+              atp_expiry: (vehicle as any).atp_expiry ?? '',
             }}
             onSubmit={async (data) => {
               await updateMutation.mutateAsync({ ...data, id });

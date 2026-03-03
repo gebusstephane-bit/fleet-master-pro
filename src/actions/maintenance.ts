@@ -47,9 +47,10 @@ export const createMaintenance = authActionClient
     } = parsedInput;
     
     // Vérifier que le véhicule appartient à l'entreprise (RLS)
+    // Récupérer aussi company_id pour l'insert
     const { data: vehicle, error: vehicleError } = await supabase
       .from('vehicles')
-      .select('id')
+      .select('id, company_id')
       .eq('id', vehicleId)
       .single();
     
@@ -57,25 +58,99 @@ export const createMaintenance = authActionClient
       throw new Error('Véhicule non trouvé ou accès non autorisé');
     }
     
+    // Mapping du status frontend → DB (workflow complet maintenance)
+    const statusMap: Record<string, string> = {
+      'DEMANDE_CREEE': 'DEMANDE_CREEE',
+      'VALIDEE_DIRECTEUR': 'VALIDEE_DIRECTEUR',
+      'RDV_PRIS': 'RDV_PRIS',
+      'EN_COURS': 'EN_COURS',
+      'TERMINEE': 'TERMINEE',
+      'REFUSEE': 'REFUSEE',
+    };
+    
     // Insérer l'intervention
+    // NOTE: Colonnes réelles de maintenance_records (schema vérifié)
+    const insertData: any = {
+      vehicle_id: vehicleId,
+      company_id: vehicle.company_id,
+      type: (typeToDb[maintenanceData.type] || 'repair'),
+      description: maintenanceData.description,
+      status: statusMap[maintenanceData.status] || 'DEMANDE_CREEE', // ← Utilise le status reçu (défaut: DEMANDE_CREEE)
+      priority: maintenanceData.priority === 'CRITICAL' ? 'CRITICAL' : 
+                maintenanceData.priority === 'HIGH' ? 'HIGH' : 
+                maintenanceData.priority === 'NORMAL' ? 'NORMAL' : 'LOW',
+      requested_at: new Date().toISOString(), // Date de création de la demande
+    };
+    
+    // Ajouter les champs optionnels selon le schema réel
+    if (maintenanceData.cost !== undefined && maintenanceData.cost !== null) {
+      insertData.cost = maintenanceData.cost;
+    }
+    if (maintenanceData.mileageAtService) {
+      insertData.mileage_at_maintenance = maintenanceData.mileageAtService;
+    }
+    // NOTE: completed_date ne remplit que si TERMINEE, sinon c'est scheduled_date
+    if (serviceDate && maintenanceData.status === 'TERMINEE') {
+      insertData.completed_date = serviceDate;
+      insertData.status = 'TERMINEE';
+    } else if (serviceDate) {
+      insertData.scheduled_date = serviceDate;
+    }
+    if (maintenanceData.garage) {
+      insertData.garage_name = maintenanceData.garage;
+    }
+    
     const { data: maintenance, error } = await supabase
       .from('maintenance_records')
-      .insert({
-        vehicle_id: vehicleId,
-        type: (typeToDb[maintenanceData.type] || 'repair'),
-        description: maintenanceData.description,
-        cost: maintenanceData.cost || 0,
-        mileage_at_service: maintenanceData.mileageAtService || 0,
-        service_date: serviceDate,
-        next_service_date: nextServiceDue || null,
-        performed_by: maintenanceData.garage || null,
-        status: 'completed',
-      } as any)
+      .insert(insertData)
       .select()
       .single();
     
     if (error) {
       throw new Error(`Erreur création intervention: ${error.message}`);
+    }
+    
+    // Mettre à jour les dates réglementaires si intervention CT/Tachy/ATP terminée
+    if (maintenanceData.status === 'TERMINEE') {
+      // Normalisation pour détection robuste (sans accents)
+      const descriptionLower = (maintenanceData.description || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const typeLower = maintenanceData.type?.toLowerCase() || '';
+      
+      const isCT = descriptionLower.includes('controle technique') || 
+                   descriptionLower.includes('control technique') ||
+                   typeLower.includes('inspection') ||
+                   descriptionLower.includes('ct ');
+                   
+      const isTachy = descriptionLower.includes('tachygraphe') || 
+                      descriptionLower.includes('tachy') ||
+                      descriptionLower.includes('calibration');
+                      
+      const isATP = descriptionLower.includes('atp') || 
+                    descriptionLower.includes('attestation transporteur');
+      
+      if (isCT || isTachy || isATP) {
+        const completedDate = serviceDate || new Date().toISOString().split('T')[0];
+        const vehicleUpdate: any = {};
+        
+        if (isCT) {
+          vehicleUpdate.technical_control_date = completedDate;
+        }
+        if (isTachy) {
+          vehicleUpdate.tachy_control_date = completedDate;
+        }
+        if (isATP) {
+          vehicleUpdate.atp_date = completedDate;
+        }
+        
+        const { error: vehicleError } = await supabase
+          .from('vehicles')
+          .update(vehicleUpdate)
+          .eq('id', vehicleId);
+          
+        if (vehicleError) {
+          console.error('[MAINTENANCE] Erreur maj fiche véhicule:', vehicleError);
+        }
+      }
     }
     
     // Mettre à jour le véhicule avec les prochaines échéances

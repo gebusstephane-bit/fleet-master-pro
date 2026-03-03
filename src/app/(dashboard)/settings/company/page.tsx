@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useUserContext } from '@/components/providers/user-provider';
-import { ArrowLeft, Building2, MapPin, Phone, Mail, Save, Loader2, Camera, Trash2 } from 'lucide-react';
-import { getCompany, updateCompany, uploadCompanyLogo, deleteCompanyLogo, ICompanyData } from '@/actions/company';
+import { ArrowLeft, Building2, MapPin, Phone, Mail, Save, Loader2, Camera, Trash2, FileText, Calendar, Users, Code, ExternalLink, Key } from 'lucide-react';
+import { getCompany, updateCompany, uploadCompanyLogo, deleteCompanyLogo, updateMonthlyReportSettings, ICompanyData } from '@/actions/company';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 export default function CompanyPage() {
@@ -31,6 +33,14 @@ export default function CompanyPage() {
     email: '',
     logo_url: null,
   });
+  
+  // Monthly report settings
+  const [reportSettings, setReportSettings] = useState({
+    monthly_report_enabled: true,
+    monthly_report_day: 1,
+    monthly_report_recipients: 'ADMIN' as 'ADMIN' | 'ADMIN_AND_DIRECTORS',
+  });
+  const [isSavingReport, setIsSavingReport] = useState(false);
 
   // Load company data
   useEffect(() => {
@@ -55,6 +65,12 @@ export default function CompanyPage() {
           logo_url: result.data.logo_url,
         });
         setLogoUrl(result.data.logo_url || null);
+        // Load monthly report settings
+        setReportSettings({
+          monthly_report_enabled: result.data.monthly_report_enabled ?? true,
+          monthly_report_day: result.data.monthly_report_day ?? 1,
+          monthly_report_recipients: (result.data.monthly_report_recipients as 'ADMIN' | 'ADMIN_AND_DIRECTORS') ?? 'ADMIN',
+        });
       } else if (result.error) {
         console.error('[CompanyPage] Error:', result.error);
         toast.error(result.error);
@@ -124,6 +140,20 @@ export default function CompanyPage() {
       toast.success('Logo supprimé');
       setLogoUrl(null);
     }
+  };
+  
+  const handleSaveReportSettings = async () => {
+    if (!user?.id) return;
+    
+    setIsSavingReport(true);
+    const result = await updateMonthlyReportSettings(user.id, reportSettings);
+    
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success('Paramètres du rapport mensuel mis à jour');
+    }
+    setIsSavingReport(false);
   };
 
   if (isLoading) {
@@ -332,6 +362,162 @@ export default function CompanyPage() {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="contact@entreprise.com"
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Monthly Report Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Rapport mensuel
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Enable/Disable */}
+            <div className="flex items-center justify-between py-2">
+              <div className="space-y-0.5">
+                <Label className="text-base">Recevoir le rapport mensuel</Label>
+                <p className="text-sm text-muted-foreground">
+                  Envoi automatique le 1er de chaque mois à 8h00
+                </p>
+              </div>
+              <Switch
+                checked={reportSettings.monthly_report_enabled}
+                onCheckedChange={(checked) => 
+                  setReportSettings(prev => ({ ...prev, monthly_report_enabled: checked }))
+                }
+              />
+            </div>
+            
+            {reportSettings.monthly_report_enabled && (
+              <>
+                {/* Day Selection */}
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Jour d&apos;envoi préféré
+                  </Label>
+                  <Select
+                    value={String(reportSettings.monthly_report_day)}
+                    onValueChange={(value) => 
+                      setReportSettings(prev => ({ ...prev, monthly_report_day: parseInt(value) }))
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choisir le jour" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1er du mois</SelectItem>
+                      <SelectItem value="5">5ème du mois</SelectItem>
+                      <SelectItem value="-1">Dernier jour du mois</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Le rapport couvrira toujours le mois écoulé, quel que soit le jour choisi
+                  </p>
+                </div>
+                
+                {/* Recipients Selection */}
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Destinataires
+                  </Label>
+                  <Select
+                    value={reportSettings.monthly_report_recipients}
+                    onValueChange={(value: 'ADMIN' | 'ADMIN_AND_DIRECTORS') => 
+                      setReportSettings(prev => ({ ...prev, monthly_report_recipients: value }))
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choisir les destinataires" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ADMIN">Administrateur uniquement</SelectItem>
+                      <SelectItem value="ADMIN_AND_DIRECTORS">Admin + Directeurs</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <Button 
+                  onClick={handleSaveReportSettings} 
+                  disabled={isSavingReport}
+                  className="w-full"
+                  variant="outline"
+                >
+                  {isSavingReport ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Enregistrement...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Enregistrer les paramètres
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ── API Section ─────────────────────────────────────────────── */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Code className="h-5 w-5" />
+              API &amp; Intégrations
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Connectez FleetMaster Pro à vos systèmes TMS/ERP via l&apos;API publique REST.
+              Authentification par clé API, rate limiting par plan.
+            </p>
+
+            <div className="rounded-lg border bg-slate-50 p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <Key className="h-4 w-4 mt-0.5 text-slate-500 shrink-0" />
+                <div className="space-y-1 min-w-0">
+                  <p className="text-sm font-medium">Clés API</p>
+                  <p className="text-xs text-muted-foreground">
+                    Créez et gérez vos clés API (format{' '}
+                    <code className="rounded bg-slate-200 px-1 font-mono text-xs">sk_live_…</code>).
+                  </p>
+                  <Link
+                    href="/settings/webhooks"
+                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                  >
+                    Gérer les clés API
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <FileText className="h-4 w-4 mt-0.5 text-slate-500 shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Documentation Swagger</p>
+                  <p className="text-xs text-muted-foreground">
+                    Documentation interactive — testez les endpoints directement depuis le navigateur.
+                  </p>
+                  <Link
+                    href="/api-docs"
+                    target="_blank"
+                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                  >
+                    Ouvrir la documentation
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs text-amber-800">
+              <strong>Rate limiting :</strong> ESSENTIAL 100 req/h · PRO 1 000 req/h · UNLIMITED 10 000 req/h
             </div>
           </CardContent>
         </Card>

@@ -13,23 +13,52 @@ import { z } from 'zod';
 import { authActionClient, idSchema } from '@/lib/safe-action';
 import { createClient } from '@/lib/supabase/server';
 
+// Helper : "" → null pour éviter l'erreur PostgreSQL 22007 sur les champs DATE
+const nullableDate = z.string().optional().nullable().transform((val) => val === '' ? null : val ?? null);
+
 // Schéma local (non exporté) — 'use server' n'autorise que les fonctions async en export
 const createDriverSchema = z.object({
+  // Informations personnelles
   first_name: z.string().min(1, "Prénom requis"),
   last_name: z.string().min(1, "Nom requis"),
   email: z.string().email("Email invalide"),
   phone: z.string().min(1, "Téléphone requis"),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  nationality: z.string().optional(),
+  birth_date: nullableDate,
+  social_security_number: z.string().optional(),
+
+  // Permis de conduire
   license_number: z.string().min(1, "N° permis requis"),
   license_expiry: z.string().min(1, "Date d'expiration requise"),
   license_type: z.string().default('B'),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  // Les champs date optionnels : "" → null pour éviter l'erreur PostgreSQL 22007
-  hire_date: z.string().optional().nullable().transform((val) => val === '' ? null : val ?? null),
-  status: z.enum(["active", "inactive", "on_leave", "terminated"]).default("active"),
+
+  // Carte conducteur numérique (tachographe)
+  driver_card_number: z.string().optional(),
+  driver_card_expiry: nullableDate,
+
+  // Formations obligatoires
+  fimo_date: nullableDate,
+  fcos_expiry: nullableDate,
+  qi_date: nullableDate,
+
+  // Aptitude médicale
+  medical_certificate_expiry: nullableDate,
+
+  // Certificat ADR
+  adr_certificate_expiry: nullableDate,
+  adr_classes: z.array(z.string()).optional().default([]),
+
+  // CQC
   cqc_card_number: z.string().optional(),
-  cqc_expiry_date: z.string().optional().nullable().transform((val) => val === '' ? null : val ?? null),
+  cqc_expiry: nullableDate,
   cqc_category: z.enum(["PASSENGER", "GOODS", "BOTH"]).optional(),
+
+  // Informations contractuelles — is_active est calculé automatiquement depuis status
+  hire_date: nullableDate,
+  contract_type: z.enum(["CDI", "CDD", "Intérim", "Gérant", "Autre"]).optional(),
+  status: z.enum(["active", "inactive", "on_leave", "terminated"]).default("active"),
 });
 
 // Type dérivé du schéma pour utilisation dans les hooks
@@ -61,6 +90,8 @@ export const createDriver = authActionClient
       .insert({
         ...parsedInput,
         company_id: ctx.user.company_id,
+        // Calculé depuis status : actif = active ou on_leave
+        is_active: parsedInput.status === 'active' || parsedInput.status === 'on_leave',
       })
       .select()
       .single();
@@ -96,7 +127,12 @@ export const updateDriver = authActionClient
     
     const { data, error } = await supabase
       .from('drivers')
-      .update(updates)
+      .update({
+        ...updates,
+        ...(updates.status !== undefined && {
+          is_active: updates.status === 'active' || updates.status === 'on_leave',
+        }),
+      })
       .eq('id', id)
       .select()
       .single();

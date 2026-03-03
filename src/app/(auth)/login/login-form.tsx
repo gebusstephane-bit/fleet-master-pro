@@ -63,6 +63,24 @@ export function LoginForm() {
         throw new Error('Pas de session créée');
       }
 
+      // Vérifier le rôle de l'utilisateur pour la redirection
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', signInData.user.id)
+        .single();
+      
+      const userRole = profile?.role;
+      console.log('👤 Rôle:', userRole);
+
+      // Déterminer la redirection selon le rôle
+      let finalRedirect = redirect;
+      if (userRole === 'CHAUFFEUR') {
+        finalRedirect = '/driver-app';
+      } else if (redirect === '/login' || redirect === '/') {
+        finalRedirect = '/dashboard';
+      }
+
       // Vérifier que les cookies sont bien créés
       const cookies = document.cookie;
       console.log('🍪 Cookies:', cookies.includes('sb-') ? 'présents' : 'absents');
@@ -73,8 +91,8 @@ export function LoginForm() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Redirection avec rechargement complet
-      console.log('🚀 Redirection vers:', redirect);
-      window.location.assign(redirect);
+      console.log('🚀 Redirection vers:', finalRedirect);
+      window.location.assign(finalRedirect);
 
     } catch (err: any) {
       console.error('❌ Erreur:', err);

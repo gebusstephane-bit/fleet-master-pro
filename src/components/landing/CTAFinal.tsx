@@ -3,14 +3,14 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, MessageSquare } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 /** Points de réassurance sous les CTA */
 const trustItems = [
-  "14 jours d'essai gratuit",
-  "Aucune carte bancaire requise",
-  "Support réactif inclus",
-  "Annulation sans engagement",
+  "14 jours gratuits",
+  "Sans carte bancaire",
+  "Données en France",
+  "Support en français",
 ];
 
 export function CTAFinal() {
@@ -62,43 +62,19 @@ export function CTAFinal() {
 
       <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
 
-        {/* ── Badge social proof ── */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={isInView ? { opacity: 1, scale: 1 } : {}}
-          transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-4 py-2 mb-8"
-        >
-          <span className="flex gap-0.5">
-            {[...Array(5)].map((_, i) => (
-              <svg
-                key={i}
-                className="h-3.5 w-3.5 text-amber-400"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
-            ))}
-          </span>
-          <span className="text-sm font-medium text-slate-300">
-            Noté 4.9/5 par plus de 500 transporteurs
-          </span>
-        </motion.div>
-
         {/* ── Titre principal ── */}
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.1 }}
+          transition={{ duration: 0.6, delay: 0.0 }}
           className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight mb-6"
         >
-          Prêt à transformer{" "}
+          Le prochain contrôle DREAL,{" "}
           <span
             className="bg-gradient-to-r from-cyan-400 via-blue-400 to-orange-400 bg-clip-text text-transparent"
             style={{ WebkitBackgroundClip: "text" }}
           >
-            votre gestion de flotte ?
+            vous l'attendez sereinement.
           </span>
         </motion.h2>
 
@@ -106,12 +82,11 @@ export function CTAFinal() {
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.2 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
           className="text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed"
         >
-          Rejoignez les transporteurs qui ont déjà éliminé les pannes imprévues,
-          réduit leurs coûts d'exploitation et repris le contrôle de leur activité.
-          Commencez gratuitement, sans engagement.
+          Tous vos documents, inspections et maintenances centralisés.
+          Configurez votre flotte en 10 minutes. Essai gratuit, sans carte bancaire.
         </motion.p>
 
         {/* ── Boutons CTA ── */}
@@ -135,10 +110,9 @@ export function CTAFinal() {
           </Link>
 
           {/* CTA secondaire */}
-          <Link href="/contact">
+          <Link href="/pricing">
             <button className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-base text-slate-300 border border-white/10 bg-white/5 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-300">
-              <MessageSquare className="h-5 w-5 text-cyan-400" />
-              Parler à un expert
+              Voir les tarifs
             </button>
           </Link>
         </motion.div>

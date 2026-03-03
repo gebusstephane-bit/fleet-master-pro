@@ -35,10 +35,9 @@ interface SubscriptionsTableProps {
 }
 
 const planPrices: Record<string, number> = {
-  STARTER: 0,
-  BASIC: 29,
+  ESSENTIAL: 29,
   PRO: 49,
-  ENTERPRISE: 0,
+  UNLIMITED: 129,
 };
 
 const statusColors: Record<string, string> = {
@@ -50,10 +49,9 @@ const statusColors: Record<string, string> = {
 };
 
 const planColors: Record<string, string> = {
-  STARTER: 'bg-gray-500/20 text-gray-300',
-  BASIC: 'bg-blue-500/20 text-blue-300',
+  ESSENTIAL: 'bg-blue-500/20 text-blue-300',
   PRO: 'bg-purple-500/20 text-purple-300',
-  ENTERPRISE: 'bg-amber-500/20 text-amber-300',
+  UNLIMITED: 'bg-amber-500/20 text-amber-300',
 };
 
 function formatDate(dateString: string): string {

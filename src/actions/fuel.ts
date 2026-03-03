@@ -108,18 +108,95 @@ export const getAllFuelRecords = authActionClient
   .action(async ({ ctx }) => {
     const supabase = await createClient();
     
-    // RLS filtre automatiquement les véhicules et pleins de l'entreprise
+    // Vérifier que l'utilisateur a une company_id
+    if (!ctx.user.company_id) {
+      return { success: true, data: [] };
+    }
+    
+    console.log('[FUEL] Recherche records pour company_id:', ctx.user.company_id);
+    
+    // Essayer d'abord sans jointure pour voir si c'est la jointure qui pose problème
+    const { data: rawData, error: rawError } = await supabase
+      .from('fuel_records')
+      .select('*')
+      .eq('company_id', ctx.user.company_id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    
+    if (rawError) {
+      console.error('[FUEL] Erreur requête simple:', rawError);
+    } else {
+      console.log(`[FUEL] Requête simple: ${rawData?.length || 0} records`);
+    }
+    
+    // Maintenant avec les jointures
     const { data, error } = await supabase
       .from('fuel_records')
-      .select('*, vehicles(registration_number, brand, model), drivers(first_name, last_name)')
-      .order('date', { ascending: false })
+      .select(`
+        *,
+        vehicles!inner(registration_number, brand, model),
+        drivers(first_name, last_name)
+      `)
+      .eq('company_id', ctx.user.company_id)
+      .order('created_at', { ascending: false })
       .limit(100);
     
     if (error) {
-      throw new Error(`Erreur récupération: ${error.message}`);
+      console.error('[FUEL] Erreur getAllFuelRecords:', error);
+      // Fallback sur la requête simple si la jointure échoue
+      return { success: true, data: rawData || [] };
     }
     
+    console.log(`[FUEL] Récupéré ${data?.length || 0} records avec jointures`);
+    
+    // Formater les données pour correspondre au type FuelRecord
+    const formattedData = (data || []).map((record: any) => ({
+      ...record,
+      vehicles: record.vehicles || null,
+      drivers: record.drivers || null,
+    }));
+    
+    return { success: true, data: formattedData };
+  });
+
+// Récupérer les anomalies carburant récentes (notifications non lues)
+export const getFuelAnomalies = authActionClient
+  .action(async ({ ctx }) => {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('id, title, message, priority, created_at, data')
+      .eq('type', 'fuel_anomaly')
+      .eq('user_id', ctx.user.id)
+      .eq('read', false)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (error) {
+      throw new Error(`Erreur récupération anomalies: ${error.message}`);
+    }
+
     return { success: true, data: data || [] };
+  });
+
+// Ignorer une anomalie (marquer comme lue)
+export const dismissFuelAnomaly = authActionClient
+  .schema(idSchema)
+  .action(async ({ parsedInput, ctx }) => {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true, read_at: new Date().toISOString() })
+      .eq('id', parsedInput.id)
+      .eq('user_id', ctx.user.id);
+
+    if (error) {
+      throw new Error(`Erreur: ${error.message}`);
+    }
+
+    return { success: true };
   });
 
 // Calculer les stats carburant
@@ -127,10 +204,16 @@ export const getFuelStats = authActionClient
   .action(async ({ ctx }) => {
     const supabase = await createClient();
     
-    // RLS filtre automatiquement les véhicules de l'entreprise
+    // Vérifier que l'utilisateur a une company_id
+    if (!ctx.user.company_id) {
+      return { success: true, data: [] };
+    }
+    
+    // Filtrer les véhicules par company_id
     const { data: vehicles } = await supabase
       .from('vehicles')
-      .select('id, registration_number, brand, model, fuel_type');
+      .select('id, registration_number, brand, model, fuel_type')
+      .eq('company_id', ctx.user.company_id);
     
     const stats = [];
     
@@ -139,7 +222,8 @@ export const getFuelStats = authActionClient
         .from('fuel_records')
         .select('quantity_liters, price_total, consumption_l_per_100km')
         .eq('vehicle_id', vehicle.id)
-        .order('date', { ascending: false })
+        .eq('company_id', ctx.user.company_id)
+        .order('created_at', { ascending: false })
         .limit(10);
       
       if (records && records.length > 0) {

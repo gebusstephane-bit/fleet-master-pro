@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { sendEmail } from '@/lib/email';
 import { authActionClient } from '@/lib/safe-action';
 import { createClient } from '@/lib/supabase/server';
+import { recalculatePredictionsForVehicle } from '@/lib/maintenance-predictor';
 
 
 // ============================================
@@ -493,6 +494,73 @@ export const completeMaintenance = authActionClient
       ctx.user.id,
       parsedInput.completionNotes
     );
+
+    // 4. Mise à jour des dates réglementaires sur la fiche véhicule (CT/Tachy/ATP)
+    // Cela garantit que les prédictions utilisent la bonne date de référence
+    const descriptionLower = (maintenance.description || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const typeLower = (maintenance.type || '').toLowerCase();
+    
+    // Détection plus robuste : description OU type contient les mots-clés
+    const isCT = descriptionLower.includes('controle technique') || 
+                 descriptionLower.includes('control technique') ||
+                 typeLower.includes('inspection') ||
+                 descriptionLower.includes('ct ');
+                 
+    const isTachy = descriptionLower.includes('tachygraphe') || 
+                    descriptionLower.includes('tachy') ||
+                    descriptionLower.includes('calibration');
+                    
+    const isATP = descriptionLower.includes('atp') || 
+                  descriptionLower.includes('attestation transporteur');
+    
+    console.log('[MAINTENANCE-WORKFLOW] Détection CT/Tachy/ATP:', { 
+      description: maintenance.description, 
+      type: maintenance.type,
+      isCT, 
+      isTachy,
+      isATP,
+      descriptionNormalized: descriptionLower
+    });
+    
+    if (isCT || isTachy || isATP) {
+      const completedDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const vehicleUpdate: any = {};
+      
+      if (isCT) {
+        vehicleUpdate.technical_control_date = completedDate;
+      }
+      if (isTachy) {
+        vehicleUpdate.tachy_control_date = completedDate;
+      }
+      if (isATP) {
+        vehicleUpdate.atp_date = completedDate;
+      }
+      
+      try {
+        const { error: updateError } = await supabase
+          .from('vehicles')
+          .update(vehicleUpdate)
+          .eq('id', maintenance.vehicle_id);
+          
+        if (updateError) {
+          console.error('[MAINTENANCE-WORKFLOW] Erreur SQL maj fiche véhicule:', updateError);
+        } else {
+          console.log('[MAINTENANCE-WORKFLOW] Date réglementaire mise à jour avec succès:', vehicleUpdate);
+        }
+      } catch (vehicleError) {
+        console.error('[MAINTENANCE-WORKFLOW] Exception maj fiche véhicule:', vehicleError);
+      }
+    } else {
+      console.log('[MAINTENANCE-WORKFLOW] Pas de mise à jour réglementaire (pas CT/Tachy détecté)');
+    }
+    
+    // 5. Recalcul immédiat des prédictions (CORRECTION P1)
+    // Le cron quotidien prendra le relais si cette étape échoue
+    try {
+      await recalculatePredictionsForVehicle(maintenance.vehicle_id)
+    } catch (recalcError) {
+      console.error('[MAINTENANCE] Recalcul prédictions non critique:', recalcError)
+    }
     
     // 4. Email confirmation à tous
     const directors = await getCompanyDirectors(ctx.user.company_id);

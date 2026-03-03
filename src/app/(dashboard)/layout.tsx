@@ -9,6 +9,8 @@ import { Header } from "@/components/layout/header";
 import { MainContent } from "@/components/layout/main-content";
 import { ClientLayout } from "./ClientLayout";
 import { getUserWithCompany } from "@/lib/supabase/server";
+import { RegulatoryAssistant } from "@/components/ai/RegulatoryAssistant";
+import { TrialBanner } from "@/components/billing/TrialBanner";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -33,14 +35,25 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  // Vérifier si l'utilisateur est en période d'essai
+  const isTrialing = user.companies?.subscription_status === 'TRIALING';
+  const trialEndsAt = user.companies?.trial_ends_at;
+
   return (
     <ClientLayout user={user as any}>
       <div className={`${inter.variable} font-sans min-h-screen bg-[#0a0f1a] relative`}>
+        {isTrialing && trialEndsAt && (
+          <TrialBanner 
+            trialEndsAt={trialEndsAt} 
+            companyId={user.companies?.id || ''} 
+          />
+        )}
         <Sidebar user={user as any} />
         <Header user={user as any} />
         <MainContent>
           {children}
         </MainContent>
+        <RegulatoryAssistant plan={(user as any)?.companies?.subscription_plan || 'essential'} />
       </div>
     </ClientLayout>
   );

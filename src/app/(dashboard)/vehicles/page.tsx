@@ -4,10 +4,14 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Truck, MoreHorizontal, Edit, Trash2, AlertTriangle, Car } from 'lucide-react';
+import { Plus, Search, Truck, MoreHorizontal, Edit, Trash2, AlertTriangle, Car, Upload } from 'lucide-react';
+import { ReliabilityScoreBadge } from '@/components/vehicles/ReliabilityScore';
+import { useFleetReliabilityScores } from '@/hooks/use-reliability-score';
+import { ImportWizard } from '@/components/import/ImportWizard';
 import { GlassCard } from '@/components/ui/glass-card';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import { useVehicles, useDeleteVehicle, Vehicle } from '@/hooks/use-vehicles';
+import { useSubscriptionLimits } from '@/hooks/use-subscription';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   DropdownMenu,
@@ -64,11 +68,62 @@ const typeFilters = [
   { value: 'POIDS_LOURD_FRIGO', label: 'PL Frigorifique' },
 ];
 
+/**
+ * Composant bouton d'ajout de véhicule avec vérification de limite
+ */
+function AddVehicleButton() {
+  const { data: limits, isLoading } = useSubscriptionLimits();
+  
+  if (isLoading) {
+    return (
+      <Button disabled className="gap-2 bg-blue-600 opacity-50">
+        <Plus className="h-4 w-4" />
+        Ajouter un véhicule
+      </Button>
+    );
+  }
+  
+  const canAdd = limits?.canAddVehicle ?? true;
+  const currentCount = limits?.vehicleCount ?? 0;
+  const limit = limits?.vehicleLimit ?? 0;
+  
+  if (!canAdd) {
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <Button 
+          disabled 
+          className="gap-2 bg-blue-600 opacity-50 cursor-not-allowed"
+          title="Limite de véhicules atteinte"
+        >
+          <Plus className="h-4 w-4" />
+          Ajouter un véhicule
+        </Button>
+        <p className="text-xs text-amber-400">
+          Limite atteinte ({currentCount}/{limit}) — 
+          <Link href="/settings/billing" className="underline hover:text-amber-300 ml-1">
+            Passer au plan supérieur
+          </Link>
+        </p>
+      </div>
+    );
+  }
+  
+  return (
+    <Button asChild className="gap-2 bg-blue-600 hover:bg-blue-500">
+      <Link href="/vehicles/new">
+        <Plus className="h-4 w-4" />
+        Ajouter un véhicule
+      </Link>
+    </Button>
+  );
+}
+
 export default function VehiclesPage() {
   const router = useRouter();
   const { data: vehicles, isLoading, error } = useVehicles();
   const deleteMutation = useDeleteVehicle();
   const selection = useSelection(vehicles ?? [], 'id');
+  const { data: reliabilityScores } = useFleetReliabilityScores();
 
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,6 +131,7 @@ export default function VehiclesPage() {
     status: null,
     type: null,
   });
+  const [importOpen, setImportOpen] = useState(false);
 
   // Filter vehicles based on search and filters
   const filteredVehicles = useMemo(() => {
@@ -142,11 +198,16 @@ export default function VehiclesPage() {
     {
       key: 'registration_number',
       header: 'Immatriculation',
-      width: '180px',
+      width: '200px',
       render: (vehicle) => (
-        <div>
-          <p className="font-medium text-white">{vehicle.registration_number}</p>
-          <p className="text-xs text-slate-500">{vehicle.vin || 'N/A'}</p>
+        <div className="flex items-center gap-3">
+          {reliabilityScores?.get(vehicle.id) && (
+            <ReliabilityScoreBadge score={reliabilityScores.get(vehicle.id)!} />
+          )}
+          <div>
+            <p className="font-medium text-white">{vehicle.registration_number}</p>
+            <p className="text-xs text-slate-500">{vehicle.vin || 'N/A'}</p>
+          </div>
         </div>
       ),
     },
@@ -264,12 +325,15 @@ export default function VehiclesPage() {
         </div>
         <div className="flex items-center gap-2">
           <ExportButton type="vehicles" count={filteredVehicles.length} />
-          <Button asChild className="gap-2 bg-blue-600 hover:bg-blue-500">
-            <Link href="/vehicles/new">
-              <Plus className="h-4 w-4" />
-              Ajouter un véhicule
-            </Link>
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="gap-2 border-slate-600 text-slate-200 hover:bg-slate-800"
+          >
+            <Upload className="h-4 w-4" />
+            Importer
           </Button>
+          <AddVehicleButton />
         </div>
       </motion.div>
 
@@ -376,6 +440,9 @@ export default function VehiclesPage() {
         onClear={selection.clear}
         isDeleting={deleteMutation.isPending}
       />
+
+      {/* Import Wizard */}
+      <ImportWizard type="vehicles" open={importOpen} onClose={() => setImportOpen(false)} />
 
       {/* Table */}
       <GlassCard className="overflow-hidden">

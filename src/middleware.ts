@@ -30,6 +30,12 @@ const publicRoutes = [
   "/pricing",
   "/terms",
   "/privacy",
+  "/driver-app", // Route de l'app conducteur
+];
+
+// Routes QR Code scan (publiques mais avec rate limiting strict)
+const scanPublicRoutes = [
+  "/scan/",
 ];
 
 // Routes API publiques (rate limit appliqué mais pas d'auth)
@@ -56,6 +62,13 @@ const pendingPaymentAllowedRoutes = [
  */
 function isPublicApiRoute(pathname: string): boolean {
   return publicApiRoutes.some((route) => pathname.startsWith(route));
+}
+
+/**
+ * Vérifie si une route est une route de scan QR Code (publique)
+ */
+function isScanPublicRoute(pathname: string): boolean {
+  return scanPublicRoutes.some((route) => pathname.startsWith(route));
 }
 
 /**
@@ -357,6 +370,49 @@ export async function middleware(request: NextRequest) {
   if (publicRoutes.some((route) => pathname === route)) {
     return NextResponse.next();
   }
+  
+  // ============================================
+  // 📱 ROUTES QR CODE SCAN (PUBLIQUES)
+  // ============================================
+  if (isScanPublicRoute(pathname)) {
+    // Vérifier le rate limiting pour les routes de scan
+    const ip = getClientIP(request);
+    const rateLimitResult = await checkSensitiveRateLimit(`scan:${ip}`);
+    
+    if (!rateLimitResult.success) {
+      console.warn(`🚫 Rate limit scan dépassé pour ${ip}`);
+      return new NextResponse(
+        JSON.stringify({
+          error: "Too Many Requests",
+          message: "Trop de scans. Veuillez réessayer dans une minute.",
+          retryAfter: rateLimitResult.retryAfter,
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": String(rateLimitResult.retryAfter || 60),
+            ...getRateLimitHeaders(rateLimitResult),
+          },
+        }
+      );
+    }
+    
+    // Route /scan/[vehicleId]/carnet nécessite authentification
+    if (pathname.includes('/carnet')) {
+      // Laisser passer au middleware d'auth normal
+      // Il redirigera vers login si non authentifié
+    } else {
+      // Routes /scan/* autres que carnet : accès public autorisé
+      const response = NextResponse.next();
+      Object.entries(getRateLimitHeaders(rateLimitResult)).forEach(
+        ([key, value]) => {
+          response.headers.set(key, value);
+        }
+      );
+      return response;
+    }
+  }
 
   // ============================================
   // 🛡️ RATE LIMITING - Toutes les routes API (non-admin)
@@ -396,9 +452,17 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Pas authentifié → login
+  // Exception : si c'est une route de scan carnet, on redirige vers login avec redirect
   if (!user) {
     const redirectUrl = new URL("/login", request.url);
-    redirectUrl.searchParams.set("redirect", pathname);
+    
+    // Pour les routes scan carnet, préserver l'URL complète pour redirection après login
+    if (pathname.includes('/scan/') && pathname.includes('/carnet')) {
+      redirectUrl.searchParams.set("redirect", pathname);
+    } else {
+      redirectUrl.searchParams.set("redirect", pathname);
+    }
+    
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -409,6 +473,50 @@ export async function middleware(request: NextRequest) {
     .eq("id", user.id)
     .single();
 
+  // ============================================
+  // 🚖 GESTION DES RÔLES - REDIRECTION CHAUFFEURS
+  // ============================================
+  
+  const userRole = profile?.role;
+  const isChauffeur = userRole === 'CHAUFFEUR';
+  
+  // Si c'est un chauffeur : restrictions d'accès
+  if (isChauffeur) {
+    // Les chauffeurs ne peuvent PAS accéder au dashboard de gestion
+    const isDashboardRoute = 
+      pathname.startsWith('/dashboard') ||
+      pathname.startsWith('/vehicles') ||
+      pathname.startsWith('/drivers') ||
+      pathname.startsWith('/fuel') ||
+      pathname.startsWith('/maintenance') ||
+      pathname.startsWith('/settings') ||
+      pathname.startsWith('/alerts') ||
+      pathname.startsWith('/compliance') ||
+      pathname.startsWith('/agenda') ||
+      pathname.startsWith('/fleet-costs') ||
+      pathname.startsWith('/notifications');
+    
+    // Les chauffeurs ne peuvent accéder qu'à /driver-app et /api/driver
+    const isAllowedRoute = 
+      pathname.startsWith('/driver-app') ||
+      pathname.startsWith('/api/driver') ||
+      pathname.startsWith('/auth') ||
+      pathname === '/login' ||
+      pathname === '/unauthorized' ||
+      pathname.startsWith('/scan');  // Permettre l'accès au carnet d'entretien
+    
+    if (isDashboardRoute) {
+      console.log('🚖 Chauffeur redirigé vers /driver-app (tentative accès dashboard):', pathname);
+      return NextResponse.redirect(new URL('/driver-app', request.url));
+    }
+    
+    // Si le chauffeur tente d'accéder à une route non autorisée
+    if (!isAllowedRoute && pathname !== '/') {
+      console.log('🚖 Chauffeur redirigé vers /driver-app:', pathname);
+      return NextResponse.redirect(new URL('/driver-app', request.url));
+    }
+  }
+  
   // Si pas de company_id (cas rare), autoriser l'accès pour création
   if (!profile?.company_id) {
     return response;

@@ -24,7 +24,7 @@ export interface Maintenance {
   company_id: string;
   vehicle_id: string;
   type: 'preventive' | 'corrective' | 'inspection' | 'repair';
-  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'DEMANDE_CREEE' | 'VALIDEE_DIRECTEUR' | 'RDV_PRIS' | 'EN_COURS' | 'TERMINEE' | 'REFUSEE';
   priority: 'low' | 'medium' | 'high' | 'critical';
   title: string;
   description?: string;

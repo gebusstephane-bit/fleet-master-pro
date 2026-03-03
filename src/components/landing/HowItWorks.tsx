@@ -2,7 +2,7 @@
 
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { UserPlus, Truck, BarChart3, ArrowRight } from "lucide-react";
+import { UserPlus, QrCode, BarChart3, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 // =============================================================================
@@ -16,7 +16,7 @@ const steps = [
     title: "Créez votre compte en 5 minutes",
     description:
       "Inscrivez-vous gratuitement, renseignez votre entreprise et vos premiers véhicules. Notre assistant de démarrage vous guide pas à pas — aucune compétence technique requise.",
-    detail: "Paramétrage guidé · Import de données existantes · Accès immédiat",
+    detail: "Essai 14 jours sans CB · Import de données existantes · Accès immédiat",
     gradientFrom: "#06b6d4",
     gradientTo: "#3b82f6",
     iconBg: "bg-cyan-500/10 border-cyan-500/20",
@@ -26,11 +26,11 @@ const steps = [
   },
   {
     number: "02",
-    icon: Truck,
-    title: "Connectez et enrichissez votre flotte",
+    icon: QrCode,
+    title: "Générez vos QR codes d'inspection",
     description:
-      "Ajoutez vos véhicules un par un ou importez votre fichier existant. Téléchargez vos documents, affectez vos chauffeurs. FleetMaster commence à analyser vos données immédiatement.",
-    detail: "Import CSV · Documents auto-organisés · Alertes actives dès J+1",
+      "Imprimez les QR codes et collez-les sur vos véhicules. Vos chauffeurs scannent avec leur téléphone (sans app à installer) pour remplir les inspections. La conformité devient instantanée.",
+    detail: "QR codes imprimables · Inspections via navigateur · Photos et signatures",
     gradientFrom: "#3b82f6",
     gradientTo: "#8b5cf6",
     iconBg: "bg-blue-500/10 border-blue-500/20",
@@ -41,10 +41,10 @@ const steps = [
   {
     number: "03",
     icon: BarChart3,
-    title: "Pilotez et récoltez les économies",
+    title: "Pilotez et restez conforme",
     description:
-      "Accédez en temps réel à tous vos indicateurs. Recevez vos premières alertes préventives et mesurez vos économies mois après mois directement sur votre tableau de bord.",
-    detail: "ROI mesurable · Rapports automatiques · Support dédié 7j/7",
+      "Recevez les alertes de documents, anticipez les maintenances avec l'IA, suivez vos coûts. Votre flotte est sous contrôle — sans surveillance GPS, sans stress.",
+    detail: "Alertes auto · Maintenance prédictive · Rapports conformité",
     gradientFrom: "#10b981",
     gradientTo: "#06b6d4",
     iconBg: "bg-emerald-500/10 border-emerald-500/20",
@@ -87,12 +87,12 @@ export function HowItWorks() {
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white">
             Opérationnel en{" "}
             <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              moins d'une heure
+              10 minutes
             </span>
           </h2>
           <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
             Trois étapes suffisent pour transformer la gestion de votre flotte.
-            Pas de formation longue, pas d'intégration complexe.
+            Pas d'installation matérielle, pas de formation longue.
           </p>
         </motion.div>
 
@@ -179,7 +179,7 @@ export function HowItWorks() {
             </button>
           </Link>
           <p className="text-sm text-slate-600 mt-3">
-            Aucune carte bancaire · Annulation à tout moment
+            Sans carte bancaire · Annulation à tout moment · 14 jours complets
           </p>
         </motion.div>
       </div>

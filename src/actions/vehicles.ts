@@ -24,6 +24,17 @@ export interface CreateVehicleData {
   vin?: string;
   year?: number;
   color?: string;
+  // Assurance
+  insurance_company?: string | null;
+  insurance_policy_number?: string | null;
+  insurance_expiry?: string | null;
+  // Échéances réglementaires
+  technical_control_date?: string | null;
+  technical_control_expiry?: string | null;
+  tachy_control_date?: string | null;
+  tachy_control_expiry?: string | null;
+  atp_date?: string | null;
+  atp_expiry?: string | null;
 }
 
 export interface ActionResult<T = unknown> {
@@ -35,6 +46,7 @@ export interface ActionResult<T = unknown> {
 /**
  * Crée un nouveau véhicule
  * RLS : L'INSERT est autorisé si company_id = get_current_user_company_id()
+ * Vérifie également la limite de véhicules selon le plan d'abonnement
  */
 export async function createVehicle(data: CreateVehicleData): Promise<ActionResult> {
   try {
@@ -64,6 +76,42 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
       return { success: false, error: 'Permissions insuffisantes' };
     }
     
+    // 4. Vérifier la limite de véhicules selon le plan
+    const { data: subscription, error: subError } = await supabase
+      .from('subscriptions')
+      .select('plan, vehicle_limit')
+      .single();
+    
+    if (subError) {
+      logger.error('createVehicle: Erreur récupération abonnement', new Error(subError.message));
+      return { success: false, error: 'Impossible de vérifier les limites d\'abonnement' };
+    }
+    
+    // Compter les véhicules actuels
+    const { count: vehicleCount, error: countError } = await supabase
+      .from('vehicles')
+      .select('*', { count: 'exact', head: true })
+      .eq('company_id', profile.company_id);
+    
+    if (countError) {
+      logger.error('createVehicle: Erreur comptage véhicules', new Error(countError.message));
+      return { success: false, error: 'Impossible de vérifier le nombre de véhicules' };
+    }
+    
+    // Vérifier si la limite est atteinte
+    if (vehicleCount !== null && vehicleCount >= (subscription.vehicle_limit || 0)) {
+      return { 
+        success: false, 
+        error: `Limite de véhicules atteinte (${vehicleCount}/${subscription.vehicle_limit}). Passez au plan supérieur pour ajouter plus de véhicules.`,
+        data: { 
+          limitReached: true, 
+          currentCount: vehicleCount, 
+          limit: subscription.vehicle_limit,
+          upgradeUrl: '/settings/billing'
+        }
+      };
+    }
+    
     const vehicleId = crypto.randomUUID();
     
     // 4. Créer le véhicule (RLS vérifie company_id automatiquement)
@@ -82,6 +130,17 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
       vin: data.vin || null,
       year: data.year || null,
       color: data.color || null,
+      // Assurance
+      insurance_company: data.insurance_company ?? null,
+      insurance_policy_number: data.insurance_policy_number ?? null,
+      insurance_expiry: data.insurance_expiry ?? null,
+      // Échéances réglementaires (CT, tachygraphe, ATP)
+      technical_control_date: data.technical_control_date ?? null,
+      technical_control_expiry: data.technical_control_expiry ?? null,
+      tachy_control_date: data.tachy_control_date ?? null,
+      tachy_control_expiry: data.tachy_control_expiry ?? null,
+      atp_date: data.atp_date ?? null,
+      atp_expiry: data.atp_expiry ?? null,
     } as any;
     
     const { data: vehicle, error: vehicleError } = await supabase
@@ -142,6 +201,7 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
     
     // 3. Préparer les données
     const VEHICLE_DATE_FIELDS = [
+      'insurance_expiry',
       'technical_control_date',
       'technical_control_expiry',
       'tachy_control_date',

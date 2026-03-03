@@ -250,3 +250,84 @@ export async function deleteCompanyLogo(userId: string) {
     return { error: 'Erreur serveur: ' + (error instanceof Error ? error.message : String(error)) };
   }
 }
+
+// ============================================
+// PARAMÈTRES DU RAPPORT MENSUEL
+// ============================================
+
+export interface IMonthlyReportSettings {
+  monthly_report_enabled: boolean;
+  monthly_report_day: number; // 1, 5, ou -1 (dernier)
+  monthly_report_recipients: 'ADMIN' | 'ADMIN_AND_DIRECTORS';
+}
+
+export async function updateMonthlyReportSettings(
+  userId: string, 
+  settings: IMonthlyReportSettings
+) {
+  try {
+    const supabase = await createClient();
+    
+    // Check permissions - only ADMIN or DIRECTEUR can update (RLS gère la sécurité)
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role, company_id')
+      .eq('id', userId)
+      .single();
+    
+    if (profileError || !profile?.company_id) {
+      return { error: 'Entreprise non trouvée' };
+    }
+    
+    if (!['ADMIN', 'DIRECTEUR'].includes(profile.role)) {
+      return { error: 'Permissions insuffisantes' };
+    }
+    
+    // Vérifier que l'entreprise existe (RLS gère la sécurité)
+    const { data: existing } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('id', profile.company_id)
+      .single();
+    
+    if (!existing) {
+      return { error: 'Entreprise non trouvée' };
+    }
+    
+    // Valider les valeurs
+    const validDays = [1, 5, -1];
+    const validRecipients = ['ADMIN', 'ADMIN_AND_DIRECTORS'];
+    
+    if (!validDays.includes(settings.monthly_report_day)) {
+      return { error: 'Jour d\'envoi invalide' };
+    }
+    
+    if (!validRecipients.includes(settings.monthly_report_recipients)) {
+      return { error: 'Destinataires invalides' };
+    }
+    
+    // Update company
+    const { data: company, error: companyError } = await supabase
+      .from('companies')
+      .update({
+        monthly_report_enabled: settings.monthly_report_enabled,
+        monthly_report_day: settings.monthly_report_day,
+        monthly_report_recipients: settings.monthly_report_recipients,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', profile.company_id)
+      .select()
+      .single();
+    
+    if (companyError) {
+      logger.error('Update monthly report settings error', companyError);
+      return { error: 'Erreur lors de la mise à jour des paramètres' };
+    }
+    
+    revalidatePath('/settings/company');
+    return { data: company };
+  } catch (error) {
+    logger.error('Server error', error instanceof Error ? error : new Error(String(error)));
+    return { error: 'Erreur serveur: ' + (error instanceof Error ? error.message : String(error)) };
+  }
+}

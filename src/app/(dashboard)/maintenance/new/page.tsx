@@ -27,13 +27,16 @@ function NewMaintenanceContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedVehicleId = searchParams.get('vehicleId');
-  
+  const fromPrediction = searchParams.get('from_prediction') === '1';
+  const predRuleId = searchParams.get('rule_id') || '';
+  const predRuleName = searchParams.get('rule_name') || '';
+
   const { data: vehicles } = useVehicles();
   const createMutation = useCreateMaintenance();
 
   const [vehicleId, setVehicleId] = useState(preselectedVehicleId || '');
   const [type, setType] = useState('');
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(predRuleName || '');
   const [cost, setCost] = useState('');
   const [mileageAtService, setMileageAtService] = useState('');
   const [serviceDate, setServiceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -94,11 +97,24 @@ function NewMaintenanceContent() {
       notes: notes || undefined,
       nextServiceDue: scheduleNext ? nextServiceDue : undefined,
       nextServiceMileage: scheduleNext ? parseInt(nextServiceMileage) : undefined,
-      status: 'COMPLETED',
+      status: 'DEMANDE_CREEE',  // ← Workflow normal : demande à valider
       priority: 'NORMAL',
     });
 
-    router.push('/maintenance');
+    // Si on vient d'une prédiction, invalider la prédiction en cache
+    if (fromPrediction && preselectedVehicleId && predRuleId) {
+      await fetch('/api/maintenance-predictions/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vehicleId: preselectedVehicleId, ruleId: predRuleId }),
+      }).catch(() => {/* non bloquant */});
+    }
+
+    if (fromPrediction && preselectedVehicleId) {
+      router.push(`/vehicles/${preselectedVehicleId}?tab=maintenance`);
+    } else {
+      router.push('/maintenance');
+    }
   };
 
   const selectedVehicle = vehicles?.find((v: any) => v.id === vehicleId);
@@ -110,6 +126,16 @@ function NewMaintenanceContent() {
         description="Enregistrer une réparation ou un entretien"
         backHref="/maintenance"
       />
+
+      {fromPrediction && predRuleName && (
+        <div className="flex items-start gap-3 rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-4">
+          <Wrench className="h-5 w-5 text-cyan-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-cyan-300">Intervention déclenchée par une prédiction de maintenance</p>
+            <p className="text-xs text-cyan-400/70 mt-0.5">{predRuleName}</p>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Informations principales */}

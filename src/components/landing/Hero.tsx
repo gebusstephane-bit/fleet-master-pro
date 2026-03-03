@@ -2,15 +2,14 @@
 
 import { motion, type Variants } from "framer-motion";
 import Link from "next/link";
-import Image from "next/image";
 import {
   ArrowRight,
   PlayCircle,
   Shield,
-  Zap,
-  TrendingDown,
-  Truck,
+  QrCode,
   CheckCircle2,
+  FileCheck,
+  Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FloatingParticlesSimple } from "@/components/effects/FloatingParticles";
@@ -33,45 +32,124 @@ const itemVariants: Variants = {
   },
 };
 
-/** KPIs affichés dans le mini-dashboard à droite */
-const dashboardStats = [
-  { icon: Shield, value: "99.9%", label: "Uptime garanti" },
-  { icon: TrendingDown, value: "-30%", label: "Coûts réduits" },
-  { icon: Zap, value: "14j", label: "Prédiction pannes" },
+/** Badges features clés */
+const keyFeatures = [
+  { icon: QrCode, text: "Inspections QR sans app" },
+  { icon: FileCheck, text: "Conformité réglementaire auto" },
+  { icon: Wrench, text: "Maintenance prédictive" },
 ];
 
-/** Micro-copy de confiance sous les CTA */
-const trustPoints = [
-  "Aucune carte bancaire requise",
-  "14 jours d'essai gratuit",
-  "Annulation à tout moment",
+/** Véhicules critiques pour le mockup */
+const criticalVehicles = [
+  { plate: "HH-527-AZ", score: 39, barClass: "bg-red-400" },
+  { plate: "BS-484-RH", score: 68, barClass: "bg-yellow-400" },
+  { plate: "TL-891-MP", score: 82, barClass: "bg-green-400" },
 ];
+
+/** Alertes maintenance pour le mockup */
+const maintenanceAlerts = [
+  {
+    name: "Freins — HH-527-AZ",
+    status: "CRITIQUE",
+    colorClass: "text-red-400",
+    bgClass: "bg-red-400/10",
+  },
+  {
+    name: "Vidange — TL-891-MP",
+    status: "À PRÉVOIR",
+    colorClass: "text-yellow-400",
+    bgClass: "bg-yellow-400/10",
+  },
+];
+
+function DashboardMockup() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="rounded-xl border border-white/10 bg-[#0f172a] p-4 shadow-2xl"
+    >
+      {/* Header mockup */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+          <span className="text-xs text-white/60">FleetMaster Pro</span>
+        </div>
+        <div className="flex gap-1">
+          <div className="h-2 w-2 rounded-full bg-red-400" />
+          <div className="h-2 w-2 rounded-full bg-yellow-400" />
+          <div className="h-2 w-2 rounded-full bg-green-400" />
+        </div>
+      </div>
+
+      {/* Score de fiabilité + véhicules critiques */}
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="col-span-1 rounded-lg bg-white/5 p-3">
+          <p className="text-xs text-white/40 mb-1">Score flotte</p>
+          <p className="text-2xl font-bold text-cyan-400">
+            74<span className="text-sm">/100</span>
+          </p>
+          <div className="flex items-center gap-1 mt-1">
+            <div className="h-1 flex-1 rounded bg-white/10">
+              <div className="h-1 rounded bg-cyan-400" style={{ width: "74%" }} />
+            </div>
+          </div>
+        </div>
+        <div className="col-span-2 rounded-lg bg-white/5 p-3">
+          <p className="text-xs text-white/40 mb-2">Véhicules critiques</p>
+          {criticalVehicles.map((v) => (
+            <div key={v.plate} className="flex items-center gap-2 mb-1">
+              <div className={`h-1.5 w-1.5 rounded-full ${v.barClass}`} />
+              <span className="text-xs text-white/60 w-20">{v.plate}</span>
+              <div className="h-1 flex-1 rounded bg-white/10">
+                <div
+                  className={`h-1 rounded ${v.barClass}`}
+                  style={{ width: `${v.score}%` }}
+                />
+              </div>
+              <span className="text-xs text-white/40">{v.score}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Alertes maintenance */}
+      <div className="rounded-lg bg-white/5 p-3 mb-2">
+        <p className="text-xs text-white/40 mb-2">Maintenances à planifier</p>
+        {maintenanceAlerts.map((item) => (
+          <div
+            key={item.name}
+            className={`flex items-center justify-between rounded px-2 py-1 mb-1 ${item.bgClass}`}
+          >
+            <span className="text-xs text-white/70">{item.name}</span>
+            <span className={`text-xs font-medium ${item.colorClass}`}>
+              {item.status}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Conformité bar */}
+      <div className="rounded-lg bg-white/5 p-3">
+        <div className="flex justify-between mb-1">
+          <p className="text-xs text-white/40">Conformité flotte</p>
+          <p className="text-xs text-green-400">8/9 véhicules ✓</p>
+        </div>
+        <div className="h-1.5 rounded bg-white/10">
+          <div
+            className="h-1.5 rounded bg-gradient-to-r from-cyan-400 to-green-400"
+            style={{ width: "89%" }}
+          />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 export function Hero() {
   return (
     <section className="relative min-h-screen overflow-hidden bg-[#0a0f1a]">
-      {/* ── Fond image avec overlay ── */}
-      <div className="absolute inset-0">
-        <Image
-          src="/images/hero-fleet.jpg"
-          alt="Flotte de camions FleetMaster Pro"
-          fill
-          priority
-          className="object-cover object-center opacity-40"
-          sizes="100vw"
-        />
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `
-              linear-gradient(to bottom, rgba(10,15,26,0.72) 0%, rgba(10,15,26,0.35) 40%, rgba(10,15,26,0.90) 100%),
-              radial-gradient(at 0% 0%, rgba(6,182,212,0.18) 0px, transparent 50%),
-              radial-gradient(at 100% 0%, rgba(59,130,246,0.18) 0px, transparent 50%)
-            `,
-          }}
-        />
-      </div>
-
       {/* ── Grille de fond ── */}
       <div
         className="absolute inset-0 opacity-25"
@@ -109,17 +187,14 @@ export function Hero() {
             animate="visible"
             className="text-center lg:text-left"
           >
-            {/* Badge live */}
+            {/* Badge réassurance */}
             <motion.div
               variants={itemVariants}
-              className="inline-flex items-center gap-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 mb-8"
+              className="inline-flex items-center gap-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 mb-6"
             >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
-              </span>
+              <Shield className="h-4 w-4 text-cyan-400" />
               <span className="text-sm font-medium text-cyan-400">
-                La solution n°1 des transporteurs · 500+ flottes actives
+                ✓ Essai 14 jours gratuit · ✓ Sans carte bancaire · ✓ Données hébergées en France
               </span>
             </motion.div>
 
@@ -128,14 +203,14 @@ export function Hero() {
               variants={itemVariants}
               className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.05]"
             >
-              Votre flotte.{" "}
+              Le contrôleur DREAL{" "}
               <br className="hidden lg:block" />
-              Votre contrôle.{" "}
+              débarque demain.{" "}
               <span
                 className="block mt-2 bg-gradient-to-r from-cyan-400 via-blue-400 to-orange-400 bg-clip-text text-transparent"
                 style={{ WebkitBackgroundClip: "text" }}
               >
-                Zéro panne imprévue.
+                Êtes-vous prêt ?
               </span>
             </motion.h1>
 
@@ -144,13 +219,27 @@ export function Hero() {
               variants={itemVariants}
               className="mt-6 text-lg sm:text-xl text-slate-400 max-w-xl mx-auto lg:mx-0 leading-relaxed"
             >
-              FleetMaster Pro transforme la gestion de parc en avantage
-              compétitif. Anticipez les pannes, optimisez les tournées,
-              maîtrisez vos coûts —{" "}
+              FleetMaster Pro centralise tous vos documents, inspections et maintenances.{" "}
               <span className="text-white font-semibold">
-                tout en temps réel, sur une seule plateforme.
+                En 10 secondes, vous savez si chaque véhicule est conforme ou pas.
               </span>
             </motion.p>
+
+            {/* ── Badges features clés ── */}
+            <motion.div
+              variants={itemVariants}
+              className="mt-6 flex flex-wrap gap-3 justify-center lg:justify-start"
+            >
+              {keyFeatures.map((feature) => (
+                <div
+                  key={feature.text}
+                  className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-3 py-1.5"
+                >
+                  <feature.icon className="h-4 w-4 text-cyan-400" />
+                  <span className="text-sm text-slate-300">{feature.text}</span>
+                </div>
+              ))}
+            </motion.div>
 
             {/* ── CTA ── */}
             <motion.div
@@ -166,14 +255,14 @@ export function Hero() {
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </ShimmerButton>
               </Link>
-              <Link href="/contact">
+              <Link href="#how-it-works">
                 <Button
                   variant="ghost"
                   size="lg"
                   className="w-full sm:w-auto text-slate-400 hover:text-white hover:bg-white/5 px-8 py-4 text-base font-medium rounded-xl border border-white/10 gap-2"
                 >
                   <PlayCircle className="h-4 w-4 text-cyan-400" />
-                  Demander une démo
+                  Voir la démo
                 </Button>
               </Link>
             </motion.div>
@@ -183,53 +272,24 @@ export function Hero() {
               variants={itemVariants}
               className="mt-6 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start"
             >
-              {trustPoints.map((point) => (
-                <li
-                  key={point}
-                  className="flex items-center gap-1.5 text-sm text-slate-500"
-                >
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
-                  {point}
-                </li>
-              ))}
-            </motion.ul>
-
-            {/* ── Logos sociaux ── */}
-            <motion.div
-              variants={itemVariants}
-              className="mt-12 pt-8 border-t border-white/[0.08]"
-            >
-              <p className="text-xs text-slate-600 uppercase tracking-widest mb-4 font-medium">
-                Ils nous font confiance
-              </p>
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-2">
-                {[
-                  "Transports Martin",
-                  "LogiPro",
-                  "Express Delivery",
-                  "EcoFleet",
-                  "FastTrack",
-                ].map((company) => (
-                  <span
-                    key={company}
-                    className="text-sm font-bold text-slate-500 hover:text-slate-400 transition-colors tracking-tight"
+              {["Essai 14 jours gratuit", "Sans carte bancaire", "Données hébergées en France"].map(
+                (point) => (
+                  <li
+                    key={point}
+                    className="flex items-center gap-1.5 text-sm text-slate-500"
                   >
-                    {company}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                    {point}
+                  </li>
+                )
+              )}
+            </motion.ul>
           </motion.div>
 
           {/* ══════════════════════════════════════
-              Colonne droite — Aperçu dashboard
+              Colonne droite — Dashboard CSS Mockup
           ══════════════════════════════════════ */}
-          <motion.div
-            initial={{ opacity: 0, x: 50, y: 10 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="relative hidden lg:block"
-          >
+          <div className="relative hidden lg:block">
             {/* Halo derrière la carte */}
             <div
               className="absolute inset-0 rounded-3xl blur-[60px]"
@@ -239,229 +299,60 @@ export function Hero() {
               }}
             />
 
-            {/* ── Fenêtre navigateur (dashboard) ── */}
-            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-cyan-500/20 bg-[#0f172a]/90 backdrop-blur-xl">
-              {/* Barre de navigation */}
-              <div className="flex items-center gap-2 px-4 py-3 bg-[#080d18] border-b border-cyan-500/10">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-500/70" />
-                  <div className="w-3 h-3 rounded-full bg-amber-500/70" />
-                  <div className="w-3 h-3 rounded-full bg-emerald-500/70" />
-                </div>
-                <div className="flex-1 mx-4">
-                  <div className="bg-[#1e293b] rounded-md px-3 py-1 text-center">
-                    <span className="text-xs text-slate-500">
-                      app.fleetmaster.pro/dashboard
-                    </span>
-                  </div>
-                </div>
-              </div>
+            <div className="relative">
+              <DashboardMockup />
 
-              {/* Contenu dashboard */}
-              <div className="p-5 bg-[#0a0f1a]/60">
-                {/* KPIs */}
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  {dashboardStats.map((stat, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.6 + i * 0.1 }}
-                      className="bg-[#0f172a] p-3 rounded-xl border border-cyan-500/10"
-                    >
-                      <stat.icon className="h-4 w-4 text-cyan-400 mb-2" />
-                      <p className="text-xl font-bold text-white">
-                        {stat.value}
-                      </p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
-                        {stat.label}
-                      </p>
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* Graphique + liste */}
-                <div className="grid grid-cols-5 gap-3 mb-4">
-                  <div className="col-span-3 bg-[#0f172a] p-3 rounded-xl border border-cyan-500/10">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-medium text-slate-400">
-                        Performance flotte
-                      </span>
-                      <span className="text-xs text-emerald-400 font-semibold bg-emerald-400/10 px-1.5 py-0.5 rounded-full">
-                        +12.5%
-                      </span>
-                    </div>
-                    <div className="flex items-end gap-1 h-16">
-                      {[35, 58, 42, 75, 50, 88, 65, 80, 55, 70, 45, 92].map(
-                        (h, i) => (
-                          <motion.div
-                            key={i}
-                            initial={{ scaleY: 0 }}
-                            animate={{ scaleY: 1 }}
-                            transition={{ delay: 0.8 + i * 0.04, duration: 0.4 }}
-                            className="flex-1 rounded-t origin-bottom"
-                            style={{
-                              height: `${h}%`,
-                              background: `linear-gradient(to top, #0891b2, #06b6d4)`,
-                              opacity: 0.7 + i / 24,
-                            }}
-                          />
-                        )
-                      )}
-                    </div>
+              {/* Badge flottant — Alerte maintenance */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.7, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ delay: 1.0, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute -bottom-5 -left-6 bg-[#0f172a] rounded-2xl shadow-2xl border border-amber-500/30 p-4 backdrop-blur-xl"
+                style={{
+                  boxShadow:
+                    "0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(245,158,11,0.15)",
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center flex-shrink-0">
+                    <Wrench className="h-4 w-4 text-white" />
                   </div>
-
-                  <div className="col-span-2 bg-[#0f172a] p-3 rounded-xl border border-cyan-500/10">
-                    <span className="text-xs font-medium text-slate-400 block mb-2">
-                      Véhicules
-                    </span>
-                    <div className="space-y-2">
-                      {[
-                        { id: "TRK-01", status: "ok", label: "En route" },
-                        { id: "TRK-02", status: "warn", label: "Alerte IA" },
-                        { id: "TRK-03", status: "ok", label: "En route" },
-                        { id: "TRK-04", status: "ok", label: "Au dépôt" },
-                      ].map((v) => (
-                        <div key={v.id} className="flex items-center gap-2">
-                          <span
-                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                            style={{
-                              backgroundColor:
-                                v.status === "ok" ? "#10b981" : "#f59e0b",
-                              boxShadow: `0 0 4px ${v.status === "ok" ? "#10b981" : "#f59e0b"}`,
-                            }}
-                          />
-                          <span className="text-[10px] text-slate-400 flex-1">
-                            {v.id}
-                          </span>
-                          <span
-                            className={`text-[10px] font-medium ${
-                              v.status === "ok"
-                                ? "text-emerald-400"
-                                : "text-amber-400"
-                            }`}
-                          >
-                            {v.label}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">
+                      Maintenance prédictive
+                    </p>
+                    <p className="text-[10px] text-amber-400">
+                      HH-527-AZ · Freins à vérifier
+                    </p>
                   </div>
                 </div>
+              </motion.div>
 
-                {/* Carte temps réel */}
-                <div className="bg-[#0f172a] rounded-xl border border-cyan-500/10 overflow-hidden">
-                  <div className="px-3 py-2 border-b border-cyan-500/10 flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-400">
-                      Carte en temps réel
-                    </span>
-                    <span className="text-[10px] text-cyan-400">
-                      12 véhicules actifs
-                    </span>
+              {/* Badge flottant — Inspection QR */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.7, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ delay: 1.2, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute -top-4 -right-4 bg-[#0f172a] rounded-2xl shadow-2xl border border-cyan-500/30 p-3 backdrop-blur-xl"
+                style={{
+                  boxShadow:
+                    "0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(6,182,212,0.12)",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                    <QrCode className="h-3.5 w-3.5 text-cyan-400" />
                   </div>
-                  <div
-                    className="h-24 relative"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, #0a1628 0%, #0f2042 50%, #0a1628 100%)",
-                    }}
-                  >
-                    <div
-                      className="absolute inset-0 opacity-20"
-                      style={{
-                        backgroundImage: `
-                          linear-gradient(rgba(6,182,212,0.3) 1px, transparent 1px),
-                          linear-gradient(90deg, rgba(6,182,212,0.3) 1px, transparent 1px)
-                        `,
-                        backgroundSize: "20px 20px",
-                      }}
-                    />
-                    <svg
-                      className="absolute inset-0 w-full h-full"
-                      viewBox="0 0 300 96"
-                    >
-                      <path
-                        d="M20,70 Q80,20 140,45 T260,30"
-                        stroke="rgba(6,182,212,0.5)"
-                        strokeWidth="1.5"
-                        fill="none"
-                        strokeDasharray="4,3"
-                      />
-                      <path
-                        d="M10,50 Q70,80 130,60 T280,70"
-                        stroke="rgba(59,130,246,0.4)"
-                        strokeWidth="1"
-                        fill="none"
-                        strokeDasharray="3,4"
-                      />
-                      {[
-                        { cx: 85, cy: 28, color: "#06b6d4" },
-                        { cx: 155, cy: 43, color: "#3b82f6" },
-                        { cx: 215, cy: 35, color: "#06b6d4" },
-                        { cx: 60, cy: 62, color: "#10b981" },
-                        { cx: 250, cy: 68, color: "#10b981" },
-                      ].map((dot, i) => (
-                        <g key={i}>
-                          <circle cx={dot.cx} cy={dot.cy} r="4" fill={dot.color} opacity="0.9" />
-                          <circle cx={dot.cx} cy={dot.cy} r="8" fill={dot.color} opacity="0.15" />
-                        </g>
-                      ))}
-                    </svg>
+                  <div>
+                    <p className="text-[10px] text-slate-500">Inspection scannée</p>
+                    <p className="text-sm font-bold text-cyan-400">
+                      BS-484-RH · Validée
+                    </p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
-
-            {/* Badge flottant — Alerte IA */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.7, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ delay: 1.0, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute -bottom-5 -left-6 bg-[#0f172a] rounded-2xl shadow-2xl border border-amber-500/30 p-4 backdrop-blur-xl"
-              style={{
-                boxShadow:
-                  "0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(245,158,11,0.15)",
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center flex-shrink-0">
-                  <Truck className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-white">
-                    Alerte préventive IA
-                  </p>
-                  <p className="text-[10px] text-amber-400">
-                    TRK-07 · Vidange dans 430 km
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Badge flottant — Économies */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.7, y: -10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ delay: 1.2, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute -top-4 -right-4 bg-[#0f172a] rounded-2xl shadow-2xl border border-emerald-500/30 p-3 backdrop-blur-xl"
-              style={{
-                boxShadow:
-                  "0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(16,185,129,0.12)",
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                  <TrendingDown className="h-3.5 w-3.5 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-500">Ce mois-ci</p>
-                  <p className="text-sm font-bold text-emerald-400">
-                    -2 340 € économisés
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

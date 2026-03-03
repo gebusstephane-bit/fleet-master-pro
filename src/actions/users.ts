@@ -185,6 +185,7 @@ export async function updateNotificationPreferences(
 /**
  * Créer un nouvel utilisateur
  * RLS pour profiles, AdminClient UNIQUEMENT pour auth.admin.createUser
+ * Vérifie également la limite d'utilisateurs selon le plan d'abonnement
  */
 export async function createUser(data: CreateUserData, creatorId: string) {
   try {
@@ -221,6 +222,39 @@ export async function createUser(data: CreateUserData, creatorId: string) {
     // DIRECTEUR ne peut pas créer d'autres DIRECTEUR
     if (data.role === 'DIRECTEUR' && creator.role === 'DIRECTEUR') {
       return { error: 'Un directeur ne peut pas créer un autre directeur', data: null };
+    }
+    
+    // 2. Vérifier la limite d'utilisateurs selon le plan
+    const { data: subscription, error: subError } = await supabase
+      .from('subscriptions')
+      .select('plan, user_limit')
+      .single();
+    
+    if (subError) {
+      return { error: 'Impossible de vérifier les limites d\'abonnement', data: null };
+    }
+    
+    // Compter les utilisateurs actuels
+    const { count: userCount, error: countError } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('company_id', data.company_id);
+    
+    if (countError) {
+      return { error: 'Impossible de compter les utilisateurs', data: null };
+    }
+    
+    // Vérifier si la limite est atteinte
+    if (userCount !== null && userCount >= (subscription.user_limit || 0)) {
+      return { 
+        error: `Limite d'utilisateurs atteinte (${userCount}/${subscription.user_limit}). Passez au plan supérieur pour ajouter plus d'utilisateurs.`,
+        data: { 
+          limitReached: true, 
+          currentCount: userCount, 
+          limit: subscription.user_limit,
+          upgradeUrl: '/settings/billing'
+        }
+      };
     }
     
     // Vérifier que l'email n'est pas déjà utilisé (RLS)

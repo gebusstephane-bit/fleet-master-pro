@@ -3,12 +3,121 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Check, Sparkles, ArrowRight, HelpCircle } from 'lucide-react';
+import { Check, Sparkles, ArrowRight, HelpCircle, X, Info, Shield, Zap, Phone, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PLANS, ACTIVE_PLANS } from '@/lib/plans';
+import { Badge } from '@/components/ui/badge';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
+// Configuration des plans
+const PLANS = {
+  essential: {
+    id: 'essential',
+    name: 'ESSENTIAL',
+    priceMonthly: 29,
+    priceYearly: 23, // -20%
+    yearlyTotal: 276,
+    maxVehicles: 5,
+    maxUsers: 10,
+    popular: false,
+    features: [
+      '5 véhicules',
+      '10 conducteurs',
+      'Conformité de base',
+      'Inspections QR',
+      'Carnet d\'entretien',
+      'Support communauté',
+    ],
+    cta: 'Essayer gratuitement 14 jours',
+  },
+  pro: {
+    id: 'pro',
+    name: 'PRO',
+    priceMonthly: 49,
+    priceYearly: 39, // -20%
+    yearlyTotal: 468,
+    maxVehicles: 20,
+    maxUsers: 50,
+    popular: true,
+    features: [
+      '20 véhicules',
+      '50 conducteurs',
+      'Tout Essential +',
+      'Rapports avancés',
+      'Webhooks',
+      'Support email',
+      'TCO & coûts',
+    ],
+    cta: 'Essayer gratuitement 14 jours',
+  },
+  unlimited: {
+    id: 'unlimited',
+    name: 'UNLIMITED',
+    priceMonthly: 129,
+    priceYearly: 103, // -20%
+    yearlyTotal: 1236,
+    maxVehicles: 999,
+    maxUsers: 999,
+    popular: false,
+    features: [
+      'Véhicules illimités',
+      'Conducteurs illimités',
+      'Tout Pro +',
+      'API publique',
+      'Assistant IA réglementaire',
+      'Export comptable',
+      'Support prioritaire',
+    ],
+    cta: 'Essayer gratuitement 14 jours',
+  },
+};
+
+// Tableau comparatif
+const COMPARISON_DATA = [
+  { feature: 'Prix/mois (10 véhicules)', fleetmaster: '49€', quartix: '~300€', webfleet: '~400€' },
+  { feature: 'Conformité réglementaire', fleetmaster: '✅ Inclus', quartix: '⚠️ Partiel', webfleet: '✅' },
+  { feature: 'Inspections QR sans app', fleetmaster: '✅ Unique', quartix: '❌', webfleet: '❌' },
+  { feature: 'SOS panne intelligent', fleetmaster: '✅', quartix: '❌', webfleet: '⚠️' },
+  { feature: 'Géolocalisation', fleetmaster: '❌ (RGPD+)', quartix: '✅', webfleet: '✅', tooltip: 'Pas de traceur GPS = meilleur RGPD, moins cher, pas de surveillance des chauffeurs' },
+  { feature: 'Sans engagement', fleetmaster: '✅', quartix: '❌', webfleet: '❌' },
+];
+
+// FAQ
+const FAQ_ITEMS = [
+  {
+    question: "L'essai gratuit nécessite-t-il une carte bancaire ?",
+    answer: "Non, aucune carte bancaire n'est requise pendant les 14 jours d'essai. Vous pouvez tester toutes les fonctionnalités du plan PRO sans engagement.",
+  },
+  {
+    question: "Que se passe-t-il après l'essai ?",
+    answer: "À la fin des 14 jours, vous pouvez choisir le plan qui vous convient. Si vous ne faites pas de choix, votre compte passe automatiquement sur le plan Essential avec 1 véhicule pour garder l'accès à vos données.",
+  },
+  {
+    question: "Puis-je changer de plan ?",
+    answer: "Oui, vous pouvez changer de plan à tout moment. Le changement est effectif immédiatement et la facturation est calculée au prorata.",
+  },
+  {
+    question: "Puis-je annuler quand je veux ?",
+    answer: "Absolument. Il n'y a aucun engagement de durée. Vous pouvez annuler votre abonnement à tout moment sans frais.",
+  },
+  {
+    question: "Proposez-vous des devis pour les flottes >50 véhicules ?",
+    answer: "Oui, pour les grandes flottes nous proposons des tarifs personnalisés. Contactez-nous pour obtenir un devis adapté à vos besoins.",
+  },
+];
 
 export default function PricingPage() {
-  const [yearly, setYearly] = useState(false);
+  const [yearly, setYearly] = useState(true);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -45,36 +154,101 @@ export default function PricingPage() {
         </div>
       </header>
 
-      <main className="py-24">
+      <main className="py-16 lg:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Hero */}
-          <div className="text-center mb-16">
+          {/* Hero - En-tête accrocheur */}
+          <div className="text-center mb-12">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <span className="inline-block text-sm font-semibold text-blue-600 uppercase tracking-wider mb-4">
-                Tarifs
-              </span>
-              <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-                Des prix adaptés à votre flotte
+              {/* Badge essai gratuit */}
+              <div className="mb-6">
+                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 px-4 py-1.5 text-sm font-medium">
+                  <Check className="w-4 h-4 mr-1.5 inline" />
+                  Essai gratuit 14 jours — Sans carte bancaire
+                </Badge>
+              </div>
+
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+                Gérez votre flotte à{' '}
+                <span className="text-blue-600">1/10ème du prix</span>
+                <br className="hidden sm:block" />
+                de Webfleet ou Quartix
               </h1>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                3 formules simples et transparentes. 
-                <span className="block mt-2 text-sm text-gray-500">
-                  Tous les plans incluent un essai gratuit de 14 jours.
-                </span>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Sans GPS. Sans engagement. Sans surprise.
               </p>
             </motion.div>
+          </div>
 
-            {/* Toggle Yearly/Monthly */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="mt-8 flex items-center justify-center gap-4"
-            >
+          {/* Tableau comparatif */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="mb-16 max-w-4xl mx-auto"
+          >
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900">Comparaison des solutions</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Feature</th>
+                      <th className="text-center px-6 py-4 text-sm font-bold text-blue-600">FleetMaster Pro</th>
+                      <th className="text-center px-6 py-4 text-sm font-medium text-gray-500">Quartix</th>
+                      <th className="text-center px-6 py-4 text-sm font-medium text-gray-500">Webfleet</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {COMPARISON_DATA.map((row, index) => (
+                      <tr key={index} className="border-b border-gray-100 last:border-0">
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          <div className="flex items-center gap-2">
+                            {row.feature}
+                            {row.tooltip && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Info className="w-4 h-4 text-gray-400" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="max-w-xs">{row.tooltip}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center text-sm font-medium text-blue-600">
+                          {row.fleetmaster}
+                        </td>
+                        <td className="px-6 py-4 text-center text-sm text-gray-600">
+                          {row.quartix}
+                        </td>
+                        <td className="px-6 py-4 text-center text-sm text-gray-600">
+                          {row.webfleet}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Toggle Mensuel/Annuel */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex flex-col items-center mb-12"
+          >
+            <div className="flex items-center gap-4 mb-2">
               <span className={`text-sm font-medium ${!yearly ? 'text-gray-900' : 'text-gray-500'}`}>
                 Mensuel
               </span>
@@ -93,162 +267,162 @@ export default function PricingPage() {
               <span className={`text-sm font-medium ${yearly ? 'text-gray-900' : 'text-gray-500'}`}>
                 Annuel
               </span>
-              <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
-                2 mois offerts
-              </span>
-            </motion.div>
-          </div>
+            </div>
+            <span className="text-sm text-green-600 font-medium">
+              {yearly ? 'Économisez 20% avec l\'annuel' : 'Passez à l\'annuel pour économiser 20%'}
+            </span>
+          </motion.div>
 
-          {/* Pricing Cards - 3 plans */}
-          <div className="grid md:grid-cols-3 gap-8 items-start max-w-6xl mx-auto">
-            {ACTIVE_PLANS.map((planId, index) => {
-              const plan = PLANS[planId];
-              return (
-                <motion.div
-                  key={planId}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className={`relative rounded-2xl p-6 ${
-                    plan.popular
-                      ? 'bg-white shadow-xl border-2 border-blue-500 scale-105 z-10 lg:-mt-4'
-                      : 'bg-white border border-gray-200 shadow-sm'
-                  }`}
-                >
-                  {/* Popular badge */}
-                  {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                      <span className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                        <Sparkles className="h-4 w-4" />
-                        Le plus populaire
+          {/* Pricing Cards */}
+          <div className="grid md:grid-cols-3 gap-8 items-start max-w-6xl mx-auto mb-20">
+            {Object.values(PLANS).map((plan, index) => (
+              <motion.div
+                key={plan.id}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className={`relative rounded-2xl p-6 ${
+                  plan.popular
+                    ? 'bg-white shadow-xl border-2 border-blue-500 scale-105 z-10 lg:-mt-4'
+                    : 'bg-white border border-gray-200 shadow-sm'
+                }`}
+              >
+                {/* Popular badge */}
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <span className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                      <Sparkles className="h-4 w-4" />
+                      Recommandé
+                    </span>
+                  </div>
+                )}
+
+                {/* Plan name */}
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">{plan.name}</h3>
+                </div>
+
+                {/* Price */}
+                <div className="mb-6">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold text-gray-900">
+                      {yearly ? plan.priceYearly : plan.priceMonthly}€
+                    </span>
+                    <span className="text-gray-500">/mois</span>
+                  </div>
+                  {yearly ? (
+                    <p className="text-sm text-gray-500 mt-1">
+                      {plan.yearlyTotal}€ facturés annuellement
+                      <span className="text-green-600 ml-2">
+                        (-20%)
                       </span>
-                    </div>
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-500 mt-1">
+                      soit {plan.priceYearly}€/mois en annuel
+                    </p>
                   )}
+                </div>
 
-                  {/* Plan name */}
-                  <div className="mb-4">
-                    <h3 className="text-xl font-semibold text-gray-900">{plan.name}</h3>
-                    <p className="text-sm mt-1 text-gray-500">{plan.description}</p>
-                  </div>
+                {/* CTA */}
+                <Button
+                  asChild
+                  className={`w-full mb-6 ${
+                    plan.popular
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-gray-900 hover:bg-gray-800 text-white'
+                  }`}
+                  size="lg"
+                >
+                  <Link href="/register">
+                    {plan.cta}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
 
-                  {/* Price */}
-                  <div className="mb-6">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold text-gray-900">
-                        {yearly ? plan.priceYearly : plan.priceMonthly}€
-                      </span>
-                      <span className="text-gray-500">/mois</span>
+                <p className="text-xs text-center text-gray-500 mb-6">
+                  Sans carte bancaire requise
+                </p>
+
+                {/* Features */}
+                <div className="space-y-3">
+                  {plan.features.map((feature) => (
+                    <div key={feature} className="flex items-start gap-3">
+                      <Check className="h-5 w-5 flex-shrink-0 text-green-500" />
+                      <span className="text-sm text-gray-600">{feature}</span>
                     </div>
-                    {yearly && (
-                      <p className="text-sm text-green-600 mt-1">
-                        Économisez {(plan.priceMonthly * 12 - plan.priceYearly)}€/an
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Limits */}
-                  <div className="p-3 rounded-lg mb-6 bg-gray-50">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Véhicules</span>
-                      <span className="font-medium text-gray-900">
-                        {plan.maxVehicles === 999 ? 'Illimité' : `Max ${plan.maxVehicles}`}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm mt-2">
-                      <span className="text-gray-600">Utilisateurs</span>
-                      <span className="font-medium text-gray-900">
-                        {plan.maxDrivers === 999 ? 'Illimité' : `Max ${plan.maxDrivers}`}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* CTA */}
-                  <Button
-                    asChild
-                    className={`w-full mb-6 ${
-                      plan.popular
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                        : 'bg-gray-900 hover:bg-gray-800 text-white'
-                    }`}
-                    size="lg"
-                  >
-                    <Link href={`/register?plan=${planId}`}>
-                      {plan.cta}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-
-                  {/* Features */}
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium text-gray-900">Inclus :</p>
-                    {plan.features.map((feature) => (
-                      <div key={feature} className="flex items-start gap-3">
-                        <Check className="h-5 w-5 flex-shrink-0 text-green-500" />
-                        <span className="text-sm text-gray-600">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              );
-            })}
+                  ))}
+                </div>
+              </motion.div>
+            ))}
           </div>
 
           {/* FAQ Section */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
-            className="mt-24 max-w-3xl mx-auto"
+            className="max-w-3xl mx-auto mb-20"
           >
             <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
               Questions fréquentes
             </h2>
-            <div className="space-y-4">
-              {[
-                {
-                  q: 'Puis-je changer de plan à tout moment ?',
-                  a: 'Oui, vous pouvez upgrader à tout moment. Le nouveau plan est actif immédiatement. Pour downgrader, le changement s\'effectue à la fin de la période en cours.'
-                },
-                {
-                  q: 'Que se passe-t-il si je dépasse la limite de véhicules ?',
-                  a: 'Vous ne pourrez pas ajouter de nouveau véhicule tant que vous n\'aurez pas upgradé votre plan. Vos données existantes restent accessibles.'
-                },
-                {
-                  q: 'Y a-t-il un engagement minimum ?',
-                  a: 'Non, vous pouvez annuler à tout moment. Si vous annulez, votre accès est maintenu jusqu\'à la fin de la période payée.'
-                },
-                {
-                  q: 'Comment fonctionne l\'essai gratuit de 14 jours ?',
-                  a: 'Tous les plans incluent 14 jours d\'essai gratuit. Une carte bancaire est demandée mais vous n\'êtes pas débité immédiatement. Annulez avant la fin des 14 jours pour ne pas être facturé.'
-                },
-                {
-                  q: 'Puis-je payer en plusieurs fois pour l\'annuel ?',
-                  a: 'Le paiement annuel se fait en une fois. Contactez-nous pour les entreprises souhaitant un paiement échelonné.'
-                }
-              ].map((faq, i) => (
-                <div key={i} className="bg-white rounded-xl border border-gray-200 p-6">
-                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                    <HelpCircle className="h-5 w-5 text-blue-500" />
-                    {faq.q}
-                  </h3>
-                  <p className="mt-2 text-gray-600">{faq.a}</p>
-                </div>
+            <Accordion type="single" collapsible className="w-full">
+              {FAQ_ITEMS.map((item, index) => (
+                <AccordionItem key={index} value={`item-${index}`}>
+                  <AccordionTrigger className="text-left">
+                    <span className="flex items-center gap-2">
+                      <HelpCircle className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                      {item.question}
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-gray-600 pl-7">
+                    {item.answer}
+                  </AccordionContent>
+                </AccordionItem>
               ))}
+            </Accordion>
+          </motion.div>
+
+          {/* Bandeau de confiance */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="border-t border-gray-200 pt-12"
+          >
+            <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-blue-600" />
+                <span>Données hébergées en France</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-blue-600" />
+                <span>Conformité RGPD</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-blue-600" />
+                <span>Mise en service en 10 min</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-5 w-5 text-blue-600" />
+                <span>Support en français</span>
+              </div>
             </div>
           </motion.div>
 
           {/* CTA Final */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
-            className="mt-24 text-center bg-blue-600 rounded-2xl p-12 text-white"
+            className="mt-16 text-center bg-blue-600 rounded-2xl p-12 text-white"
           >
             <h2 className="text-3xl font-bold mb-4">
               Prêt à optimiser votre flotte ?
             </h2>
             <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
-              Rejoignez plus de 200 transporteurs qui font confiance à FleetMaster Pro 
+              Rejoignez plus de 200 transporteurs qui font confiance à FleetMaster Pro
               pour gérer leur flotte au quotidien.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

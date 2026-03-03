@@ -83,7 +83,7 @@ export default function InspectionDetailPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
 
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'DIRECTEUR';
+  const canValidate = ['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'].includes(user?.role || '');
 
   useEffect(() => {
     fetchInspection();
@@ -197,8 +197,8 @@ export default function InspectionDetailPage() {
           </div>
         </div>
         
-        {/* BOUTONS DE VALIDATION BIEN VISIBLES */}
-        {inspection.status === 'PENDING' && (
+        {/* BOUTONS DE VALIDATION - Uniquement pour admin/directeur/agent */}
+        {inspection.status === 'PENDING' && canValidate && (
           <div className="flex gap-3">
             <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
               <DialogTrigger asChild>
@@ -260,7 +260,7 @@ export default function InspectionDetailPage() {
           <FileText className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-800">
             Ce contrôle est en attente de validation par un administrateur ou un responsable.
-            {isAdmin && " Vous pouvez le valider ou le refuser en utilisant les boutons ci-dessus."}
+            {canValidate && " Vous pouvez le valider ou le refuser en utilisant les boutons ci-dessus."}
           </AlertDescription>
         </Alert>
       )}

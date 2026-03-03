@@ -5,7 +5,14 @@
 
 import { addYears, addMonths, format, parseISO } from 'date-fns';
 
-export type VehicleType = 'VOITURE' | 'FOURGON' | 'POIDS_LOURD' | 'POIDS_LOURD_FRIGO';
+export type VehicleType =
+  | 'VOITURE'
+  | 'FOURGON'
+  | 'POIDS_LOURD'
+  | 'POIDS_LOURD_FRIGO'
+  | 'TRACTEUR_ROUTIER'
+  | 'REMORQUE'
+  | 'REMORQUE_FRIGO';
 
 export interface VehicleDates {
   technicalControlDate: Date;
@@ -31,6 +38,9 @@ export interface VehicleDateStrings {
  * VOITURE/FOURGON: CT +2 ans
  * POIDS_LOURD: CT +1 an, Tachy +2 ans
  * POIDS_LOURD_FRIGO: CT +1 an, Tachy +2 ans, ATP +5 ans
+ * TRACTEUR_ROUTIER: CT +1 an, Tachy +2 ans
+ * REMORQUE: CT +1 an
+ * REMORQUE_FRIGO: CT +1 an, ATP +5 ans
  */
 export function calculateRegulatoryDates(
   vehicleType: VehicleType,
@@ -70,7 +80,29 @@ export function calculateRegulatoryDates(
         atpDate: baseDate,
         atpExpiry: addYears(baseDate, 5),
       };
-      
+
+    case 'TRACTEUR_ROUTIER':
+      return {
+        technicalControlDate: baseDate,
+        technicalControlExpiry: addYears(baseDate, 1),
+        tachyControlDate: baseDate,
+        tachyControlExpiry: addYears(baseDate, 2),
+      };
+
+    case 'REMORQUE':
+      return {
+        technicalControlDate: baseDate,
+        technicalControlExpiry: addYears(baseDate, 1),
+      };
+
+    case 'REMORQUE_FRIGO':
+      return {
+        technicalControlDate: baseDate,
+        technicalControlExpiry: addYears(baseDate, 1),
+        atpDate: baseDate,
+        atpExpiry: addYears(baseDate, 5),
+      };
+
     default:
       throw new Error(`Type de véhicule inconnu: ${vehicleType}`);
   }
@@ -92,8 +124,14 @@ export function recalculateCTExpiry(
     throw new Error('Date de contrôle technique invalide');
   }
 
-  // PL et PL Frigo = 1 an, Voiture/Fourgon = 2 ans
-  const yearsToAdd = (vehicleType === 'POIDS_LOURD' || vehicleType === 'POIDS_LOURD_FRIGO') ? 1 : 2;
+  // PL, Tracteur, Remorque = 1 an  |  Voiture, Fourgon = 2 ans
+  const yearsToAdd = (
+    vehicleType === 'POIDS_LOURD' ||
+    vehicleType === 'POIDS_LOURD_FRIGO' ||
+    vehicleType === 'TRACTEUR_ROUTIER' ||
+    vehicleType === 'REMORQUE' ||
+    vehicleType === 'REMORQUE_FRIGO'
+  ) ? 1 : 2;
   return addYears(baseDate, yearsToAdd);
 }
 
@@ -135,14 +173,18 @@ export function recalculateATPExpiry(
  * Vérifie si un type de véhicule nécessite un tachygraphe
  */
 export function requiresTachy(vehicleType: VehicleType): boolean {
-  return vehicleType === 'POIDS_LOURD' || vehicleType === 'POIDS_LOURD_FRIGO';
+  return (
+    vehicleType === 'POIDS_LOURD' ||
+    vehicleType === 'POIDS_LOURD_FRIGO' ||
+    vehicleType === 'TRACTEUR_ROUTIER'
+  );
 }
 
 /**
  * Vérifie si un type de véhicule nécessite ATP
  */
 export function requiresATP(vehicleType: VehicleType): boolean {
-  return vehicleType === 'POIDS_LOURD_FRIGO';
+  return vehicleType === 'POIDS_LOURD_FRIGO' || vehicleType === 'REMORQUE_FRIGO';
 }
 
 /**
@@ -173,6 +215,9 @@ export function getCTPeriodicity(vehicleType: VehicleType): string {
       return 'Tous les 2 ans';
     case 'POIDS_LOURD':
     case 'POIDS_LOURD_FRIGO':
+    case 'TRACTEUR_ROUTIER':
+    case 'REMORQUE':
+    case 'REMORQUE_FRIGO':
       return 'Tous les ans';
     default:
       return 'Inconnue';
@@ -220,6 +265,30 @@ export const vehicleTypeConfig: Record<VehicleType, {
     description: 'Poids lourd avec groupe frigorifique',
     ctPeriodicity: '1 an',
     requiresTachy: true,
+    requiresATP: true,
+  },
+  TRACTEUR_ROUTIER: {
+    label: 'Tracteur Routier',
+    emoji: '🚜',
+    description: 'Ensemble routier — moteur tracteur (≥ 3.5t)',
+    ctPeriodicity: '1 an',
+    requiresTachy: true,
+    requiresATP: false,
+  },
+  REMORQUE: {
+    label: 'Remorque',
+    emoji: '🚛',
+    description: 'Ensemble routier — remorque / semi-remorque',
+    ctPeriodicity: '1 an',
+    requiresTachy: false,
+    requiresATP: false,
+  },
+  REMORQUE_FRIGO: {
+    label: 'Remorque Frigorifique',
+    emoji: '🚛❄️',
+    description: 'Ensemble routier — remorque frigorifique',
+    ctPeriodicity: '1 an',
+    requiresTachy: false,
     requiresATP: true,
   },
 };

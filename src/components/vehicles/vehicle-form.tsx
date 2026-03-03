@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Calendar, Info, AlertCircle } from 'lucide-react';
+import { Loader2, Calendar, Info, AlertCircle, Shield } from 'lucide-react';
 import { 
   calculateRegulatoryDates, 
   recalculateCTExpiry,
@@ -44,13 +44,17 @@ const formSchema = z.object({
   brand: z.string().min(1, "Marque requise"),
   model: z.string().min(1, "Modèle requis"),
   year: z.number().min(1990).max(new Date().getFullYear() + 1),
-  type: z.enum(["VOITURE", "FOURGON", "POIDS_LOURD", "POIDS_LOURD_FRIGO"]),
+  type: z.enum(["VOITURE", "FOURGON", "POIDS_LOURD", "POIDS_LOURD_FRIGO", "TRACTEUR_ROUTIER", "REMORQUE", "REMORQUE_FRIGO"]),
   fuel_type: z.enum(["diesel", "gasoline", "electric", "hybrid", "lpg"]),
   color: z.string().min(1, "Couleur requise"),
   mileage: z.number().min(0),
   vin: z.string().optional(),
   status: z.enum(["active", "inactive", "maintenance", "retired"]).default("active"),
   
+  // Assurance
+  insurance_company: z.string().optional().transform((v) => v === '' ? null : v ?? null),
+  insurance_policy_number: z.string().optional().transform((v) => v === '' ? null : v ?? null),
+  insurance_expiry: z.string().optional().transform((v) => v === '' ? null : v ?? null),
   // Échéances réglementaires — "" → null pour éviter l'erreur PostgreSQL 22007
   technical_control_date: z.string().optional().transform((v) => v === '' ? null : v ?? null),
   technical_control_expiry: z.string().optional().transform((v) => v === '' ? null : v ?? null),
@@ -90,6 +94,9 @@ export function VehicleForm({
       mileage: 0,
       vin: '',
       status: 'active',
+      insurance_company: '',
+      insurance_policy_number: '',
+      insurance_expiry: '',
       technical_control_date: '',
       technical_control_expiry: '',
       tachy_control_date: '',
@@ -267,6 +274,9 @@ export function VehicleForm({
                       <SelectItem value="FOURGON">🚐 Fourgon</SelectItem>
                       <SelectItem value="POIDS_LOURD">🚛 Poids Lourd</SelectItem>
                       <SelectItem value="POIDS_LOURD_FRIGO">🚛❄️ PL Frigorifique</SelectItem>
+                      <SelectItem value="TRACTEUR_ROUTIER">🚜 Tracteur Routier</SelectItem>
+                      <SelectItem value="REMORQUE">🚛 Remorque</SelectItem>
+                      <SelectItem value="REMORQUE_FRIGO">🚛❄️ Remorque Frigorifique</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormDescription>
@@ -372,6 +382,77 @@ export function VehicleForm({
                       <SelectItem value="retired">Retiré</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Assurance */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Shield className="h-5 w-5 text-cyan-600" />
+              Assurance
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Compagnie */}
+            <FormField
+              control={form.control}
+              name="insurance_company"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabelText>Compagnie d&apos;assurance</FormLabelText>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value ?? ''}
+                      placeholder="Axa, Allianz, Groupama…"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* N° de police */}
+            <FormField
+              control={form.control}
+              name="insurance_policy_number"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabelText>N° de police</FormLabelText>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value ?? ''}
+                      placeholder="Ex : POL-2024-00123"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Date d'expiration */}
+            <FormField
+              control={form.control}
+              name="insurance_expiry"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabelText>Date d&apos;expiration</FormLabelText>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      {...field}
+                      value={field.value ?? ''}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Apparaît dans les alertes conformité
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

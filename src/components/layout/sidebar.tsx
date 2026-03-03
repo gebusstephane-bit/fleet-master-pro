@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -8,8 +9,8 @@ import {
   Car,
   Users,
   Wrench,
+  Fuel,
   ClipboardCheck,
-  Route,
   Calendar,
   Bell,
   ChevronRight,
@@ -17,10 +18,15 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   X,
+  ShieldCheck,
+  TrendingUp,
+  FileWarning,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
 import { useAlerts } from "@/hooks/use-alerts";
+import { useCompliance } from "@/hooks/use-compliance";
+import { getDocumentStatus } from "@/lib/compliance-utils";
 import { useSidebar } from "./sidebar-context";
 
 interface NavItem {
@@ -35,8 +41,11 @@ const navItems: NavItem[] = [
   { label: "Véhicules", href: "/vehicles", icon: Car },
   { label: "Chauffeurs", href: "/drivers", icon: Users },
   { label: "Maintenance", href: "/maintenance", icon: Wrench },
+  { label: "Carburant", href: "/fuel", icon: Fuel },
   { label: "Inspections", href: "/inspections", icon: ClipboardCheck },
-  { label: "Tournées", href: "/routes", icon: Route },
+  { label: "Conformité", href: "/compliance", icon: ShieldCheck },
+  { label: "Sinistres", href: "/incidents", icon: FileWarning },
+  { label: "Coûts Flotte", href: "/fleet-costs", icon: TrendingUp },
   { label: "Agenda", href: "/agenda", icon: Calendar },
   { label: "Alertes", href: "/alerts", icon: Bell },
 ];
@@ -54,6 +63,7 @@ interface SidebarProps {
     companies?: {
       name?: string;
       plan?: string;
+      logo_url?: string | null;
     } | null;
   } | null;
 }
@@ -62,11 +72,58 @@ export function Sidebar({ user }: SidebarProps) {
   const { isPinned, isExpanded, isMobileOpen, togglePin, setHovered, setMobileOpen } = useSidebar();
   const pathname = usePathname();
   const { data: alerts } = useAlerts();
+  const { data: complianceData } = useCompliance({ enabled: !!user?.company_id });
   const unreadAlertCount = alerts?.filter((a: any) => !a.read_at)?.length || 0;
+
+  // Calculer le nombre de documents critiques pour le badge de conformité
+  const criticalDocumentsCount = (() => {
+    if (!complianceData) return 0;
+    
+    let count = 0;
+    
+    // Vérifier les véhicules
+    for (const vehicle of complianceData.vehicles) {
+      const dates = [
+        vehicle.technical_control_expiry || vehicle.technical_control_date,
+        vehicle.tachy_control_expiry || vehicle.tachy_control_date,
+        vehicle.atp_expiry || vehicle.atp_date,
+        vehicle.insurance_expiry,
+      ];
+      for (const date of dates) {
+        if (date) {
+          const status = getDocumentStatus(date);
+          if (status.status === 'expired') count++;
+        }
+      }
+    }
+    
+    // Vérifier les conducteurs
+    for (const driver of complianceData.drivers) {
+      const dates = [
+        driver.license_expiry,
+        driver.driver_card_expiry,
+        driver.fimo_expiry || driver.fimo_date,
+        driver.fcos_expiry,
+        driver.medical_certificate_expiry,
+        driver.adr_certificate_expiry,
+      ];
+      for (const date of dates) {
+        if (date) {
+          const status = getDocumentStatus(date);
+          if (status.status === 'expired') count++;
+        }
+      }
+    }
+    
+    return count;
+  })();
 
   const companyName = user?.companies?.name || user?.first_name || "Transport";
   const companyInitials = companyName.substring(0, 2).toUpperCase();
-  const planName = user?.companies?.plan || "Pro";
+  const companyLogo = user?.companies?.logo_url;
+  // Capitaliser le nom du plan (pro -> Pro, essential -> Essential, unlimited -> Unlimited)
+  const rawPlan = user?.companies?.plan || "essential";
+  const planName = rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1).toLowerCase();
 
   const sidebarContent = (
     <>
@@ -119,9 +176,21 @@ export function Sidebar({ user }: SidebarProps) {
           "flex items-center gap-3 rounded-xl px-3 py-3 bg-[#0f172a]/60 border border-cyan-500/15 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_20px_rgba(6,182,212,0.1)]",
           !isExpanded && "justify-center"
         )}>
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shrink-0">
-            <span className="text-white font-bold text-sm">{companyInitials}</span>
-          </div>
+          {companyLogo ? (
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 overflow-hidden shrink-0">
+              <Image 
+                src={companyLogo} 
+                alt={companyName}
+                width={36}
+                height={36}
+                className="object-cover w-full h-full"
+              />
+            </div>
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shrink-0">
+              <span className="text-white font-bold text-sm">{companyInitials}</span>
+            </div>
+          )}
           <AnimatePresence>
             {isExpanded && (
               <motion.div
@@ -143,7 +212,11 @@ export function Sidebar({ user }: SidebarProps) {
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href) && item.href !== '/sos';
           const Icon = item.icon;
-          const badge = item.href === "/alerts" ? unreadAlertCount : item.badge;
+          const badge = item.href === "/alerts" 
+            ? unreadAlertCount 
+            : item.href === "/compliance" 
+              ? criticalDocumentsCount 
+              : item.badge;
 
           return (
             <Link
@@ -197,7 +270,10 @@ export function Sidebar({ user }: SidebarProps) {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   className={cn(
-                    "flex h-5 items-center justify-center rounded-full bg-amber-500 text-xs font-semibold text-white shadow-lg shadow-amber-500/30 shrink-0",
+                    "flex h-5 items-center justify-center rounded-full text-xs font-semibold text-white shadow-lg shrink-0",
+                    item.href === "/compliance"
+                      ? "bg-red-500 shadow-red-500/30"
+                      : "bg-amber-500 shadow-amber-500/30",
                     isExpanded ? "px-1.5 min-w-[20px]" : "w-5"
                   )}
                 >
@@ -224,7 +300,10 @@ export function Sidebar({ user }: SidebarProps) {
                 <div className="absolute left-full ml-2 hidden rounded-lg bg-[#27272a] px-3 py-2 text-sm text-white opacity-0 shadow-xl transition-opacity group-hover:block group-hover:opacity-100 z-50 whitespace-nowrap">
                   {item.label}
                   {badge !== undefined && badge > 0 && (
-                    <span className="ml-2 rounded-full bg-amber-500 px-1.5 text-xs">
+                    <span className={cn(
+                      "ml-2 rounded-full px-1.5 text-xs",
+                      item.href === "/compliance" ? "bg-red-500" : "bg-amber-500"
+                    )}>
                       {badge}
                     </span>
                   )}

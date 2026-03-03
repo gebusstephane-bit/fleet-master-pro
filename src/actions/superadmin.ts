@@ -9,6 +9,7 @@ import { revalidatePath } from 'next/cache';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSuperadminEmail } from '@/lib/superadmin';
+import { PLAN_LIMITS, PlanType } from '@/lib/plans';
 
 // Vérification SuperAdmin
 async function verifySuperAdmin() {
@@ -101,16 +102,15 @@ export async function getSubscriptions() {
   return data;
 }
 
-export async function updateSubscriptionPlan(subscriptionId: string, plan: string) {
+export async function updateSubscriptionPlan(subscriptionId: string, plan: PlanType) {
   await verifySuperAdmin();
   
   const supabase = createAdminClient();
   
-  const limits: Record<string, { vehicle: number; user: number }> = {
-    STARTER: { vehicle: 1, user: 1 },
-    BASIC: { vehicle: 5, user: 2 },
-    PRO: { vehicle: 15, user: 5 },
-    ENTERPRISE: { vehicle: 999, user: 999 },
+  const limits: Record<PlanType, { vehicle: number; user: number }> = {
+    ESSENTIAL: { vehicle: PLAN_LIMITS.ESSENTIAL.vehicleLimit, user: PLAN_LIMITS.ESSENTIAL.userLimit },
+    PRO: { vehicle: PLAN_LIMITS.PRO.vehicleLimit, user: PLAN_LIMITS.PRO.userLimit },
+    UNLIMITED: { vehicle: PLAN_LIMITS.UNLIMITED.vehicleLimit, user: PLAN_LIMITS.UNLIMITED.userLimit },
   };
 
   const { error } = await supabase
