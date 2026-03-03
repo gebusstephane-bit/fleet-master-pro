@@ -507,17 +507,16 @@ function buildEmailContent(
 
 export async function GET(request: NextRequest) {
   // --- Authentification cron ---
+  // Vercel envoie automatiquement "Authorization: Bearer <CRON_SECRET>" en production
+  const authHeader = request.headers.get('authorization');
   const secret =
+    (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null) ||
     request.headers.get('x-cron-secret') ||
     request.nextUrl.searchParams.get('secret');
 
   if (!CRON_SECRET || secret !== CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  // Mode dry_run : simule sans envoyer ni persister
-  // Usage : GET /api/cron/driver-documents?dry_run=true&secret=XXX
-  const isDryRun = request.nextUrl.searchParams.get('dry_run') === 'true';
 
   const supabase = createAdminClient();
   const stats = {
@@ -531,17 +530,6 @@ export async function GET(request: NextRequest) {
     errors: 0,
   };
 
-  // Collecte des alertes simulées (dry_run uniquement)
-  const dryRunAlerts: Array<{
-    driver_name: string;
-    driver_id: string;
-    document_type: string;
-    document_label: string;
-    alert_level: AlertLevel;
-    days_left: number;
-    expiry_date: string;
-    emails_to_notify: string[];
-  }> = [];
 
   try {
     // 1. Récupérer tous les conducteurs actifs
@@ -647,25 +635,6 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Mode dry_run : collecter sans envoyer
-        if (isDryRun) {
-          dryRunAlerts.push({
-            driver_name: `${driver.first_name} ${driver.last_name}`,
-            driver_id: driver.id,
-            document_type: doc.type,
-            document_label: doc.label,
-            alert_level: alertLevel,
-            days_left: daysLeft,
-            expiry_date: expiryDate,
-            emails_to_notify: [
-              ...(driverHasEmail ? [driverEmail!] : []),
-              ...managers.map((m) => m.email),
-            ],
-          });
-          stats.alerts_sent++;
-          continue;
-        }
-
         // 5. Construire et envoyer les emails
         try {
           const driverLink = `${appUrl}/drivers/${driver.id}`;
@@ -757,14 +726,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    logger.info('Cron driver-documents-check completed', { ...stats, dry_run: isDryRun });
+    logger.info('Cron driver-documents-check completed', { ...stats });
 
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
-      dry_run: isDryRun,
       ...stats,
-      ...(isDryRun ? { simulated_alerts: dryRunAlerts } : {}),
     });
   } catch (err: any) {
     logger.error('Cron driver-documents fatal error', { error: err instanceof Error ? err.message : String(err) });
