@@ -72,7 +72,7 @@ export async function createChecklist(
       .insert({
         vehicle_id: vehicleId,
         driver_id: user.id,
-        organization_id: profile.company_id,
+        company_id: profile.company_id,
         checklist_type: checklistType,
         status: 'EN_COURS',
         items: DEFAULT_CHECKLIST_ITEMS,
