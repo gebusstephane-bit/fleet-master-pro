@@ -24,6 +24,7 @@ import {
 import { useCreateIncident } from '@/hooks/use-incidents';
 import { useVehicles } from '@/hooks/use-vehicles';
 import { useDrivers } from '@/hooks/use-drivers';
+import { useActiveMaintenancesByVehicle } from '@/hooks/use-maintenance';
 import {
   INCIDENT_TYPE_LABELS,
   SEVERITY_LABELS,
@@ -46,6 +47,7 @@ interface FormState {
   // Étape 2 — Les acteurs
   vehicle_id: string;
   driver_id: string;
+  maintenance_record_id: string;
   third_party_involved: boolean;
   third_party_name: string;
   third_party_plate: string;
@@ -69,6 +71,7 @@ const INITIAL_STATE: FormState = {
   injuries_description: '',
   vehicle_id: '',
   driver_id: '',
+  maintenance_record_id: '',
   third_party_involved: false,
   third_party_name: '',
   third_party_plate: '',
@@ -117,6 +120,9 @@ export function IncidentForm() {
 
   const { data: vehicles = [] } = useVehicles();
   const { data: drivers = [] } = useDrivers();
+  const { data: activeMaintenances = [] } = useActiveMaintenancesByVehicle(form.vehicle_id, {
+    enabled: !!form.vehicle_id,
+  });
 
   const set = (key: keyof FormState, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -159,6 +165,7 @@ export function IncidentForm() {
     const payload: CreateIncidentData = {
       vehicle_id: form.vehicle_id,
       driver_id: form.driver_id || null,
+      maintenance_record_id: form.maintenance_record_id || null,
       incident_date: new Date(form.incident_date).toISOString(),
       location_description: form.location_description || null,
       incident_type: form.incident_type as CreateIncidentData['incident_type'],
@@ -240,7 +247,16 @@ export function IncidentForm() {
         >
           <GlassCard className="p-6 space-y-5">
             {step === 0 && <Step1 form={form} set={set} />}
-            {step === 1 && <Step2 form={form} set={set} vehicles={vehicles} drivers={drivers} onVehicleChange={handleVehicleChange} />}
+            {step === 1 && (
+              <Step2 
+                form={form} 
+                set={set} 
+                vehicles={vehicles} 
+                drivers={drivers} 
+                activeMaintenances={activeMaintenances} 
+                onVehicleChange={handleVehicleChange} 
+              />
+            )}
             {step === 2 && <Step3 form={form} set={set} prefilled={insurancePrefilled} />}
           </GlassCard>
         </motion.div>
@@ -376,12 +392,14 @@ function Step2({
   set,
   vehicles,
   drivers,
+  activeMaintenances,
   onVehicleChange,
 }: {
   form: FormState;
   set: (k: keyof FormState, v: string | boolean) => void;
   vehicles: any[];
   drivers: any[];
+  activeMaintenances: any[];
   onVehicleChange: (vehicleId: string) => void;
 }) {
   return (
@@ -420,6 +438,35 @@ function Step2({
           ))}
         </select>
       </div>
+
+      {/* Lien optionnel vers une intervention en cours */}
+      {form.vehicle_id && activeMaintenances.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="space-y-3 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4"
+        >
+          <p className="text-xs font-medium text-blue-400 uppercase tracking-wide">Intervention en cours</p>
+          <div>
+            <label className={labelClass}>Lié à une intervention (optionnel)</label>
+            <select
+              className={selectClass}
+              value={form.maintenance_record_id}
+              onChange={(e) => set('maintenance_record_id', e.target.value)}
+            >
+              <option value="">— Aucune —</option>
+              {activeMaintenances.map((m: any) => (
+                <option key={m.id} value={m.id}>
+                  {m.type} — {m.description?.slice(0, 50)}{m.description?.length > 50 ? '...' : ''}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">
+              Sélectionnez si le sinistre est survenu pendant une intervention en cours
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       <div className="flex items-center gap-3">
         <input

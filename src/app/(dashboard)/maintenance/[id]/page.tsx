@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   ArrowLeft, Calendar, MapPin, Phone, User, 
-  Clock, Euro, FileText, Wrench, CheckCircle2 
+  Clock, Euro, FileText, Wrench, CheckCircle2, AlertTriangle 
 } from 'lucide-react';
 import { updateMaintenanceStatus } from '@/actions/maintenance';
 import { getMaintenanceById } from '@/actions/maintenance-workflow';
@@ -22,6 +22,19 @@ import { CompleteMaintenanceDialog } from '@/components/maintenance/complete-mai
 import { useUser } from '@/hooks/use-user';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { getSupabaseClient } from '@/lib/supabase/client';
+
+interface LinkedIncident {
+  id: string;
+  incident_number: string | null;
+  incident_date: string;
+  incident_type: string;
+  severity: string | null;
+  status: string;
+  location_description: string | null;
+  estimated_damage: number | null;
+  drivers?: { first_name: string; last_name: string } | null;
+}
 
 interface MaintenanceDetail {
   id: string;
@@ -61,6 +74,7 @@ interface MaintenanceDetail {
     start_time: string;
     end_time: string;
   };
+  linkedIncidents?: LinkedIncident[];
 }
 
 export default function MaintenanceDetailPage() {
@@ -83,7 +97,30 @@ export default function MaintenanceDetailPage() {
     try {
       const result = await getMaintenanceById({ id });
       if (result?.data?.success) {
-        setMaintenance(result.data.data);
+        const maintenanceData = result.data.data;
+        
+        // Récupérer les incidents liés à cette maintenance
+        const supabase = getSupabaseClient();
+        const { data: linkedIncidents } = await supabase
+          .from('incidents')
+          .select(`
+            id,
+            incident_number,
+            incident_date,
+            incident_type,
+            severity,
+            status,
+            location_description,
+            estimated_damage,
+            drivers(first_name, last_name)
+          `)
+          .eq('maintenance_record_id', id)
+          .order('incident_date', { ascending: false });
+        
+        setMaintenance({
+          ...maintenanceData,
+          linkedIncidents: linkedIncidents || [],
+        });
       }
     } catch (error) {
       console.error('Erreur chargement:', error);
@@ -392,6 +429,78 @@ export default function MaintenanceDetailPage() {
                 Terminée le {format(new Date(maintenance.completed_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}
               </p>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Incidents liés */}
+      {maintenance.linkedIncidents && maintenance.linkedIncidents.length > 0 && (
+        <Card className="border-amber-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-400">
+              <AlertTriangle className="h-5 w-5" />
+              Incidents liés ({maintenance.linkedIncidents.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {maintenance.linkedIncidents.map((incident) => (
+                <div
+                  key={incident.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-amber-500/5 border border-amber-500/10"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-white">
+                        {incident.incident_number || 'Sans numéro'}
+                      </span>
+                      <Badge 
+                        variant="outline" 
+                        className={
+                          incident.severity === 'très_grave' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                          incident.severity === 'grave' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                          incident.severity === 'moyen' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                          'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                        }
+                      >
+                        {incident.severity || 'Non classé'}
+                      </Badge>
+                      <Badge 
+                        variant="outline"
+                        className={
+                          incident.status === 'clôturé' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                          incident.status === 'en_cours' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                          'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                        }
+                      >
+                        {incident.status}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-slate-400 mt-1">
+                      {format(new Date(incident.incident_date), 'dd MMMM yyyy à HH:mm', { locale: fr })}
+                      {incident.drivers && ` — ${incident.drivers.first_name} ${incident.drivers.last_name}`}
+                    </p>
+                    {incident.location_description && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        {incident.location_description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right ml-4">
+                    {incident.estimated_damage !== null && incident.estimated_damage > 0 && (
+                      <p className="text-sm font-medium text-amber-400">
+                        {incident.estimated_damage.toLocaleString('fr-FR')} €
+                      </p>
+                    )}
+                    <Button variant="ghost" size="sm" asChild className="mt-1">
+                      <Link href={`/incidents/${incident.id}`}>
+                        Voir le sinistre →
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

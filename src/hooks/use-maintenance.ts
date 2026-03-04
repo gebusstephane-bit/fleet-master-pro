@@ -183,6 +183,41 @@ export function useMaintenancesByVehicle(vehicleId: string, options?: { enabled?
   });
 }
 
+// Hook récupération interventions actives par véhicule (pour lien incident)
+export function useActiveMaintenancesByVehicle(vehicleId: string, options?: { enabled?: boolean }) {
+  const { user } = useUserContext();
+  const companyId = user?.company_id;
+  
+  return useQuery({
+    queryKey: [...maintenanceKeys.byVehicle(vehicleId), 'active'],
+    queryFn: async () => {
+      if (!vehicleId || !companyId) return [];
+      
+      const supabase = getSupabaseClient();
+      
+      const { data, error } = await supabase
+        .from('maintenance_records')
+        .select(`
+          *,
+          vehicles(registration_number, brand, model)
+        `)
+        .eq('vehicle_id', vehicleId)
+        .eq('company_id', companyId)
+        .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS'])
+        .order('requested_at', { ascending: false });
+      
+      if (error) {
+        logger.error('Error fetching active maintenances by vehicle', error);
+        throw new Error(error.message);
+      }
+      
+      return (data || []) as unknown as Maintenance[];
+    },
+    enabled: options?.enabled !== false && !!vehicleId && !!companyId,
+    ...cacheTimes.maintenance,
+  });
+}
+
 // Hook création intervention
 export function useCreateMaintenance() {
   const queryClient = useQueryClient();

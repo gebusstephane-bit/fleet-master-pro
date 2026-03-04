@@ -60,6 +60,7 @@ export async function getIncident(id: string): Promise<ActionResult> {
         *,
         vehicles (id, registration_number, brand, model, type),
         drivers (id, first_name, last_name, phone),
+        maintenance_records (id, type, description, status),
         incident_documents (*)
       `)
       .eq('id', id)
@@ -185,6 +186,7 @@ export async function createIncident(formData: CreateIncidentData): Promise<Acti
         company_id: profile.company_id,
         vehicle_id: formData.vehicle_id,
         driver_id: formData.driver_id ?? null,
+        maintenance_record_id: formData.maintenance_record_id ?? null,
         incident_date: formData.incident_date,
         location_description: formData.location_description ?? null,
         incident_type: formData.incident_type,

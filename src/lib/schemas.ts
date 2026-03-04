@@ -143,6 +143,7 @@ export const incidentSchema = z.object({
   id: z.string().uuid().optional(),
   vehicle_id: z.string().uuid('Véhicule requis'),
   driver_id: z.string().uuid().optional().nullable(),
+  maintenance_record_id: z.string().uuid().optional().nullable(),
   incident_date: z.string().min(1, 'Date requise'),
   location_description: z.string().optional().nullable(),
   incident_type: incidentTypeEnum,

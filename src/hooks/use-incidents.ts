@@ -30,6 +30,7 @@ export interface Incident {
   company_id: string;
   vehicle_id: string;
   driver_id: string | null;
+  maintenance_record_id: string | null;
   incident_number: string | null;
   incident_date: string;
   location_description: string | null;
@@ -55,6 +56,7 @@ export interface Incident {
   // Jointures
   vehicles?: { id: string; registration_number: string; brand: string; model: string; type?: string } | null;
   drivers?: { id: string; first_name: string; last_name: string; phone?: string } | null;
+  maintenance_records?: { id: string; type: string; description: string; status: string } | null;
   incident_documents?: IncidentDocument[];
 }
 
