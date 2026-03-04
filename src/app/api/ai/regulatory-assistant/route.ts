@@ -91,8 +91,9 @@ export async function GET(request: NextRequest) {
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
 
+  // @ts-ignore - Table ai_conversations non définie dans Database types
   const { count } = await admin
-    .from('ai_conversations')
+    .from('ai_conversations' as never)
     .select('*', { count: 'exact', head: true })
     .eq('company_id', profile.company_id)
     .gte('created_at', startOfMonth.toISOString());
@@ -159,8 +160,9 @@ export async function POST(request: NextRequest) {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
+    // @ts-ignore - Table ai_conversations non définie dans Database types
     const { count } = await admin
-      .from('ai_conversations')
+      .from('ai_conversations' as never)
       .select('*', { count: 'exact', head: true })
       .eq('company_id', companyId)
       .gte('created_at', startOfMonth.toISOString());
@@ -218,11 +220,12 @@ export async function POST(request: NextRequest) {
 
         // Log RGPD : company_id uniquement, pas de user_id
         const admin = createAdminClient();
-        await admin.from('ai_conversations').insert({
+        // @ts-ignore - Table ai_conversations non définie dans Database types
+        await admin.from('ai_conversations' as never).insert({
           company_id: companyId,
           question: message,
           answer: fullAnswer,
-        });
+        } as never);
 
         controller.close();
       } catch (err) {
