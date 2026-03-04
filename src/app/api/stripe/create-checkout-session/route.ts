@@ -14,6 +14,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { randomUUID } from 'crypto';
 import { withCSRFProtection } from '@/lib/security/csrf';
 import { checkSensitiveRateLimit, getRateLimitHeaders } from '@/lib/security/rate-limiter';
+import { logger } from '@/lib/logger';
 
 interface CheckoutRequest {
   email: string;
@@ -41,11 +42,11 @@ async function hashPassword(password: string): Promise<string> {
 // Handler principal (protégé par CSRF et rate limiting)
 async function handler(request: NextRequest) {
   try {
-    console.log('=== API STRIPE CREATE CHECKOUT (RGPD) ===');
+    logger.debug('=== API STRIPE CREATE CHECKOUT (RGPD) ===');
     
     // Vérifier Stripe configuré
     if (!isStripeConfigured()) {
-      console.log('❌ Stripe not configured');
+      logger.error('Stripe not configured');
       return NextResponse.json(
         { error: 'Stripe not configured' },
         { status: 503 }
@@ -66,7 +67,7 @@ async function handler(request: NextRequest) {
     
     const priceId = priceIdMap[planType?.toLowerCase() as keyof typeof priceIdMap];
     
-    console.log('Champs présents:', {
+    logger.debug('Champs présents:', {
       planType: !!planType,
       email: !!email, 
       companyName: !!tempData?.companyName,
@@ -80,7 +81,7 @@ async function handler(request: NextRequest) {
 
     // Validation
     if (!email || !planType || !tempData?.companyName || !tempData?.password) {
-      console.log('❌ CHAMPS MANQUANTS DÉTECTÉS !');
+      logger.warn('CHAMPS MANQUANTS DÉTECTÉS !');
       return NextResponse.json(
         { error: 'Missing required fields', received: { 
           email: !!email, 
@@ -94,7 +95,7 @@ async function handler(request: NextRequest) {
     
     // Vérification que le priceId existe
     if (!priceId) {
-      console.error('❌ Price ID manquant pour plan:', planType);
+      logger.error('Price ID manquant pour plan:', planType);
       return NextResponse.json(
         { error: 'Configuration prix manquante', plan: planType }, 
         { status: 500 }
@@ -147,8 +148,8 @@ async function handler(request: NextRequest) {
     );
 
     if (pendingError) {
-      console.error('❌ Erreur création pending_registration:', pendingError);
-      console.error('Détails:', {
+      logger.error('Erreur création pending_registration:', pendingError);
+      logger.error('Détails:', {
         code: pendingError.code,
         message: pendingError.message,
         details: pendingError.details,
@@ -163,7 +164,7 @@ async function handler(request: NextRequest) {
     const setupToken = pendingData?.[0]?.setup_token;
     
     if (!setupToken) {
-      console.error('❌ Token non généré');
+      logger.error('Token non généré');
       return NextResponse.json(
         { error: 'Failed to generate setup token' },
         { status: 500 }

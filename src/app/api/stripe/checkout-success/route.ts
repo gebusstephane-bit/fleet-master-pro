@@ -73,13 +73,13 @@ export async function GET(request: NextRequest) {
 
     // SI PAS D'UTILISATEUR = FALLBACK : CRÉER DIRECTEMENT
     if (!userProfile) {
-      console.log('⏳ Webhook pas encore appelé ou échoué - Création directe (fallback)');
+      logger.info('Webhook pas encore appelé ou échoué - Création directe (fallback)');
       
       // Récupérer le setup_token depuis les metadata Stripe
       const setupToken = (session as any).subscription?.metadata?.setup_token || session.metadata?.setup_token;
       
       if (!setupToken) {
-        console.error('Pas de setup_token dans les metadata Stripe');
+        logger.error('Pas de setup_token dans les metadata Stripe');
         return NextResponse.redirect(new URL('/register?error=missing_token', request.url));
       }
 
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
         .single() as { data: PendingRegistration | null; error: any };
 
       if (pendingError || !pending) {
-        console.error('Token invalide ou expiré:', pendingError?.message);
+        logger.error('Token invalide ou expiré:', pendingError?.message);
         return NextResponse.redirect(new URL('/register?error=token_invalid', request.url));
       }
 
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
       if (authError || !authData.user) {
         // Si l'utilisateur existe déjà (conflit)
         if (authError?.message?.includes('already been registered')) {
-          console.log('⚠️ Utilisateur existe déjà, récupération...');
+          logger.warn('Utilisateur existe déjà, récupération...');
           const { data: existingProfile } = await supabase
             .from('profiles')
             .select('id, email, company_id')
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
             userProfile = existingProfile;
           }
         } else {
-          console.error('Erreur création utilisateur:', authError?.message);
+          logger.error('Erreur création utilisateur:', authError?.message);
           return NextResponse.redirect(new URL('/register?error=creation_failed', request.url));
         }
       } else {
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
           stripeCustomerId = (session as any).customer_id;
         }
         
-        console.log('📊 Données entreprise:', {
+        logger.debug('Données entreprise:', {
           name: pending.company_name?.substring(0, 30),
           nameLength: pending.company_name?.length,
           email: pending.email?.substring(0, 30),
@@ -196,7 +196,7 @@ export async function GET(request: NextRequest) {
         if (companyError) {
           // Rollback
           await supabase.auth.admin.deleteUser(userId);
-          console.error('❌ Erreur création entreprise:', companyError);
+          logger.error('Erreur création entreprise:', companyError);
           return NextResponse.redirect(new URL('/register?error=company_failed', request.url));
         }
 
@@ -214,7 +214,7 @@ export async function GET(request: NextRequest) {
           // Rollback
           await supabase.auth.admin.deleteUser(userId);
           await supabase.from('companies').delete().eq('id', company.id);
-          console.error('❌ Erreur création profil:', profileError);
+          logger.error('Erreur création profil:', profileError);
           return NextResponse.redirect(new URL('/register?error=profile_failed', request.url));
         }
 
@@ -260,7 +260,7 @@ export async function GET(request: NextRequest) {
           .eq('id', pending.id);
 
         userProfile = { id: userId, email: pending.email, company_id: company.id };
-        console.log('✅ Utilisateur créé avec succès (fallback)');
+        logger.info('Utilisateur créé avec succès (fallback)');
       }
     }
 

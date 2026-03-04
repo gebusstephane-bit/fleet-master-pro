@@ -5,6 +5,7 @@ import { PostHogProvider } from 'posthog-js/react';
 import { Suspense, useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useCookieConsent } from '@/hooks/use-cookie-consent';
+import { logger } from '@/lib/logger';
 
 /**
  * Composant de suivi des pages PostHog
@@ -78,20 +79,20 @@ export function PHProvider({ children }: { children: React.ReactNode }) {
           loaded(ph) {
             ph.opt_in_capturing();
             setIsInitialized(true);
-            console.info('[PostHog] Initialisé avec consentement utilisateur');
+            logger.info('[PostHog] Initialisé avec consentement utilisateur');
           },
         });
       } else if (posthog.has_opted_out_capturing?.()) {
         // Réactiver si l'utilisateur a changé d'avis
         posthog.opt_in_capturing();
-        console.info('[PostHog] Capturation réactivée (consentement donné)');
+        logger.info('[PostHog] Capturation réactivée (consentement donné)');
       }
     } else {
       // S'assurer que PostHog est désactivé si pas de consentement
       if (posthog.__loaded && posthog.has_opted_in_capturing?.()) {
         posthog.opt_out_capturing();
         // PostHog ne persiste pas de données si opt_out
-        console.info('[PostHog] Opt-out effectué (pas de consentement)');
+        logger.info('[PostHog] Opt-out effectué (pas de consentement)');
       }
     }
 
