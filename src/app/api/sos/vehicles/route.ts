@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,12 +62,12 @@ export async function GET(request: NextRequest) {
 
     // Debug: log toutes les colonnes du premier véhicule pour voir la structure
     if (vehicles && vehicles.length > 0) {
-      console.log('SOS Vehicles - Structure:', Object.keys(vehicles[0]));
-      console.log('SOS Vehicles - Premier véhicule:', vehicles[0]);
+      logger.debug('SOS Vehicles - Structure:', Object.keys(vehicles[0]));
+      logger.debug('SOS Vehicles - Premier véhicule:', vehicles[0]);
     }
 
     if (vehiclesError) {
-      console.error('Error fetching vehicles:', vehiclesError);
+      logger.error('Error fetching vehicles:', vehiclesError);
       return NextResponse.json(
         { error: 'Erreur lors de la recuperation des vehicules' },
         { status: 500 }
