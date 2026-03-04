@@ -72,8 +72,9 @@ export default function ChecklistPage() {
         setVehicleId(driver.current_vehicle_id);
 
         // Chercher une checklist EN_COURS pour ce véhicule
+        // @ts-ignore - Table driver_checklists non typée dans Database
         const { data: existing } = await supabase
-          .from('driver_checklists')
+          .from('driver_checklists' as never)
           .select('*')
           .eq('driver_id', user.id)
           .eq('vehicle_id', driver.current_vehicle_id)
@@ -83,8 +84,9 @@ export default function ChecklistPage() {
           .maybeSingle();
 
         if (existing) {
-          setChecklist(existing as ChecklistData);
-          setItems(existing.items as ChecklistItem[]);
+          const checklistData = existing as unknown as ChecklistData;
+          setChecklist(checklistData);
+          setItems(checklistData.items as ChecklistItem[]);
         } else {
           // Créer une nouvelle checklist
           const result = await createChecklist(driver.current_vehicle_id, 'DEPART');
