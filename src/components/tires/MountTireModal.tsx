@@ -26,7 +26,7 @@ interface MountTireModalProps {
 }
 
 const TODAY = new Date().toISOString().split('T')[0];
-const ALL_DIMS = [...new Set(Object.values(STANDARD_DIMENSIONS).flat())].sort();
+const ALL_DIMS = Array.from(new Set(Object.values(STANDARD_DIMENSIONS).flat())).sort();
 
 // ----------------------------------------------------------------
 

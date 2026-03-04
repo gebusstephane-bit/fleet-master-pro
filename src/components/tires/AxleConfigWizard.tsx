@@ -44,7 +44,7 @@ export function AxleConfigWizard({
 
   // Extraire les essieux uniques de la config sélectionnée
   const uniqueAxles = selectedConfig
-    ? [...new Set(selectedConfig.positions.map(p => p.axle))]
+    ? Array.from(new Set(selectedConfig.positions.map(p => p.axle)))
     : [];
 
   function getStandardDimsForAxle(axle: string, config: AxleConfiguration): string[] {
