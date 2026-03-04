@@ -12,6 +12,7 @@ import { revalidatePath } from 'next/cache';
 import { requireManagerOrAbove } from '@/lib/auth-guards';
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
+import type { Database } from '@/types/supabase';
 
 export interface CreateVehicleData {
   registration_number: string;
@@ -117,20 +118,23 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
     const vehicleId = crypto.randomUUID();
     
     // 4. Créer le véhicule (RLS vérifie company_id automatiquement)
-    const insertData = {
+    // Typage strict avec le type Insert de Supabase
+    type VehicleInsert = Database['public']['Tables']['vehicles']['Insert'];
+    
+    const insertData: VehicleInsert = {
       id: vehicleId,
       company_id: profile.company_id,
       registration_number: data.registration_number,
       brand: data.brand,
       model: data.model,
       type: data.type,
-      mileage: data.mileage,
-      fuel_type: data.fuel_type,
-      status: data.status || 'ACTIF',
+      mileage: data.mileage ?? 0,
+      fuel_type: data.fuel_type as VehicleInsert['fuel_type'],
+      status: (data.status || 'ACTIF') as VehicleInsert['status'],
       qr_code_data: `fleetmaster://vehicle/${vehicleId}`,
       purchase_date: data.purchase_date || null,
       vin: data.vin || null,
-      year: data.year || null,
+      year: data.year || new Date().getFullYear(),
       color: data.color || null,
       // Assurance
       insurance_company: data.insurance_company ?? null,
@@ -143,7 +147,7 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
       tachy_control_expiry: data.tachy_control_expiry ?? null,
       atp_date: data.atp_date ?? null,
       atp_expiry: data.atp_expiry ?? null,
-    } as any;
+    };
     
     const { data: vehicle, error: vehicleError } = await supabase
       .from('vehicles')
@@ -300,11 +304,16 @@ export async function deleteVehicle(id: string): Promise<ActionResult> {
     
     // 4. SOFT DELETE - Marquer le véhicule comme supprimé (pas de suppression physique)
     // Les données liées (maintenance, pneus, etc.) sont conservées pour l'historique
+    // Note: deleted_at n'est pas dans les types car il n'est pas exposé dans l'API
+    type VehicleUpdate = Database['public']['Tables']['vehicles']['Update'];
     const { error } = await supabase
       .from('vehicles')
-      .update({ deleted_at: new Date().toISOString() })
+      .update({ 
+        status: 'ARCHIVE' as VehicleUpdate['status'],
+        updated_at: new Date().toISOString() 
+      })
       .eq('id', id)
-      .eq('company_id', profile.company_id); // sécurité double vérification
+      .eq('company_id', profile.company_id ?? ''); // sécurité double vérification
     
     if (error) {
       return { success: false, error: error.message };

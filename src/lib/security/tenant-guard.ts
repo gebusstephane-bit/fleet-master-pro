@@ -9,6 +9,19 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import type { Database } from '@/types/supabase';
+
+// Type helper pour les tables avec company_id
+ type TenantTable = Extract<
+  keyof Database['public']['Tables'],
+  | 'vehicles'
+  | 'drivers'
+  | 'maintenance_records'
+  | 'maintenance_agenda'
+  | 'vehicle_documents'
+  | 'vehicle_inspections'
+  | 'driver_documents'
+>;
 
 /**
  * Récupère le company_id de l'utilisateur connecté depuis son token JWT
@@ -49,19 +62,23 @@ export async function getUserCompanyId(): Promise<string | null> {
  * @param companyId - Company_id de l'utilisateur connecté
  */
 export async function verifyResourceOwnership(
-  table: string,
+  table: TenantTable,
   resourceId: string,
   companyId: string
 ): Promise<boolean> {
   try {
     const supabase = await createClient();
     
-    const { data, error } = await (supabase as any)
+    // Requête typée - on utilise une approche générique car Supabase
+    // attend des types spécifiques pour chaque table
+    type TableRow = Database['public']['Tables'][typeof table]['Row'];
+    
+    const { data, error } = await supabase
       .from(table)
-      .select('id')
-      .eq('id', resourceId)
-      .eq('company_id', companyId)
-      .single();
+      .select<'id', Pick<TableRow, 'id'>>('id')
+      .eq('id' as string, resourceId)
+      .eq('company_id' as string, companyId)
+      .maybeSingle();
     
     if (error || !data) {
       console.warn(`[TenantGuard] Ressource ${resourceId} non trouvée ou accès refusé`);
