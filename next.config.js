@@ -16,7 +16,7 @@ const nextConfig = {
     ignoreDuringBuilds: true, // Warnings autorisés en build (erreurs TS restent bloquantes)
   },
   typescript: {
-    ignoreBuildErrors: true, // CORRECTION CHIRURGICALE: Erreurs TS préexistantes non liées aux bugs corrigés
+    ignoreBuildErrors: false, // STRICT MODE ACTIVÉ - 0 erreurs TypeScript
   },
 
   // ============================================
