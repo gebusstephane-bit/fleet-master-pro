@@ -347,11 +347,12 @@ export async function GET(request: NextRequest) {
 
           if (vehicle) {
             // 3. Mettre à jour le véhicule (avec maintenance_ended_at pour traçabilité)
+            // @ts-ignore - Colonne maintenance_ended_at existante en DB mais non typée
             const { error: updateErr } = await supabase
               .from('vehicles')
               .update({
                 maintenance_ended_at: record.completed_at || new Date().toISOString(),
-              })
+              } as never)
               .eq('id', vehicle.id);
 
             if (updateErr) throw new Error(updateErr.message);
