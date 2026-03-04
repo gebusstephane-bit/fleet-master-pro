@@ -7,17 +7,6 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
-import type { SupabaseClient } from '@supabase/supabase-js';
-
-// Helper pour appeler une RPC non typée
-function callUntypedRpc(
-  supabase: SupabaseClient,
-  fnName: string,
-  args?: Record<string, unknown>
-) {
-  return (supabase as unknown as { rpc: (name: string, args?: Record<string, unknown>) => ReturnType<SupabaseClient['rpc']> })
-    .rpc(fnName, args);
-}
 
 export async function syncCompanyWithSubscription(companyId?: string) {
   try {
@@ -73,7 +62,7 @@ export async function getSubscriptionMismatch() {
     const supabase = createAdminClient();
     
     // Récupérer les incohérences
-    const { data, error } = await callUntypedRpc(supabase, 'check_subscription_sync');
+    const { data, error } = await supabase.rpc('check_subscription_sync');
     
     if (error) {
       // Fallback si la fonction RPC n'existe pas
@@ -97,7 +86,7 @@ export async function getSubscriptionMismatch() {
       return { success: true, mismatches: mismatches || [] };
     }
     
-    return { success: true, mismatches: (data as unknown as unknown[]) || [] };
+    return { success: true, mismatches: data || [] };
   } catch (error) {
     return { 
       success: false, 
