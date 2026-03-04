@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Printer, Download, QrCode, Share2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 
 interface VehicleQRCodeProps {
   vehicleId: string;
@@ -223,7 +224,7 @@ export function VehicleQRCode({
           url: vehicleUrl,
         });
       } catch (err) {
-        console.log('Partage annulé');
+        logger.debug('Partage annulé');
       }
     } else {
       // Copier dans le presse-papier

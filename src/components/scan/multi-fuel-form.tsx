@@ -18,6 +18,7 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { logger } from '@/lib/logger';
 import { 
   Fuel, 
   ArrowLeft, 
@@ -95,8 +96,8 @@ export function MultiFuelForm({ vehicleId, accessToken, vehicleInfo }: MultiFuel
     }
 
     // DEBUG: Log ce qui est envoyé
-    console.log('[MULTI_FUEL] Session data:', JSON.stringify(sessionData, null, 2));
-    console.log('[MULTI_FUEL] Fuels:', sessionData.fuels.map(f => ({ type: f.type, liters: f.liters })));
+    logger.debug('[MULTI_FUEL] Session data:', JSON.stringify(sessionData, null, 2));
+    logger.debug('[MULTI_FUEL] Fuels:', sessionData.fuels.map(f => ({ type: f.type, liters: f.liters })));
 
     setIsSubmitting(true);
     setError(null);
@@ -111,11 +112,11 @@ export function MultiFuelForm({ vehicleId, accessToken, vehicleInfo }: MultiFuel
         stationName: sessionData.stationName,
       });
 
-      console.log('[MULTI_FUEL] Résultat RPC:', result);
+      logger.debug('[MULTI_FUEL] Résultat RPC:', result);
 
       // Si échec, essayer l'insertion directe (fallback)
       if (!result?.data?.success) {
-        console.log('[MULTI_FUEL] Fallback sur insertion directe...');
+        logger.debug('[MULTI_FUEL] Fallback sur insertion directe...');
         result = await createFuelSessionDirect({
           vehicleId,
           accessToken,
@@ -123,7 +124,7 @@ export function MultiFuelForm({ vehicleId, accessToken, vehicleInfo }: MultiFuel
           driverName: sessionData.driverName,
           stationName: sessionData.stationName,
         });
-        console.log('[MULTI_FUEL] Résultat direct:', result);
+        logger.debug('[MULTI_FUEL] Résultat direct:', result);
       }
 
       if (result?.data?.success) {
@@ -140,7 +141,7 @@ export function MultiFuelForm({ vehicleId, accessToken, vehicleInfo }: MultiFuel
         setError('Erreur lors de l\'enregistrement - vérifiez la console');
       }
     } catch (err: any) {
-      console.error('[MULTI_FUEL] Erreur:', err);
+      logger.error('[MULTI_FUEL] Erreur:', err);
       setError(err.message || 'Erreur lors de l\'enregistrement');
     } finally {
       setIsSubmitting(false);

@@ -10,6 +10,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { PLAN_LIMITS } from '@/lib/plans';
 import { checkSensitiveRateLimit, getRateLimitHeaders } from '@/lib/security/rate-limiter';
 import { withCSRFProtection } from '@/lib/security/csrf';
+import { logger } from '@/lib/logger';
 
 interface RegisterTrialRequest {
   companyName: string;
@@ -214,7 +215,7 @@ async function handler(request: NextRequest) {
       },
     });
 
-    console.log(`✅ User registered with trial: ${email} (Company: ${company.id})`);
+    logger.info(`User registered with trial: ${email} (Company: ${company.id})`);
 
     const duration = Date.now() - startTime;
 
@@ -231,7 +232,7 @@ async function handler(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Register with trial error:', error);
+    logger.error('Register with trial error:', error);
     return NextResponse.json(
       { error: error.message || 'Erreur lors de l\'inscription' },
       { status: 500 }

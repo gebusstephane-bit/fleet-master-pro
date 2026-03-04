@@ -84,7 +84,7 @@ export function SOSGarageCard({ vehicles }: SOSGarageCardProps) {
 
   const handleSearchAnyway = () => {
     // Forcer la recherche standard même si une règle s'applique
-    console.log('Recherche forcée ignorée pour l\'instant');
+    logger.debug('Recherche forcée ignorée pour l\'instant');
   };
 
   const renderResult = () => {

@@ -11,6 +11,7 @@ import { notFound } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getSimpleKPIs, getKPIsWithFallback } from '@/actions/dashboard-simple';
 import { getDashboardKPIs } from '@/actions/dashboard-production';
+import { logger } from '@/lib/logger';
 
 export default function DashboardTestPage() {
   // Protection: page uniquement accessible en développement
@@ -27,22 +28,22 @@ export default function DashboardTestPage() {
 
   useEffect(() => {
     async function testAll() {
-      console.log('🧪 [TEST] Démarrage des tests...');
+      logger.debug('[TEST] Démarrage des tests...');
       
       // Test 1: Simple (sans filtre)
-      console.log('🧪 [TEST] Test getSimpleKPIs...');
+      logger.debug('[TEST] Test getSimpleKPIs...');
       const simple = await getSimpleKPIs();
-      console.log('🧪 [TEST] Résultat simple:', simple);
+      logger.debug('[TEST] Résultat simple:', simple);
       
       // Test 2: Avec fallback
-      console.log('🧪 [TEST] Test getKPIsWithFallback...');
+      logger.debug('[TEST] Test getKPIsWithFallback...');
       const fallback = await getKPIsWithFallback();
-      console.log('🧪 [TEST] Résultat fallback:', fallback);
+      logger.debug('[TEST] Résultat fallback:', fallback);
       
       // Test 3: Production
-      console.log('🧪 [TEST] Test getDashboardKPIs...');
+      logger.debug('[TEST] Test getDashboardKPIs...');
       const production = await getDashboardKPIs();
-      console.log('🧪 [TEST] Résultat production:', production);
+      logger.debug('[TEST] Résultat production:', production);
       
       setResults({ simple, fallback, production });
       setLoading(false);

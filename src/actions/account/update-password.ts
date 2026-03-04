@@ -10,6 +10,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export interface UpdatePasswordInput {
   currentPassword: string;
@@ -101,14 +102,14 @@ export async function updatePassword(input: UpdatePasswordInput): Promise<Update
     });
 
     if (updateError) {
-      console.error('[UpdatePassword] Erreur lors de la mise à jour:', updateError);
+      logger.error('[UpdatePassword] Erreur lors de la mise à jour:', updateError);
       return { 
         success: false, 
         error: updateError.message || 'Erreur lors de la mise à jour du mot de passe' 
       };
     }
 
-    console.info(`[UpdatePassword] Mot de passe mis à jour pour user=${user.id}`);
+    logger.info(`[UpdatePassword] Mot de passe mis à jour pour user=${user.id}`);
 
     return {
       success: true,
@@ -116,7 +117,7 @@ export async function updatePassword(input: UpdatePasswordInput): Promise<Update
     };
 
   } catch (error) {
-    console.error('[UpdatePassword] Erreur inattendue:', error);
+    logger.error('[UpdatePassword] Erreur inattendue:', error);
     
     if (error instanceof Error) {
       return {

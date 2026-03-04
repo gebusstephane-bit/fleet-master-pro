@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,11 +49,11 @@ export default function CompanyPage() {
     
     const loadCompany = async () => {
       setIsLoading(true);
-      console.log('[CompanyPage] Loading company for user:', user.id);
+      logger.debug('[CompanyPage] Loading company for user:', user.id);
       const result = await getCompany(user.id);
-      console.log('[CompanyPage] Result:', result);
+      logger.debug('[CompanyPage] Result:', result);
       if (result.data) {
-        console.log('[CompanyPage] Company data:', result.data);
+        logger.debug('[CompanyPage] Company data:', result.data);
         setFormData({
           name: result.data.name || '',
           siret: result.data.siret || '',
@@ -72,7 +73,7 @@ export default function CompanyPage() {
           monthly_report_recipients: (result.data.monthly_report_recipients as 'ADMIN' | 'ADMIN_AND_DIRECTORS') ?? 'ADMIN',
         });
       } else if (result.error) {
-        console.error('[CompanyPage] Error:', result.error);
+        logger.error('[CompanyPage] Error:', result.error);
         toast.error(result.error);
       }
       setIsLoading(false);
@@ -103,7 +104,7 @@ export default function CompanyPage() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    console.log('[CompanyPage] File selected:', file?.name, file?.type, file?.size);
+    logger.debug('[CompanyPage] File selected:', file?.name, file?.type, file?.size);
     if (!file || !user?.id) return;
 
     setIsUploading(true);
@@ -111,7 +112,7 @@ export default function CompanyPage() {
     formData.append('logo', file);
 
     const result = await uploadCompanyLogo(user.id, formData);
-    console.log('[CompanyPage] Upload result:', result);
+    logger.debug('[CompanyPage] Upload result:', result);
     
     if (result.error) {
       toast.error(result.error);

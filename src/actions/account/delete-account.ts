@@ -15,6 +15,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { stripe } from '@/lib/stripe/stripe';
+import { logger } from '@/lib/logger';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 export interface DeleteAccountInput {
@@ -58,7 +59,7 @@ export async function deleteAccount(input: DeleteAccountInput) {
 
     const companyId = profile.company_id;
 
-    console.info(`[RGPD] Début suppression compte user=${userId}, company=${companyId}`);
+    logger.info(`[RGPD] Début suppression compte user=${userId}, company=${companyId}`);
 
     const supabaseAdmin = createAdminClient();
 
@@ -87,9 +88,9 @@ export async function deleteAccount(input: DeleteAccountInput) {
             comment: reason || 'Suppression du compte utilisateur (RGPD Article 17)',
           },
         });
-        console.info(`[RGPD] Abonnement Stripe annulé: ${stripeSubscriptionId}`);
+        logger.info(`[RGPD] Abonnement Stripe annulé: ${stripeSubscriptionId}`);
       } catch (stripeError) {
-        console.warn(`[RGPD] Erreur annulation Stripe:`, stripeError);
+        logger.warn(`[RGPD] Erreur annulation Stripe:`, stripeError);
       }
     }
 
@@ -127,7 +128,7 @@ export async function deleteAccount(input: DeleteAccountInput) {
       // Supprimer l'entreprise
       await supabaseAdmin.from('companies').delete().eq('id', companyId);
 
-      console.info(`[RGPD] Données métier supprimées pour company=${companyId}`);
+      logger.info(`[RGPD] Données métier supprimées pour company=${companyId}`);
     } else {
       // Si pas de company_id, supprimer uniquement le profil de l'utilisateur
       await supabaseAdmin.from('profiles').delete().eq('id', userId);
@@ -140,17 +141,17 @@ export async function deleteAccount(input: DeleteAccountInput) {
     const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userId);
     
     if (deleteAuthError) {
-      console.error(`[RGPD] Erreur suppression auth user:`, deleteAuthError);
+      logger.error(`[RGPD] Erreur suppression auth user:`, deleteAuthError);
       return { error: 'Erreur lors de la suppression du compte utilisateur', success: false };
     }
 
-    console.info(`[RGPD] Utilisateur auth supprimé: ${userId}`);
+    logger.info(`[RGPD] Utilisateur auth supprimé: ${userId}`);
 
     // ═══════════════════════════════════════════════════════════════
     // ÉTAPE 5: Journalisation RGPD
     // ═══════════════════════════════════════════════════════════════
     
-    console.info('[RGPD] Audit log - Compte supprimé:', {
+    logger.info('[RGPD] Audit log - Compte supprimé:', {
       user_id: userId,
       company_id: companyId,
       reason: reason || 'Demande utilisateur (Article 17 RGPD)',
@@ -167,7 +168,7 @@ export async function deleteAccount(input: DeleteAccountInput) {
     };
 
   } catch (error) {
-    console.error('[RGPD] Erreur lors de la suppression du compte:', error);
+    logger.error('[RGPD] Erreur lors de la suppression du compte:', error);
     
     if (error instanceof Error) {
       return { 
