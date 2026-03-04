@@ -15,6 +15,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { scanPublicActionClient } from '@/lib/safe-action';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 // ============================================
 // SCHÉMAS DE VALIDATION
@@ -306,7 +307,7 @@ export const createFuelSession = scanPublicActionClient
       mileage: f.mileage,
     }));
     
-    console.log('[PUBLIC_SCAN] Appel create_fuel_session:', {
+    logger.debug('[PUBLIC_SCAN] Appel create_fuel_session:', {
       vehicleId: parsedInput.vehicleId,
       fuelsCount: fuelsData.length,
       driverName: parsedInput.driverName,
@@ -324,11 +325,11 @@ export const createFuelSession = scanPublicActionClient
       });
     
     if (error) {
-      console.error('[PUBLIC_SCAN] Erreur RPC create_fuel_session:', error);
+      logger.error('[PUBLIC_SCAN] Erreur RPC create_fuel_session:', error);
       throw new Error(`Erreur: ${error.message}`);
     }
     
-    console.log('[PUBLIC_SCAN] Réponse create_fuel_session:', data);
+    logger.debug('[PUBLIC_SCAN] Réponse create_fuel_session:', data);
     
     // La fonction retourne un JSONB qu'il faut parser si c'est une string
     const result = typeof data === 'string' ? JSON.parse(data) : data;

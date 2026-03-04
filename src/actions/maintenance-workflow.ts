@@ -9,6 +9,7 @@ import { sendEmail } from '@/lib/email';
 import { authActionClient } from '@/lib/safe-action';
 import { createClient } from '@/lib/supabase/server';
 import { recalculatePredictionsForVehicle } from '@/lib/maintenance-predictor';
+import { logger } from '@/lib/logger';
 
 
 // ============================================
@@ -513,7 +514,7 @@ export const completeMaintenance = authActionClient
     const isATP = descriptionLower.includes('atp') || 
                   descriptionLower.includes('attestation transporteur');
     
-    console.log('[MAINTENANCE-WORKFLOW] Détection CT/Tachy/ATP:', { 
+    logger.debug('[MAINTENANCE-WORKFLOW] Détection CT/Tachy/ATP:', { 
       description: maintenance.description, 
       type: maintenance.type,
       isCT, 
@@ -543,15 +544,15 @@ export const completeMaintenance = authActionClient
           .eq('id', maintenance.vehicle_id);
           
         if (updateError) {
-          console.error('[MAINTENANCE-WORKFLOW] Erreur SQL maj fiche véhicule:', updateError);
+          logger.error('[MAINTENANCE-WORKFLOW] Erreur SQL maj fiche véhicule:', updateError);
         } else {
-          console.log('[MAINTENANCE-WORKFLOW] Date réglementaire mise à jour avec succès:', vehicleUpdate);
+          logger.debug('[MAINTENANCE-WORKFLOW] Date réglementaire mise à jour avec succès:', vehicleUpdate);
         }
       } catch (vehicleError) {
-        console.error('[MAINTENANCE-WORKFLOW] Exception maj fiche véhicule:', vehicleError);
+        logger.error('[MAINTENANCE-WORKFLOW] Exception maj fiche véhicule:', vehicleError);
       }
     } else {
-      console.log('[MAINTENANCE-WORKFLOW] Pas de mise à jour réglementaire (pas CT/Tachy détecté)');
+      logger.debug('[MAINTENANCE-WORKFLOW] Pas de mise à jour réglementaire (pas CT/Tachy détecté)');
     }
     
     // 5. Recalcul immédiat des prédictions (CORRECTION P1)
@@ -559,7 +560,7 @@ export const completeMaintenance = authActionClient
     try {
       await recalculatePredictionsForVehicle(maintenance.vehicle_id)
     } catch (recalcError) {
-      console.error('[MAINTENANCE] Recalcul prédictions non critique:', recalcError)
+      logger.error('[MAINTENANCE] Recalcul prédictions non critique:', recalcError)
     }
     
     // 4. Email confirmation à tous

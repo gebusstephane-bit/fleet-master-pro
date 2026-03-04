@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PLAN_LIMITS } from '@/lib/plans';
+import { logger } from '@/lib/logger';
 
 // Configuration
 const ESSENTIAL_VEHICLE_LIMIT = 1; // Limite après expiration de l'essai
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     const supabase = createAdminClient();
     const now = new Date().toISOString();
 
-    console.log(`[check-trials] Début vérification à ${new Date().toISOString()}`);
+    logger.info(`[check-trials] Début vérification à ${new Date().toISOString()}`);
 
     // 1. RÉCUPÉRER LES ESSAIS EXPIRÉS
     const { data: expiredTrials, error: fetchError } = await supabase
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
       .lt('trial_ends_at', now);
 
     if (fetchError) {
-      console.error('[check-trials] Erreur récupération essais expirés:', fetchError);
+      logger.error('[check-trials] Erreur récupération essais expirés:', fetchError);
       return NextResponse.json(
         { error: 'Failed to fetch expired trials', details: fetchError.message },
         { status: 500 }
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!expiredTrials || expiredTrials.length === 0) {
-      console.log('[check-trials] Aucun essai expiré trouvé');
+      logger.debug('[check-trials] Aucun essai expiré trouvé');
       return NextResponse.json({
         success: true,
         message: 'No expired trials found',
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    console.log(`[check-trials] ${expiredTrials.length} essai(s) expiré(s) trouvé(s)`);
+    logger.info(`[check-trials] ${expiredTrials.length} essai(s) expiré(s) trouvé(s)`);
 
     // 2. DOWNGRADER CHAQUE ESSAI EXPIRÉ
     const results = [];
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
 
     for (const trial of expiredTrials) {
       try {
-        console.log(`[check-trials] Traitement company ${trial.company_id}...`);
+        logger.debug(`[check-trials] Traitement company ${trial.company_id}...`);
 
         // 2a. Mettre à jour la subscription
         const { error: subError } = await supabase
@@ -136,10 +137,10 @@ export async function GET(request: NextRequest) {
           success: true,
         });
 
-        console.log(`[check-trials] ✓ Company ${trial.company_id} downgradée avec succès`);
+        logger.info(`[check-trials] ✓ Company ${trial.company_id} downgradée avec succès`);
 
       } catch (error: any) {
-        console.error(`[check-trials] ✗ Erreur company ${trial.company_id}:`, error);
+        logger.error(`[check-trials] ✗ Erreur company ${trial.company_id}:`, error);
         errors.push({
           companyId: trial.company_id,
           error: error.message,
@@ -150,7 +151,7 @@ export async function GET(request: NextRequest) {
     // 3. ENVOYER LES NOTIFICATIONS (optionnel - peut être fait via email service)
     // Pour l'instant, on se contente de logger
     if (results.length > 0) {
-      console.log(`[check-trials] ${results.length} downgrades effectués`);
+      logger.info(`[check-trials] ${results.length} downgrades effectués`);
     }
 
     const duration = Date.now() - startTime;
@@ -165,7 +166,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('[check-trials] Erreur critique:', error);
+    logger.error('[check-trials] Erreur critique:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }

@@ -218,7 +218,7 @@ export function ImportWizard({ type, open, onClose }: ImportWizardProps) {
           setPreviewRows(normalizedRows.slice(0, 5));
           setPreviewHeaders(headers);
           setStep(3);
-          setValidation(validateRows(normalizedRows, type));
+          setValidation(validateImportRows(normalizedRows, type));
         } catch (e) {
           setFileError(
             `Erreur de lecture Excel : ${e instanceof Error ? e.message : String(e)}`
