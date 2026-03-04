@@ -5,7 +5,6 @@ import { z } from 'zod';
 
 import { authActionClient, idSchema } from '@/lib/safe-action';
 import { createClient } from '@/lib/supabase/server';
-import { logger } from '@/lib/logger';
 
 const createFuelRecordSchema = z.object({
   vehicle_id: z.string().uuid(),
