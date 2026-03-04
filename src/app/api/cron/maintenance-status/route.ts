@@ -122,18 +122,33 @@ export async function GET(request: NextRequest) {
 
   try {
     // 1. RDV programmés aujourd'hui (statut confirmé)
-    // Note: on vérifie rdv_date ET scheduled_date pour être sûr de ne rien manquer
-    const { data: todayRdvs, error: rdvErr } = await supabase
-      .from('maintenance_records')
-      .select('id, vehicle_id, company_id, rdv_time')
-      .or(`rdv_date.eq.${todayStr},scheduled_date.eq.${todayStr}`)
-      .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS']);
+    // On fait DEUX requêtes séparées car la syntaxe OR avec dates est fragile
+    const [{ data: rdvsByDate }, { data: rdvsByScheduled }] = await Promise.all([
+      // Requête 1 : par rdv_date
+      supabase
+        .from('maintenance_records')
+        .select('id, vehicle_id, company_id, rdv_time')
+        .eq('rdv_date', todayStr)
+        .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS']),
+      // Requête 2 : par scheduled_date
+      supabase
+        .from('maintenance_records')
+        .select('id, vehicle_id, company_id, rdv_time')
+        .eq('scheduled_date', todayStr)
+        .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS'])
+    ]);
 
-    if (rdvErr) {
-      logger.error('Étape A: erreur lecture maintenance_records', { error: rdvErr instanceof Error ? rdvErr.message : String(rdvErr) });
-    } else if (todayRdvs && todayRdvs.length > 0) {
+    // Fusionner et dédupliquer les résultats
+    const todayRdvs = [...(rdvsByDate || []), ...(rdvsByScheduled || [])];
+    const uniqueRdvs = Array.from(
+      new Map(todayRdvs.map(r => [r.id, r])).values()
+    );
+
+    logger.info(`[DEBUG] Étape A: ${rdvsByDate?.length || 0} par rdv_date + ${rdvsByScheduled?.length || 0} par scheduled_date = ${uniqueRdvs.length} uniques`);
+
+    if (uniqueRdvs.length > 0) {
       // Dédupliquer les véhicules (un véhicule peut avoir plusieurs records)
-      const vehicleIds = Array.from(new Set(todayRdvs.map((r) => r.vehicle_id)));
+      const vehicleIds = Array.from(new Set(uniqueRdvs.map((r) => r.vehicle_id)));
       stats.vehicles_to_maintenance = vehicleIds.length;
 
       // 2. Parmi ces véhicules, ne prendre que ceux encore actifs
@@ -164,7 +179,7 @@ export async function GET(request: NextRequest) {
             }
 
             // 4. Log dans vehicle_status_history
-            const linkedRecord = todayRdvs.find((r) => r.vehicle_id === vehicle.id);
+            const linkedRecord = uniqueRdvs.find((r) => r.vehicle_id === vehicle.id);
             await supabase
               .from('vehicle_status_history' as any)
               .insert({
