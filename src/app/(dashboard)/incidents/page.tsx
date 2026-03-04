@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Plus, FileWarning, Euro, Car, Users, Trash2, Eye } from 'lucide-react';
+import { Plus, FileWarning, Euro, Car, Users, Trash2, Eye, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GlassCard, MetricCard } from '@/components/ui/glass-card';
 import { useIncidents, useDeleteIncident } from '@/hooks/use-incidents';
@@ -15,6 +15,7 @@ import {
   INCIDENT_TYPE_LABELS,
 } from '@/components/incidents/incident-status-badge';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export default function IncidentsPage() {
   const router = useRouter();
@@ -154,15 +155,23 @@ export default function IncidentsPage() {
         {isLoading ? (
           <div className="p-8 text-center text-slate-500">Chargement...</div>
         ) : filtered.length === 0 ? (
-          <div className="p-12 text-center">
-            <FileWarning className="mx-auto h-12 w-12 text-slate-600 mb-4" />
-            <p className="text-slate-400 font-medium">Aucun sinistre trouvé</p>
-            <p className="text-slate-500 text-sm mt-1">
-              {incidents.length === 0
-                ? 'Déclarez votre premier sinistre'
-                : 'Modifiez les filtres pour voir plus de résultats'}
-            </p>
-          </div>
+          <EmptyState
+            icon={ShieldAlert}
+            title={incidents.length === 0 ? 'Aucun sinistre' : 'Aucun résultat'}
+            description={
+              incidents.length === 0
+                ? 'Aucun sinistre n\'a encore été déclaré. Déclarez votre premier incident.'
+                : 'Modifiez les filtres pour voir plus de résultats.'
+            }
+            action={
+              incidents.length === 0
+                ? {
+                    label: 'Déclarer un sinistre',
+                    onClick: () => router.push('/incidents/new'),
+                  }
+                : undefined
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

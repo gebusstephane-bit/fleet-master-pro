@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertTriangle, CircleCheck, Settings, PlusCircle,
-  TrendingDown, History, Euro,
+  TrendingDown, History, Euro, CircleOff,
 } from 'lucide-react';
 import {
   getVehicleTireState, getVehicleTireHistory, getTireCosts,
@@ -24,6 +24,7 @@ import { AxleConfigWizard } from './AxleConfigWizard';
 import { MountTireModal } from './MountTireModal';
 import { UnmountTireModal } from './UnmountTireModal';
 import { DepthCheckModal, type DepthCheckRow } from './DepthCheckModal';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // ----------------------------------------------------------------
 
@@ -287,9 +288,12 @@ export function VehicleTiresTab({ vehicleId, vehicleType, vehicleCurrentKm, onAl
             </CardHeader>
             <CardContent>
               {tireState.activeMountings.length === 0 ? (
-                <div className="text-center py-8 text-slate-500 text-sm">
-                  Aucun pneu monté — cliquez sur une position dans le schéma
-                </div>
+                <EmptyState
+                  icon={CircleOff}
+                  title="Aucun pneu monté"
+                  description="Cliquez sur une position dans le schéma pour monter un pneu."
+                  className="py-8"
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">

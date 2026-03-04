@@ -13,7 +13,8 @@ import { VehicleWithDriver, useVehiclesInfinite } from '@/hooks/use-vehicles-pag
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Truck, AlertTriangle } from 'lucide-react';
+import { Loader2, Truck, AlertTriangle, Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface VehicleListVirtualProps {
   statusFilter?: string;
@@ -30,6 +31,7 @@ const statusColors: Record<string, string> = {
 
 // @ts-ignore
 export function VehicleListVirtual({ statusFilter, onVehicleClick }: VehicleListVirtualProps) {
+  const router = useRouter();
   const {
     data,
     fetchNextPage,
@@ -98,9 +100,27 @@ export function VehicleListVirtual({ statusFilter, onVehicleClick }: VehicleList
 
   if (allVehicles.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-        <Truck className="h-12 w-12 mb-2" />
-        <p>Aucun véhicule trouvé</p>
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <div className="rounded-full bg-slate-100 p-4 mb-4">
+          <Truck className="h-8 w-8 text-slate-500" />
+        </div>
+        <h3 className="text-lg font-semibold mb-1">
+          {statusFilter ? 'Aucun véhicule trouvé' : 'Aucun véhicule'}
+        </h3>
+        <p className="text-sm text-slate-500 max-w-xs mb-4">
+          {statusFilter 
+            ? 'Modifiez les filtres pour voir plus de résultats.' 
+            : 'Commencez par ajouter votre premier véhicule à la flotte.'}
+        </p>
+        {!statusFilter && (
+          <Button 
+            onClick={() => router.push('/vehicles/new')}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Ajouter un véhicule
+          </Button>
+        )}
       </div>
     );
   }
