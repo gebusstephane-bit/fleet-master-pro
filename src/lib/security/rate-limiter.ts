@@ -16,6 +16,7 @@
  */
 
 import { headers } from "next/headers";
+import { logger } from '@/lib/logger';
 import {
   checkRedisRateLimit,
   isRedisConfigured,
@@ -128,7 +129,7 @@ export interface RateLimitResult {
  * Implémentation du rate limiting en mémoire (fallback).
  * Utilisé uniquement si Redis est indisponible.
  */
-function checkRateLimitMemory(key: string, config: RateLimitConfig): RateLimitResult {
+function checkRateLimitMemory(key: string, config: RateLimitConfig | { limit: number; windowMs: number }): RateLimitResult {
   const now = Date.now();
   const record = rateLimitStore.get(key);
 
@@ -303,7 +304,7 @@ export async function rateLimitMiddleware({
     // Si des limites personnalisées sont fournies, utiliser rate limit mémoire spécifique
     if (customLimit && windowSeconds) {
       const ip = await getClientIP();
-      const customConfig = { limit: customLimit, windowMs: windowSeconds * 1000 };
+      const customConfig: { limit: number; windowMs: number } = { limit: customLimit, windowMs: windowSeconds * 1000 };
       result = checkRateLimitMemory(`custom:${ip}`, customConfig);
     } else if (isSensitive) {
       const ip = await getClientIP();
