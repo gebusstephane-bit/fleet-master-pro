@@ -12,6 +12,7 @@ import { createMaintenanceRequest } from '@/actions/maintenance-workflow';
 import { Plus, Wrench, AlertTriangle, Euro, Building2, Car, CheckCircle } from 'lucide-react';
 import { useVehicles } from '@/hooks/use-vehicles';
 import { toast } from 'sonner';
+import { getReadableError } from '@/lib/error-messages';
 
 interface CreateRequestDialogProps {
   open: boolean;
@@ -94,7 +95,7 @@ export function CreateRequestDialog({
       }
     } catch (error: any) {
       console.error('Erreur:', error);
-      toast.error(error.message || 'Une erreur est survenue');
+      toast.error(getReadableError(error));
     } finally {
       setLoading(false);
     }

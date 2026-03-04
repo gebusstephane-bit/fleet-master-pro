@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { FuelRecord, FuelFilters } from '@/types/fuel';
 import { generateFuelCSV, downloadCSV, generateFuelPDF } from '@/lib/export-utils';
+import { getReadableError } from '@/lib/error-messages';
 
 interface FuelExportButtonsProps {
   records: FuelRecord[];
@@ -35,7 +36,7 @@ export function FuelExportButtons({ records, selectedIds, filters }: FuelExportB
       toast.success(`${dataToExport.length} enregistrement(s) exporté(s) en CSV`);
     } catch (error: any) {
       console.error('[Export CSV] Erreur:', error);
-      toast.error(error?.message || 'Erreur lors de l\'export CSV');
+      toast.error(getReadableError(error));
     } finally {
       setIsExportingCSV(false);
     }
@@ -61,7 +62,7 @@ export function FuelExportButtons({ records, selectedIds, filters }: FuelExportB
       toast.success('Rapport PDF généré');
     } catch (error: any) {
       console.error('[Export PDF] Erreur:', error);
-      toast.error(error?.message || 'Erreur lors de l\'export PDF');
+      toast.error(getReadableError(error));
     } finally {
       setIsExportingPDF(false);
     }

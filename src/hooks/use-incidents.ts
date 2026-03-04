@@ -98,7 +98,7 @@ export function useIncidents() {
       return (result.data ?? []) as Incident[];
     },
     enabled: !!companyId,
-    staleTime: cacheTimes.short,
+    staleTime: 2 * 60 * 1000, // 2 min
   });
 }
 
@@ -111,7 +111,7 @@ export function useIncident(id: string) {
       return result.data as Incident;
     },
     enabled: !!id,
-    staleTime: cacheTimes.short,
+    staleTime: 2 * 60 * 1000, // 2 min
   });
 }
 
@@ -133,7 +133,7 @@ export function useIncidentStats() {
       };
     },
     enabled: !!companyId,
-    staleTime: cacheTimes.medium,
+    staleTime: 5 * 60 * 1000, // 5 min
   });
 }
 

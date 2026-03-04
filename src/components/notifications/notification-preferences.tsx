@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { useNotificationPreferences, useUpdateNotificationPreferences } from '@/hooks/use-notifications';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getReadableError } from '@/lib/error-messages';
 
 const notificationTypes = [
   {
@@ -64,8 +65,8 @@ export function NotificationPreferences() {
         toast.success('Préférences enregistrées');
         setLocalChanges({});
       },
-      onError: () => {
-        toast.error('Erreur lors de l\'enregistrement');
+      onError: (err) => {
+        toast.error(getReadableError(err));
       },
     });
   };
