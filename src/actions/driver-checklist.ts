@@ -68,6 +68,7 @@ export async function createChecklist(
     }
 
     const { data, error } = await supabase
+      // @ts-ignore - Table driver_checklists non typée dans Database
       .from('driver_checklists')
       .insert({
         vehicle_id: vehicleId,
@@ -110,6 +111,7 @@ export async function updateChecklistItem(
 
     // Récupérer la checklist
     const { data: checklist, error: fetchError } = await supabase
+      // @ts-ignore - Table driver_checklists non typée dans Database
       .from('driver_checklists')
       .select('items')
       .eq('id', checklistId)
@@ -121,11 +123,12 @@ export async function updateChecklistItem(
     }
 
     // Mettre à jour l'item
-    const items = (checklist.items as ChecklistItem[]).map((item) =>
+    const items = ((checklist as unknown as { items: ChecklistItem[] }).items).map((item) =>
       item.id === itemId ? { ...item, checked, comment } : item
     );
 
     const { data, error } = await supabase
+      // @ts-ignore - Table driver_checklists non typée dans Database
       .from('driver_checklists')
       .update({ items, updated_at: new Date().toISOString() })
       .eq('id', checklistId)
@@ -159,6 +162,7 @@ export async function completeChecklist(
     if (authError || !user) return { success: false, error: 'Non authentifié' };
 
     const { data, error } = await supabase
+      // @ts-ignore - Table driver_checklists non typée dans Database
       .from('driver_checklists')
       .update({
         status: 'TERMINEE',
@@ -195,6 +199,7 @@ export async function getActiveChecklist(vehicleId: string): Promise<ActionResul
     if (authError || !user) return { success: false, error: 'Non authentifié' };
 
     const { data, error } = await supabase
+      // @ts-ignore - Table driver_checklists non typée dans Database
       .from('driver_checklists')
       .select('*')
       .eq('driver_id', user.id)
