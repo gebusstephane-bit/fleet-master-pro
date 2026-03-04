@@ -248,6 +248,11 @@ export interface DashboardStats {
   // Propriétés additionnelles pour l'UI
   upcomingMaintenance?: number;
   overdueMaintenance?: number;
+  // Inspections stats
+  inspections?: {
+    pending: number;
+    completedThisMonth: number;
+  };
 }
 
 // ==================== TYPES ABONNEMENT ====================

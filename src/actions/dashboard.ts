@@ -30,6 +30,10 @@ interface DashboardStats {
     maintenance: number;
     total: number;
   };
+  inspections?: {
+    pending: number;
+    completedThisMonth: number;
+  };
 }
 
 interface ActionResult<T = unknown> {
