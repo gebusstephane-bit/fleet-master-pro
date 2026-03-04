@@ -13,6 +13,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PLAN_LIMITS, PlanType } from '@/lib/plans';
+import { logger } from '@/lib/logger';
+
+// Type local pour la table pending_registrations (table temporaire non dans Database types)
+interface PendingRegistration {
+  id: string;
+  email: string;
+  password_hash: string;
+  company_name: string;
+  first_name?: string;
+  last_name?: string;
+  siret?: string;
+  phone?: string;
+  metadata?: { plan_type?: string };
+  setup_token: string;
+  used: boolean;
+}
 
 // Mapping local pour compatibilité
 const CHECKOUT_PLAN_LIMITS: Record<PlanType, { maxVehicles: number; maxDrivers: number }> = {
@@ -41,7 +57,9 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = createAdminClient();
-    const email = session.customer_details?.email || (session as any).customer?.email;
+    
+    // @ts-expect-error Stripe API customer peut être string ou objet étendu
+    const email = session.customer_details?.email || session.customer?.email;
 
     if (!email) {
       console.error('Pas d\'email dans la session Stripe');
@@ -52,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     // ATTENDRE QUE LE WEBHOOK AIT CRÉÉ L'UTILISATEUR (max 5 secondes)
     let attempts = 0;
-    let userProfile = null;
+    let userProfile: { id: string; email: string; company_id: string | null } | null = null;
 
     while (attempts < 10) {
       const { data: profile } = await supabase
@@ -76,7 +94,10 @@ export async function GET(request: NextRequest) {
       logger.info('Webhook pas encore appelé ou échoué - Création directe (fallback)');
       
       // Récupérer le setup_token depuis les metadata Stripe
-      const setupToken = (session as any).subscription?.metadata?.setup_token || session.metadata?.setup_token;
+      // Stripe API: subscription peut être string ou objet étendu avec metadata
+      const setupToken = (session.subscription && typeof session.subscription === 'object' ? 
+        (session.subscription as { metadata?: { setup_token?: string } }).metadata?.setup_token : undefined) 
+        || session.metadata?.setup_token;
       
       if (!setupToken) {
         logger.error('Pas de setup_token dans les metadata Stripe');
@@ -86,40 +107,34 @@ export async function GET(request: NextRequest) {
       // Setup token trouvé
 
       // Récupérer les données de pending_registrations
-      interface PendingRegistration {
-        id: string;
-        email: string;
-        password_hash: string;
-        company_name: string;
-        first_name?: string;
-        last_name?: string;
-        siret?: string;
-        phone?: string;
-        metadata?: { plan_type?: string };
-      }
+      // Table pending_registrations non définie dans Database types (table temporaire)
+      // @ts-ignore - Table temporaire non typée
       const { data: pending, error: pendingError } = await supabase
-        .from('pending_registrations' as any)
+        .from('pending_registrations' as never)
         .select('*')
         .eq('setup_token', setupToken)
         .eq('used', false)
-        .single() as { data: PendingRegistration | null; error: any };
+        .single();
 
       if (pendingError || !pending) {
         logger.error('Token invalide ou expiré:', pendingError?.message);
         return NextResponse.redirect(new URL('/register?error=token_invalid', request.url));
       }
 
+      // Typage explicite après vérification (cast via unknown pour sécurité)
+      const pendingData = pending as unknown as PendingRegistration;
+
       // Données pending_registrations trouvées
 
       // CRÉER L'UTILISATEUR SUPABASE AUTH
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: pending.email,
-        password: pending.password_hash,
+        email: pendingData.email,
+        password: pendingData.password_hash,
         email_confirm: true,
         user_metadata: {
-          first_name: pending.first_name,
-          last_name: pending.last_name,
-          company_name: pending.company_name,
+          first_name: pendingData.first_name,
+          last_name: pendingData.last_name,
+          company_name: pendingData.company_name,
         },
       });
 
@@ -130,7 +145,7 @@ export async function GET(request: NextRequest) {
           const { data: existingProfile } = await supabase
             .from('profiles')
             .select('id, email, company_id')
-            .eq('email', pending.email)
+            .eq('email', pendingData.email)
             .single();
           
           if (existingProfile) {
@@ -145,7 +160,7 @@ export async function GET(request: NextRequest) {
         // Utilisateur créé
 
         // CRÉER L'ENTREPRISE
-        const planType = (pending.metadata as any)?.plan_type || 'essential';
+        const planType = pendingData.metadata?.plan_type || 'essential';
         const plan = planType.toUpperCase();
         
         // Extraction sécurisée du customer ID
@@ -153,33 +168,34 @@ export async function GET(request: NextRequest) {
         if (typeof session.customer === 'string') {
           stripeCustomerId = session.customer;
         } else if (session.customer && typeof session.customer === 'object') {
-          stripeCustomerId = (session.customer as any).id || '';
+          // Stripe API: customer peut être objet avec id
+          stripeCustomerId = (session.customer as { id?: string }).id || '';
         }
         
         // Si toujours pas d'ID, essayer de le récupérer depuis la session
-        if (!stripeCustomerId && (session as any).customer_id) {
-          stripeCustomerId = (session as any).customer_id;
+        if (!stripeCustomerId && 'customer_id' in session) {
+          stripeCustomerId = (session as { customer_id?: string }).customer_id || '';
         }
         
         logger.debug('Données entreprise:', {
-          name: pending.company_name?.substring(0, 30),
-          nameLength: pending.company_name?.length,
-          email: pending.email?.substring(0, 30),
-          emailLength: pending.email?.length,
+          name: pendingData.company_name?.substring(0, 30),
+          nameLength: pendingData.company_name?.length,
+          email: pendingData.email?.substring(0, 30),
+          emailLength: pendingData.email?.length,
           stripeCustomerId: stripeCustomerId?.substring(0, 30),
           stripeCustomerIdLength: stripeCustomerId?.length,
           planType,
         });
         
         const companyData = {
-          name: pending.company_name?.substring(0, 100),
-          siret: (pending.siret || '')?.substring(0, 20),
+          name: pendingData.company_name?.substring(0, 100),
+          siret: (pendingData.siret || '')?.substring(0, 20),
           address: '',
           postal_code: '',
           city: '',
           country: 'France',
-          phone: (pending.phone || '')?.substring(0, 20),
-          email: pending.email?.substring(0, 100),
+          phone: (pendingData.phone || '')?.substring(0, 20),
+          email: pendingData.email?.substring(0, 100),
           subscription_plan: planType.toUpperCase().substring(0, 20), // ESSENTIAL, PRO, ou UNLIMITED
           subscription_status: 'active',
           max_vehicles: CHECKOUT_PLAN_LIMITS[plan as PlanType]?.maxVehicles || 3,
@@ -203,9 +219,9 @@ export async function GET(request: NextRequest) {
         // CRÉER LE PROFIL
         const { error: profileError } = await supabase.from('profiles').insert({
           id: userId,
-          email: pending.email,
-          first_name: pending.first_name || '',
-          last_name: pending.last_name || '',
+          email: pendingData.email,
+          first_name: pendingData.first_name || '',
+          last_name: pendingData.last_name || '',
           role: 'ADMIN',
           company_id: company.id,
         });
@@ -221,14 +237,14 @@ export async function GET(request: NextRequest) {
         // CRÉER L'ABONNEMENT
         // session.subscription peut être un objet (expand) ou une string
         let stripeSubscriptionId: string | null = null;
-        let subscriptionData: any = null;
+        let subscriptionData: { items?: { data?: { price?: { id?: string } }[] }; current_period_start?: number; current_period_end?: number } | null = null;
         
         if (session.subscription) {
           if (typeof session.subscription === 'string') {
             stripeSubscriptionId = session.subscription;
           } else {
             // C'est un objet (expand)
-            stripeSubscriptionId = (session.subscription as any).id;
+            stripeSubscriptionId = (session.subscription as { id?: string }).id || null;
             subscriptionData = session.subscription;
           }
         }
@@ -241,8 +257,8 @@ export async function GET(request: NextRequest) {
             stripe_price_id: subscriptionData.items?.data?.[0]?.price?.id || '',
             plan: plan,
             status: 'ACTIVE',
-            current_period_start: new Date(subscriptionData.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscriptionData.current_period_end * 1000).toISOString(),
+            current_period_start: new Date((subscriptionData.current_period_start || 0) * 1000).toISOString(),
+            current_period_end: new Date((subscriptionData.current_period_end || 0) * 1000).toISOString(),
             vehicle_limit: CHECKOUT_PLAN_LIMITS[plan as PlanType]?.maxVehicles || 3,
             user_limit: CHECKOUT_PLAN_LIMITS[plan as PlanType]?.maxDrivers || 2,
             features: [],
@@ -250,16 +266,18 @@ export async function GET(request: NextRequest) {
         }
 
         // MARQUER LE TOKEN COMME UTILISÉ
+        const updateData: { used: boolean; user_id: string; used_at: string } = { 
+          used: true, 
+          user_id: userId,
+          used_at: new Date().toISOString()
+        };
+        // @ts-ignore - Table temporaire non typée
         await supabase
-          .from('pending_registrations' as any)
-          .update({ 
-            used: true, 
-            user_id: userId,
-            used_at: new Date().toISOString()
-          })
-          .eq('id', pending.id);
+          .from('pending_registrations' as never)
+          .update(updateData as never)
+          .eq('id', pendingData.id);
 
-        userProfile = { id: userId, email: pending.email, company_id: company.id };
+        userProfile = { id: userId, email: pendingData.email, company_id: company.id };
         logger.info('Utilisateur créé avec succès (fallback)');
       }
     }
@@ -268,18 +286,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/register?error=creation_failed', request.url));
     }
 
-    // REDIRECTION VERS PAGE DE SUCCÈS
-    // Redirection vers page de succès
-    return NextResponse.redirect(
-      new URL(`/register/success?email=${encodeURIComponent(userProfile.email)}`, request.url)
-    );
-
-  } catch (error: any) {
-    console.error('Checkout success error:', error?.message);
-    return NextResponse.redirect(
-      new URL('/register?error=checkout_error', request.url)
-    );
+    // REDIRECTION VERS LE DASHBOARD
+    const redirectUrl = new URL('/login', request.url);
+    redirectUrl.searchParams.set('registered', 'true');
+    redirectUrl.searchParams.set('email', encodeURIComponent(userProfile.email));
+    
+    return NextResponse.redirect(redirectUrl);
+    
+  } catch (error) {
+    console.error('Erreur checkout-success:', error);
+    return NextResponse.redirect(new URL('/register?error=server_error', request.url));
   }
 }
-
-export const dynamic = 'force-dynamic';
