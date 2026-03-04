@@ -123,8 +123,10 @@ export default function AgendaPage() {
     let classes: string[] = [];
 
     if (type === 'maintenance') {
-      if (status === 'CANCELLED') classes.push('event-cancelled');
-      else if (status === 'COMPLETED') classes.push('event-completed');
+      if (status === 'CANCELLED' || status === 'REFUSEE') classes.push('event-cancelled');
+      else if (status === 'COMPLETED' || status === 'TERMINEE') classes.push('event-completed');
+      else if (status === 'RDV_PRIS') classes.push('event-rdv');
+      else if (status === 'EN_COURS') classes.push('event-en-cours');
       else if (event.resource.eventType === 'RETOUR_PREVU') classes.push('event-return');
       else if (event.resource.eventType === 'RAPPEL') classes.push('event-reminder');
       else classes.push('event-default');
@@ -429,7 +431,7 @@ export default function AgendaPage() {
         })}
       </motion.div>
 
-      {/* Légende urgences */}
+      {/* Légende */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -437,16 +439,24 @@ export default function AgendaPage() {
         className="flex flex-wrap gap-3"
       >
         <div className="flex items-center gap-2 text-xs text-slate-400">
-          <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-          Urgent (J-7)
+          <span className="w-2 h-2 rounded-full bg-amber-400" />
+          RDV planifié
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-400">
-          <span className="w-3 h-0.5 bg-slate-500 line-through" />
-          Expiré
+          <span className="w-2 h-2 rounded-full bg-blue-400" />
+          En cours
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-400">
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
           Terminé
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <span className="w-2 h-2 rounded-full bg-red-400" />
+          Refusé / Annulé
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+          Urgent (J-7)
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-400">
           <span className="w-2 h-2 rounded-full bg-violet-400" />

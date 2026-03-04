@@ -53,9 +53,21 @@ export async function GET(request: NextRequest) {
       .eq('company_id', user.company_id)
       .eq('status', 'active');
 
+    // 3. maintenance_records avec rdv_date renseigné (non couverts par maintenance_agenda)
+    const { data: rdvRecords } = await supabase
+      .from('maintenance_records')
+      .select('id, description, rdv_date, rdv_time, status, garage_name, vehicle_id, vehicles(registration_number, brand, model, type)')
+      .eq('company_id', user.company_id)
+      .not('rdv_date', 'is', null);
+
     const now = new Date();
     const urgencyThreshold = addDays(now, 7);
     const events: UnifiedCalendarEvent[] = [];
+
+    // IDs maintenance_records déjà représentés via maintenance_agenda
+    const existingMaintenanceIds = new Set(
+      (maintenanceEvents || []).map((e: any) => e.maintenance_id).filter(Boolean)
+    );
 
     // Maintenance events
     for (const event of maintenanceEvents || []) {
@@ -79,6 +91,36 @@ export async function GET(request: NextRequest) {
         garageName: event.garage_name || null,
         controlDate: null,
         vehicleType: null,
+      });
+    }
+
+    // RDV depuis maintenance_records (rdv_date renseigné mais pas dans maintenance_agenda)
+    for (const r of rdvRecords || []) {
+      if (existingMaintenanceIds.has(r.id)) continue;
+      const rdvTime = (r.rdv_time as string | null) || '08:00:00';
+      const [hh, mm, ss] = rdvTime.split(':').map(Number);
+      const endHour = (hh + 2) % 24;
+      const endTime = `${String(endHour).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss || 0).padStart(2, '0')}`;
+      const vehicle = r.vehicles as { registration_number: string | null; brand: string | null; model: string | null; type: string | null } | null;
+      const rdvDate = r.rdv_date as string;
+      events.push({
+        id: `rdv-${r.id}`,
+        title: `${vehicle?.registration_number ?? 'Véhicule'} — ${(r.description as string | null)?.slice(0, 40) ?? 'RDV'}`,
+        start: `${rdvDate}T${rdvTime}`,
+        end: `${rdvDate}T${endTime}`,
+        type: 'maintenance',
+        vehicleId: (r.vehicle_id as string | null) || null,
+        vehicleRegistration: vehicle?.registration_number || null,
+        vehicleBrand: vehicle?.brand || null,
+        vehicleModel: vehicle?.model || null,
+        urgent: false,
+        overdue: false,
+        maintenanceId: r.id as string,
+        eventType: 'RDV_GARAGE',
+        status: (r.status as string | null) || null,
+        garageName: (r.garage_name as string | null) || null,
+        controlDate: null,
+        vehicleType: vehicle?.type || null,
       });
     }
 
