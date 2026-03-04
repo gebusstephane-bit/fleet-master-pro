@@ -28,7 +28,7 @@ export default function FuelPage() {
   const dismissMutation = useDismissFuelAnomaly();
   const { data: vehiclesData } = useVehicles();
   const createMutation = useCreateFuelRecord();
-  const { user } = useUser();
+  const { data: user } = useUser();
 
   // États locaux
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -251,14 +251,14 @@ export default function FuelPage() {
                   Au: {filters.endDate.toLocaleDateString('fr-FR')}
                 </Badge>
               )}
-              {filters.vehicleIds?.length > 0 && (
+              {(filters.vehicleIds?.length ?? 0) > 0 && (
                 <Badge variant="secondary" className="bg-slate-800">
-                  {filters.vehicleIds.length} véhicule(s)
+                  {filters.vehicleIds?.length ?? 0} véhicule(s)
                 </Badge>
               )}
-              {filters.fuelTypes?.length > 0 && (
+              {(filters.fuelTypes?.length ?? 0) > 0 && (
                 <Badge variant="secondary" className="bg-slate-800">
-                  {filters.fuelTypes.length} type(s) carburant
+                  {filters.fuelTypes?.length ?? 0} type(s) carburant
                 </Badge>
               )}
               <Button
