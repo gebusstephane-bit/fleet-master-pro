@@ -53,25 +53,25 @@ export const checkSubscriptionLimits = authActionClient
     
     // Récupérer l'abonnement avec les compteurs (RLS filtre automatiquement)
     const { data: sub } = await supabase
-      .from('company_subscription' as any)
+      .from('company_subscription')
       .select('*')
       .single();
-    
+
     if (!sub) {
       throw new Error('Abonnement non trouvé');
     }
-    
+
     return {
       success: true,
       data: {
-        plan: (sub as any).plan,
-        vehicleLimit: (sub as any).vehicle_limit,
-        vehicleCount: (sub as any).current_vehicle_count,
-        canAddVehicle: (sub as any).can_add_vehicle,
-        userLimit: (sub as any).user_limit,
-        userCount: (sub as any).current_user_count,
-        canAddUser: (sub as any).can_add_user,
-        periodEnd: (sub as any).current_period_end,
+        plan: sub.plan,
+        vehicleLimit: sub.vehicle_limit,
+        vehicleCount: sub.current_vehicle_count,
+        canAddVehicle: sub.can_add_vehicle,
+        userLimit: sub.user_limit,
+        userCount: sub.current_user_count,
+        canAddUser: sub.can_add_user,
+        periodEnd: sub.current_period_end,
       }
     };
   });

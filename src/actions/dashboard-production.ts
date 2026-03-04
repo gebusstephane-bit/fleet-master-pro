@@ -257,7 +257,7 @@ export async function getMaintenanceAlerts(): Promise<{ data?: MaintenanceAlert[
     }
 
     const alerts: MaintenanceAlert[] = (maintenances || []).map(m => {
-      const rdvDate = (m as any).rdv_date;
+      const rdvDate = m.rdv_date;
       const dueDate = rdvDate ? new Date(rdvDate) : new Date();
       const daysUntil = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -266,7 +266,7 @@ export async function getMaintenanceAlerts(): Promise<{ data?: MaintenanceAlert[
       else if (daysUntil <= 3) {priority = 'critical';}
       else if (daysUntil <= 7) {priority = 'high';}
 
-      const vehicle = (m as any).vehicles;
+      const vehicle = m.vehicles;
 
       return {
         id: m.id,
@@ -324,7 +324,7 @@ export async function getPendingInspections(): Promise<{ data?: InspectionPendin
     const pending: InspectionPending[] = (inspections || []).map(i => {
       const createdDate = new Date(i.created_at);
       const daysPending = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
-      const vehicle = i.vehicles as any;
+      const vehicle = i.vehicles;
 
       return {
         id: i.id,
@@ -383,10 +383,10 @@ export async function getScheduledAppointments(): Promise<{ data?: ScheduledAppo
     }
 
     const appointments: ScheduledAppointment[] = (maintenances || []).map(m => {
-      const rdvDate = (m as any).rdv_date;
+      const rdvDate = m.rdv_date;
       const serviceDate = rdvDate ? new Date(rdvDate) : new Date();
       const daysUntil = Math.ceil((serviceDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      const vehicle = (m as any).vehicles;
+      const vehicle = m.vehicles;
 
       return {
         id: m.id,
@@ -394,7 +394,7 @@ export async function getScheduledAppointments(): Promise<{ data?: ScheduledAppo
         vehicle_name: vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.registration_number})` : 'Véhicule inconnu',
         service_type: translateMaintenanceType(m.type),
         service_date: rdvDate || '',
-        description: (m as any).description || '',
+        description: m.description || '',
         days_until: daysUntil,
       };
     });

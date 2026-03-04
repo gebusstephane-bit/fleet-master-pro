@@ -12,6 +12,7 @@ import { z } from 'zod';
 
 import { authActionClient, idSchema } from '@/lib/safe-action';
 import { createClient } from '@/lib/supabase/server';
+import type { Database } from '@/types/supabase';
 import { maintenanceSchema } from '@/lib/schemas/maintenance';
 
 // Mapping des types frontend vers DB
@@ -70,14 +71,13 @@ export const createMaintenance = authActionClient
     
     // Insérer l'intervention
     // NOTE: Colonnes réelles de maintenance_records (schema vérifié)
-    const insertData: any = {
+    const insertData: Database['public']['Tables']['maintenance_records']['Insert'] = {
       vehicle_id: vehicleId,
       company_id: vehicle.company_id,
       type: (typeToDb[maintenanceData.type] || 'repair'),
       description: maintenanceData.description,
       status: statusMap[maintenanceData.status] || 'DEMANDE_CREEE', // ← Utilise le status reçu (défaut: DEMANDE_CREEE)
-      priority: maintenanceData.priority === 'CRITICAL' ? 'CRITICAL' : 
-                maintenanceData.priority === 'HIGH' ? 'HIGH' : 
+      priority: maintenanceData.priority === 'HIGH' ? 'HIGH' :
                 maintenanceData.priority === 'NORMAL' ? 'NORMAL' : 'LOW',
       requested_at: new Date().toISOString(), // Date de création de la demande
     };
@@ -91,7 +91,7 @@ export const createMaintenance = authActionClient
     }
     // NOTE: completed_date ne remplit que si TERMINEE, sinon c'est scheduled_date
     if (serviceDate && maintenanceData.status === 'TERMINEE') {
-      insertData.completed_date = serviceDate;
+      insertData.completed_at = serviceDate;
       insertData.status = 'TERMINEE';
     } else if (serviceDate) {
       insertData.scheduled_date = serviceDate;
@@ -130,8 +130,8 @@ export const createMaintenance = authActionClient
       
       if (isCT || isTachy || isATP) {
         const completedDate = serviceDate || new Date().toISOString().split('T')[0];
-        const vehicleUpdate: any = {};
-        
+        const vehicleUpdate: Database['public']['Tables']['vehicles']['Update'] = {};
+
         if (isCT) {
           vehicleUpdate.technical_control_date = completedDate;
         }
@@ -202,7 +202,7 @@ export const getMaintenancesByVehicle = authActionClient
     const supabase = await createClient();
     
     const { data, error } = await supabase
-      .from('maintenance_with_details' as any)
+      .from('maintenance_with_details')
       .select('*')
       .eq('vehicle_id', parsedInput.vehicleId)
       .order('requested_at', { ascending: false });

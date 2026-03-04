@@ -103,12 +103,21 @@ export async function getIncidentStats(): Promise<ActionResult> {
       return { success: false, error: error.message };
     }
 
-    const data = incidents ?? [];
-    const totalCost = data.reduce((sum, i: any) => sum + (i.estimated_damage ?? 0), 0);
+    type IncidentStatRow = {
+      id: string;
+      incident_date: string;
+      estimated_damage: number | null;
+      vehicle_id: string | null;
+      driver_id: string | null;
+      vehicles: { id: string; registration_number: string; brand: string; model: string } | null;
+      drivers: { id: string; first_name: string; last_name: string } | null;
+    };
+    const data = (incidents ?? []) as unknown as IncidentStatRow[];
+    const totalCost = data.reduce((sum, i) => sum + (i.estimated_damage ?? 0), 0);
 
     // Véhicule avec le plus de sinistres
     const vehicleCounts: Record<string, { count: number; label: string }> = {};
-    data.forEach((i: any) => {
+    data.forEach((i) => {
       if (i.vehicle_id && i.vehicles) {
         if (!vehicleCounts[i.vehicle_id]) {
           vehicleCounts[i.vehicle_id] = {
@@ -123,7 +132,7 @@ export async function getIncidentStats(): Promise<ActionResult> {
 
     // Conducteur avec le plus de sinistres
     const driverCounts: Record<string, { count: number; label: string }> = {};
-    data.forEach((i: any) => {
+    data.forEach((i) => {
       if (i.driver_id && i.drivers) {
         if (!driverCounts[i.driver_id]) {
           driverCounts[i.driver_id] = {
@@ -138,7 +147,7 @@ export async function getIncidentStats(): Promise<ActionResult> {
 
     // Par mois (12 derniers mois)
     const byMonth: Record<string, number> = {};
-    data.forEach((i: any) => {
+    data.forEach((i) => {
       const month = new Date(i.incident_date).toLocaleString('fr-FR', { month: 'short', year: '2-digit' });
       byMonth[month] = (byMonth[month] ?? 0) + 1;
     });

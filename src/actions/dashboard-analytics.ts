@@ -54,10 +54,9 @@ export const getDashboardAnalytics = cache(async (
   twelveMonthsAgo.setHours(0, 0, 0, 0);
 
   // Query 1 : Toutes les maintenances de la company sans filtre de date
-  // Sélectionne aussi estimated_cost/final_cost (schéma workflow) en fallback de cost
   const { data: rawData, error: maintError } = await supabase
     .from("maintenance_records")
-    .select("cost, estimated_cost, final_cost, rdv_date, service_date, created_at, status, vehicle_id")
+    .select("cost, final_cost, rdv_date, service_date, created_at, status, vehicle_id")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false })
     .limit(500);
@@ -69,10 +68,12 @@ export const getDashboardAnalytics = cache(async (
   // Normaliser :
   // - Date : created_at en priorité (toujours dans le passé, toujours renseigné)
   //   rdv_date peut être dans le futur → exclu de la fenêtre rétrospective
-  // - Coût : cost (ancien schema) || estimated_cost || final_cost (workflow)
+  // - Coût : final_cost (coût réel réglé) ?? cost (coût direct) — ne jamais utiliser estimated_cost
+  //   (estimate = devis non payé, gonflait les totaux si cost=0)
+  //   Aligné sur tco-calculator.ts : final_cost ?? cost ?? 0
   const normalizedData = (rawData || []).map(r => ({
-    cost: r.cost || (r as any).estimated_cost || (r as any).final_cost || null,
-    service_date: r.created_at || (r as any).rdv_date || r.service_date,
+    cost: r.final_cost ?? r.cost ?? null,
+    service_date: r.created_at || r.rdv_date || r.service_date || '',
     status: r.status,
   }));
 
@@ -82,7 +83,6 @@ export const getDashboardAnalytics = cache(async (
     .select(`
       vehicle_id,
       cost,
-      estimated_cost,
       final_cost,
       vehicles!inner(registration_number)
     `)
@@ -145,7 +145,7 @@ function aggregateByMonth(
 
     const monthData = months.find((m) => m.month === monthKey);
     if (monthData) {
-      monthData.cost += record.cost || 0; // cost déjà normalisé (cost || estimated_cost || final_cost)
+      monthData.cost += record.cost ?? 0; // cost normalisé : final_cost ?? cost ?? null
       monthData.interventions += 1;
     }
   });
@@ -155,20 +155,20 @@ function aggregateByMonth(
 
 /**
  * Agrège les coûts par véhicule et retourne le top 5
- * Utilise cost || estimated_cost || final_cost pour couvrir les deux schémas
+ * Utilise final_cost ?? cost (aligné sur tco-calculator.ts — jamais estimated_cost)
  */
 function aggregateByVehicle(
   data: Array<{
     vehicle_id: string;
     cost: number | null;
+    final_cost?: number | null;
     vehicles: { registration_number: string } | null;
   }>
 ): TopVehicleData[] {
   const vehicleMap = new Map<string, TopVehicleData>();
 
   data.forEach((record) => {
-    const r = record as any;
-    const cost = r.cost || r.estimated_cost || r.final_cost || 0;
+    const cost = (record.final_cost ?? record.cost) ?? 0;
     const existing = vehicleMap.get(record.vehicle_id);
     if (existing) {
       existing.totalCost += cost;

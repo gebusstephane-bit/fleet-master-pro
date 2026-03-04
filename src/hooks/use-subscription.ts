@@ -130,5 +130,5 @@ export function useCanAddUser() {
 export function useRemainingVehicles() {
   const { data: limits } = useSubscriptionLimits();
   if (!limits) return 0;
-  return Math.max(0, limits.vehicleLimit - limits.vehicleCount);
+  return Math.max(0, (limits.vehicleLimit ?? Infinity) - limits.vehicleCount);
 }

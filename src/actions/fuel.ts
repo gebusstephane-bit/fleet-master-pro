@@ -150,7 +150,7 @@ export const getAllFuelRecords = authActionClient
     logger.debug(`[FUEL] Récupéré ${data?.length || 0} records avec jointures`);
     
     // Formater les données pour correspondre au type FuelRecord
-    const formattedData = (data || []).map((record: any) => ({
+    const formattedData = (data || []).map((record) => ({
       ...record,
       vehicles: record.vehicles || null,
       drivers: record.drivers || null,

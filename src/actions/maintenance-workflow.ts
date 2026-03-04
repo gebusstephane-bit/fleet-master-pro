@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { sendEmail } from '@/lib/email';
 import { authActionClient } from '@/lib/safe-action';
 import { createClient } from '@/lib/supabase/server';
+import type { Database } from '@/types/supabase';
 import { recalculatePredictionsForVehicle } from '@/lib/maintenance-predictor';
 import { logger } from '@/lib/logger';
 
@@ -525,7 +526,7 @@ export const completeMaintenance = authActionClient
     
     if (isCT || isTachy || isATP) {
       const completedDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      const vehicleUpdate: any = {};
+      const vehicleUpdate: Database['public']['Tables']['vehicles']['Update'] = {};
       
       if (isCT) {
         vehicleUpdate.technical_control_date = completedDate;
@@ -609,7 +610,7 @@ export const getMaintenanceRequests = authActionClient
     const supabase = await createClient();
     
     const { data, error } = await supabase
-      .from('maintenance_with_details' as any)
+      .from('maintenance_with_details')
       .select('*')
       .eq('company_id', ctx.user.company_id)
       .order('requested_at', { ascending: false });
@@ -627,7 +628,7 @@ export const getMaintenanceById = authActionClient
     const supabase = await createClient();
     
     const { data: maintenance, error } = await supabase
-      .from('maintenance_with_details' as any)
+      .from('maintenance_with_details')
       .select('*')
       .eq('id', parsedInput.id)
       .eq('company_id', ctx.user.company_id)
@@ -646,13 +647,15 @@ export const getMaintenanceById = authActionClient
     
     // Récupérer l'événement agenda
     const { data: agendaEvent } = await supabase
-      .from('agenda_with_details' as any)
+      .from('agenda_with_details')
       .select('*')
       .eq('maintenance_id', parsedInput.id)
       .eq('company_id', ctx.user.company_id)
       .maybeSingle();
     
-    return { success: true, data: { ...(maintenance as any), history: history || [], agendaEvent } };
+    // NOTE: maintenance_with_details utilise string pour type/priority/status
+    // alors que le composant attend des unions strictes — à aligner dans une session dédiée
+    return { success: true, data: { ...(maintenance as unknown as Record<string, unknown>), history: history || [], agendaEvent } };
   });
 
 export const getAgendaEvents = authActionClient
@@ -664,7 +667,7 @@ export const getAgendaEvents = authActionClient
     const supabase = await createClient();
     
     let query = supabase
-      .from('agenda_with_details' as any)
+      .from('agenda_with_details')
       .select('*')
       .eq('company_id', ctx.user.company_id);
     

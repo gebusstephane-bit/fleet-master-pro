@@ -1183,7 +1183,15 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "inspections_vehicle_id_fkey";
+            columns: ["vehicle_id"];
+            isOneToOne: false;
+            referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          }
+        ];
       };
 
       // ============================================
@@ -2716,7 +2724,29 @@ export interface Database {
           reported_by?: string | null;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "incidents_vehicle_id_fkey";
+            columns: ["vehicle_id"];
+            isOneToOne: false;
+            referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "incidents_driver_id_fkey";
+            columns: ["driver_id"];
+            isOneToOne: false;
+            referencedRelation: "drivers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "incidents_maintenance_record_id_fkey";
+            columns: ["maintenance_record_id"];
+            isOneToOne: false;
+            referencedRelation: "maintenance_records";
+            referencedColumns: ["id"];
+          }
+        ];
       };
 
       // ============================================
@@ -2754,7 +2784,110 @@ export interface Database {
     };
 
     Views: {
-      [_ in never]: never;
+      company_subscription: {
+        Row: {
+          company_id: string;
+          company_name: string;
+          plan: string | null;
+          status: string | null;
+          vehicle_limit: number | null;
+          user_limit: number | null;
+          current_period_end: string | null;
+          stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
+          current_vehicle_count: number;
+          current_user_count: number;
+          can_add_vehicle: boolean;
+          can_add_user: boolean;
+        };
+        Relationships: [];
+      };
+      maintenance_with_details: {
+        Row: {
+          id: string;
+          company_id: string;
+          vehicle_id: string;
+          requested_by: string | null;
+          type: string;
+          description: string;
+          priority: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
+          status: string;
+          requested_at: string;
+          validated_at: string | null;
+          rdv_scheduled_at: string | null;
+          rdv_confirmed_at: string | null;
+          completed_at: string | null;
+          service_date: string | null;
+          garage_name: string | null;
+          garage_address: string | null;
+          garage_phone: string | null;
+          rdv_date: string | null;
+          rdv_time: string | null;
+          estimated_cost: number | null;
+          final_cost: number | null;
+          cost: number | null;
+          quote_document_url: string | null;
+          invoice_document_url: string | null;
+          photos_before: string[] | null;
+          photos_after: string[] | null;
+          notes_request: string | null;
+          notes_validation: string | null;
+          notes_completion: string | null;
+          technician_notes: string | null;
+          validation_token: string | null;
+          rdv_token: string | null;
+          estimated_days: number | null;
+          estimated_hours: number | null;
+          mileage_at_maintenance: number | null;
+          mileage_at_service: number | null;
+          next_service_date: string | null;
+          service_type: string | null;
+          scheduled_date: string | null;
+          performed_by: string | null;
+          parts_replaced: string[] | null;
+          created_at: string;
+          updated_at: string;
+          // Joined from vehicles
+          vehicle_registration: string | null;
+          vehicle_brand: string | null;
+          vehicle_model: string | null;
+          vehicle_mileage: number | null;
+          // Joined from users
+          requester_first_name: string | null;
+          requester_last_name: string | null;
+          requester_email: string | null;
+        };
+        Relationships: [];
+      };
+      agenda_with_details: {
+        Row: {
+          id: string;
+          maintenance_id: string;
+          company_id: string;
+          event_date: string;
+          start_time: string | null;
+          end_time: string | null;
+          title: string;
+          description: string | null;
+          event_type: 'RDV_GARAGE' | 'RETOUR_PREVU' | 'RAPPEL' | null;
+          attendees: string[] | null;
+          status: 'SCHEDULED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+          reminder_sent: boolean;
+          created_at: string;
+          updated_at: string;
+          // Joined from maintenance_records
+          vehicle_id: string | null;
+          garage_name: string | null;
+          garage_address: string | null;
+          garage_phone: string | null;
+          maintenance_type: string | null;
+          priority: string | null;
+          maintenance_status: string | null;
+          // Joined from vehicles
+          vehicle_registration: string | null;
+        };
+        Relationships: [];
+      };
     };
 
     Functions: {

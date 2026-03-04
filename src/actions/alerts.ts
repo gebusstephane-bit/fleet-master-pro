@@ -232,7 +232,7 @@ export const markAlertAsRead = authActionClient
     
     await supabase
       .from('alerts')
-      .update({ status: 'read' } as any)
+      .update({ is_read: true })
       .eq('id', (parsedInput as { id: string }).id);
     
     revalidatePath('/alerts');
@@ -273,8 +273,8 @@ export const markAllAlertsAsRead = authActionClient
     // RLS filtre automatiquement les alertes de l'entreprise
     await supabase
       .from('alerts')
-      .update({ status: 'read' } as any)
-      .eq('status', 'unread');
+      .update({ is_read: true })
+      .eq('is_read', false);
     
     revalidatePath('/alerts');
     return { success: true };

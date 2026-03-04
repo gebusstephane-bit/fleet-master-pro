@@ -104,11 +104,12 @@ export async function getDashboardStats(): Promise<ActionResult<DashboardStats>>
     
     const { data: maintenance } = await supabase
       .from('maintenance_records')
-      .select('cost')
+      .select('cost, final_cost')
       .gte('created_at', startOfMonth.toISOString());
-    
-    const totalFuel = fuel?.reduce((s, r) => s + (r.price_total || 0), 0) || 0;
-    const totalMaint = maintenance?.reduce((s, r) => s + (r.cost || 0), 0) || 0;
+
+    const totalFuel = fuel?.reduce((s, r) => s + (r.price_total ?? 0), 0) ?? 0;
+    // Aligné sur tco-calculator.ts : final_cost (réel réglé) ?? cost (devis)
+    const totalMaint = maintenance?.reduce((s, r) => s + (r.final_cost ?? r.cost ?? 0), 0) ?? 0;
     
     logger.info('getDashboardStats: Données chargées', {
       vehicles: vehicles?.length || 0,

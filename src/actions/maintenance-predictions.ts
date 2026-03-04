@@ -46,7 +46,7 @@ export async function initializePrediction(params: {
   // Récupérer la règle pour calculer les prochaines échéances
   const { data: rule } = await supabase
     .from('maintenance_rules')
-    .select('id, name, priority, interval_km, interval_months, trigger_type')
+    .select('id, name, priority, interval_km, interval_months, trigger_type, alert_km_before, alert_days_before')
     .eq('id', params.ruleId)
     .single()
 
@@ -62,15 +62,15 @@ export async function initializePrediction(params: {
 
   // Calcul prochaine échéance km
   let next_due_km: number | null = null
-  if ((rule as any).interval_km && referenceKm !== null) {
-    next_due_km = referenceKm + (rule as any).interval_km
+  if (rule.interval_km && referenceKm !== null) {
+    next_due_km = referenceKm + rule.interval_km
   }
 
   // Calcul prochaine échéance date
   let next_due_date: string | null = null
-  if ((rule as any).interval_months) {
+  if (rule.interval_months) {
     const nd = new Date(referenceDate)
-    nd.setMonth(nd.getMonth() + (rule as any).interval_months)
+    nd.setMonth(nd.getMonth() + rule.interval_months)
     next_due_date = nd.toISOString().split('T')[0]
   }
 
@@ -83,8 +83,8 @@ export async function initializePrediction(params: {
 
   // Détermination du statut
   let status: 'ok' | 'upcoming' | 'due' | 'overdue' = 'ok'
-  const alertKm = (rule as any).alert_km_before ?? 2000
-  const alertDays = (rule as any).alert_days_before ?? 30
+  const alertKm = rule.alert_km_before ?? 2000
+  const alertDays = rule.alert_days_before ?? 30
   if ((km_until_due !== null && km_until_due <= 0) || (days_until_due !== null && days_until_due <= 0)) {
     status = 'overdue'
   } else if ((km_until_due !== null && km_until_due <= alertKm / 2) || (days_until_due !== null && days_until_due <= alertDays / 2)) {
@@ -164,7 +164,7 @@ export async function initializeAllPredictions(params: {
     )
   )
 
-  const succeeded = results.filter(r => r.status === 'fulfilled' && !(r.value as any).error).length
+  const succeeded = results.filter(r => r.status === 'fulfilled' && !r.value.error).length
   const failed = results.length - succeeded
   return { succeeded, failed }
 }
