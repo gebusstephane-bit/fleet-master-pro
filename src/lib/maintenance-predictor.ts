@@ -336,6 +336,10 @@ export async function predictTopUrgencies(
       ? Math.min(120, Math.round(((p.current_km - p.last_maintenance_km) / (p.estimated_due_km - p.last_maintenance_km)) * 100))
       : 100,
     status: p.status,
+    triggerType: p.trigger_type ?? 'both',
+    intervalKm: p.interval_km ?? null,
+    intervalMonths: p.interval_months ?? null,
+    isInitialized: p.is_initialized ?? false,
   }))
 }
 
