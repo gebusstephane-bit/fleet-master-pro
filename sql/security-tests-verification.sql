@@ -45,7 +45,7 @@ BEGIN
   -- Récupérer un token valide existant
   SELECT qr_code_data INTO v_valid_token 
   FROM vehicles 
-  WHERE status = 'active' 
+  WHERE status = 'ACTIF' 
   LIMIT 1;
   
   IF v_valid_token IS NULL THEN
@@ -76,7 +76,7 @@ DECLARE
 BEGIN
   SELECT id, qr_code_data INTO v_vehicle_id, v_valid_token 
   FROM vehicles 
-  WHERE status = 'active' 
+  WHERE status = 'ACTIF' 
   LIMIT 1;
   
   IF v_valid_token IS NULL THEN
@@ -116,7 +116,7 @@ DECLARE
 BEGIN
   SELECT qr_code_data INTO v_valid_token 
   FROM vehicles 
-  WHERE status = 'active' 
+  WHERE status = 'ACTIF' 
   LIMIT 1;
   
   IF v_valid_token IS NULL THEN
@@ -146,7 +146,7 @@ DECLARE
 BEGIN
   SELECT qr_code_data INTO v_valid_token 
   FROM vehicles 
-  WHERE status = 'active' 
+  WHERE status = 'ACTIF' 
   LIMIT 1;
   
   IF v_valid_token IS NULL THEN
@@ -176,7 +176,7 @@ DECLARE
 BEGIN
   SELECT qr_code_data INTO v_valid_token 
   FROM vehicles 
-  WHERE status = 'active' 
+  WHERE status = 'ACTIF' 
   LIMIT 1;
   
   IF v_valid_token IS NULL THEN
@@ -207,7 +207,7 @@ DECLARE
 BEGIN
   SELECT id, qr_code_data INTO v_vehicle_id, v_valid_token 
   FROM vehicles 
-  WHERE status = 'active' 
+  WHERE status = 'ACTIF' 
   LIMIT 1;
   
   IF v_valid_token IS NULL THEN

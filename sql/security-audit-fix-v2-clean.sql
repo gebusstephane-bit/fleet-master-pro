@@ -71,7 +71,7 @@ BEGIN
   SELECT qr_code_data::text, company_id 
   INTO v_vehicle_token, v_company_id
   FROM vehicles 
-  WHERE id = p_vehicle_id AND status = 'active';
+  WHERE id = p_vehicle_id AND status = 'ACTIF';
   
   IF v_vehicle_token IS NULL THEN
     RETURN jsonb_build_object('success', false, 'error', 'Vehicule non trouve', 'code', 'VEHICLE_NOT_FOUND');
