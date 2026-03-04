@@ -55,7 +55,7 @@ export default async function DriverHomePage() {
   const { data: lastInspection } = await supabase
     .from('inspections')
     .select('id, score, created_at, status')
-    .eq('driver_id', driver?.id)
+    .eq('driver_id', driver?.id || '')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
