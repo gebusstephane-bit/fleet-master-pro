@@ -188,6 +188,7 @@ export default function IncidentDetailPage() {
 
   const getDocumentUrl = (storagePath: string) => {
     const supabase = getSupabaseClient();
+    // @ts-expect-error: Supabase storage return type varies by version
     const { data } = supabase.storage
       .from('incident-documents')
       .createSignedUrl(storagePath, 3600);
