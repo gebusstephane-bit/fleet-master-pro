@@ -82,7 +82,7 @@ export function PublicFuelForm({ vehicleId, accessToken, vehicleInfo }: PublicFu
       });
 
       if (result?.data?.success) {
-        setTicketNumber(result.data.ticketNumber);
+        setTicketNumber(result.data.ticketNumber ?? '');
         setConsumption(result.data.consumption);
         setSuccess(true);
       } else {

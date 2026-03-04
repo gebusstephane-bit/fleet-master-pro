@@ -73,7 +73,7 @@ export function MaintenanceTimeline({ vehicleId, vehicleCurrentKm }: Maintenance
     .slice(0, 10)
     .map((record) => ({
       id: record.id,
-      type: 'past',
+      type: 'past' as const,
       title: record.description.split(' ').slice(0, 3).join(' ') + '...',
       km: record.mileage_at_maintenance,
       date: record.completed_at ? new Date(record.completed_at) : null,
@@ -85,7 +85,7 @@ export function MaintenanceTimeline({ vehicleId, vehicleCurrentKm }: Maintenance
     .slice(0, 10)
     .map((pred) => ({
       id: pred.ruleId,
-      type: 'future',
+      type: 'future' as const,
       title: pred.ruleName,
       km: pred.estimatedDueKm,
       date: pred.estimatedDueDate,

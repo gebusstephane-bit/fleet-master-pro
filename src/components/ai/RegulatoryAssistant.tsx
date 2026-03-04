@@ -143,7 +143,7 @@ export function RegulatoryAssistant({ plan = 'essential' }: RegulatoryAssistantP
     }
   };
 
-  const showCounter = usage && usage.limit !== null;
+  const showCounter = !!usage && usage.limit !== null;
   const isAtLimit = showCounter && (usage.remaining ?? 1) <= 0;
 
   return (
