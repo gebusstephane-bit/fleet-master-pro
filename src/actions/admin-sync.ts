@@ -62,6 +62,7 @@ export async function getSubscriptionMismatch() {
     const supabase = createAdminClient();
     
     // Récupérer les incohérences
+    // @ts-expect-error: RPC check_subscription_sync non définie dans Database types
     const { data, error } = await supabase.rpc('check_subscription_sync');
     
     if (error) {
@@ -86,7 +87,7 @@ export async function getSubscriptionMismatch() {
       return { success: true, mismatches: mismatches || [] };
     }
     
-    return { success: true, mismatches: data || [] };
+    return { success: true, mismatches: (data as unknown as unknown[]) || [] };
   } catch (error) {
     return { 
       success: false, 
