@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+// Type pour la jointure maintenance_predictions + maintenance_rules
+type PredictionWithRule = {
+  status: string
+  is_initialized: boolean
+  last_maintenance_date: string | null
+  days_until_due: number | null
+  maintenance_rules: { name: string; category: string; interval_months: number; interval_km: number } | null
+}
+
 export async function GET(request: NextRequest) {
   const supabase = createAdminClient()
   
@@ -48,7 +57,7 @@ export async function GET(request: NextRequest) {
         tachy_control_date: vehicle.tachy_control_date,
         created_at: vehicle.created_at,
       },
-      predictions: predictions?.map(p => ({
+      predictions: (predictions as unknown as PredictionWithRule[] | null)?.map(p => ({
         rule_name: p.maintenance_rules?.name,
         status: p.status,
         is_initialized: p.is_initialized,
