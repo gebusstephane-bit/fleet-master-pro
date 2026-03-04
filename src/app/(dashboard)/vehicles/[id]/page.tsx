@@ -424,7 +424,7 @@ export default function VehicleDetailPage() {
                   <MaintenanceViewToggle 
                     vehicleId={id}
                     vehicleCurrentKm={vehicle?.mileage ?? 0}
-                    maintenances={maintenances}
+                    maintenances={maintenances || []}
                     maintenanceLoading={maintenanceLoading}
                   />
                 </div>
