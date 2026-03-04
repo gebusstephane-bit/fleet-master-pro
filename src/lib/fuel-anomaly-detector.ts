@@ -92,8 +92,8 @@ export function computeVehicleAverages(
     });
   }
   const averages = new Map<string, number>();
-  for (const [vehicleId, { total, count }] of sums) {
+  sums.forEach(({ total, count }, vehicleId) => {
     if (count > 1) averages.set(vehicleId, total / count);
-  }
+  });
   return averages;
 }
