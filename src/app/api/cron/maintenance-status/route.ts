@@ -5,7 +5,7 @@
  * Configuré dans vercel.json : "0 8 * * *"
  *
  * ÉTAPE A — Passage en "EN_MAINTENANCE" :
- *   Véhicules avec rdv_date = AUJOURD'HUI + status (DEMANDE_CREEE|VALIDEE_DIRECTEUR|RDV_PRIS|EN_COURS)
+ *   Véhicules avec rdv_date <= AUJOURD'HUI (passés ou aujourd'hui) + status (DEMANDE_CREEE|VALIDEE_DIRECTEUR|RDV_PRIS|EN_COURS)
  *   → vehicles.status = 'EN_MAINTENANCE' + log dans vehicle_status_history
  *
  * ÉTAPE B — Retour "actif" automatique :
@@ -121,20 +121,21 @@ export async function GET(request: NextRequest) {
   // ============================================================
 
   try {
-    // 1. RDV programmés aujourd'hui (statut confirmé)
+    // 1. RDV programmés aujourd'hui ou en retard (statut confirmé)
     // On fait DEUX requêtes séparées car la syntaxe OR avec dates est fragile
+    // NOTE: on prend rdv_date <= aujourd'hui (pas seulement =) pour gérer les retards
     const [{ data: rdvsByDate }, { data: rdvsByScheduled }] = await Promise.all([
-      // Requête 1 : par rdv_date
+      // Requête 1 : par rdv_date (aujourd'hui ou passé)
       supabase
         .from('maintenance_records')
         .select('id, vehicle_id, company_id, rdv_time')
-        .eq('rdv_date', todayStr)
+        .lte('rdv_date', todayStr)  // <= aujourd'hui (pas seulement =)
         .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS']),
-      // Requête 2 : par scheduled_date
+      // Requête 2 : par scheduled_date (aujourd'hui ou passé)
       supabase
         .from('maintenance_records')
         .select('id, vehicle_id, company_id, rdv_time')
-        .eq('scheduled_date', todayStr)
+        .lte('scheduled_date', todayStr)  // <= aujourd'hui (pas seulement =)
         .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS'])
     ]);
 
