@@ -110,6 +110,8 @@ export async function GET(request: NextRequest) {
     // Étape B
     vehicles_checked_return: 0,
     vehicles_set_active: 0,
+    // Étape C
+    vehicles_completed_today: 0,
     // Erreurs
     errors: 0,
   };
@@ -312,6 +314,78 @@ export async function GET(request: NextRequest) {
   }
 
   // ============================================================
+  // ÉTAPE C — Correction des maintenances terminées non traitées
+  // ============================================================
+  // Cas : Une maintenance a été marquée TERMINEE aujourd'hui mais le véhicule
+  // n'a jamais été passé en EN_MAINTENANCE (cron qui n'a pas tourné ou RDV créé
+  // directement en TERMINEE). On passe quand même le véhicule en ACTIF.
+  // ============================================================
+
+  try {
+    // 1. Maintenances terminées aujourd'hui
+    const { data: completedToday, error: compErr } = await supabase
+      .from('maintenance_records')
+      .select('id, vehicle_id, company_id, rdv_date, completed_at')
+      .eq('status', 'TERMINEE')
+      .gte('completed_at', todayStr)  // Terminée aujourd'hui
+      .lt('completed_at', todayStr + 'T23:59:59.999Z');
+
+    if (compErr) {
+      logger.error('Étape C: erreur lecture maintenances terminées', { error: compErr instanceof Error ? compErr.message : String(compErr) });
+    } else if (completedToday && completedToday.length > 0) {
+      logger.info(`[DEBUG] Étape C: ${completedToday.length} maintenances terminées aujourd'hui`);
+
+      for (const record of completedToday) {
+        try {
+          // 2. Vérifier si le véhicule est encore en ACTIF (pas passé par EN_MAINTENANCE)
+          const { data: vehicle } = await supabase
+            .from('vehicles')
+            .select('id, company_id, registration_number, status')
+            .eq('id', record.vehicle_id)
+            .eq('status', 'ACTIF')  // Seulement si encore ACTIF
+            .single();
+
+          if (vehicle) {
+            // 3. Mettre à jour le véhicule (avec maintenance_ended_at pour traçabilité)
+            const { error: updateErr } = await supabase
+              .from('vehicles')
+              .update({
+                maintenance_ended_at: record.completed_at || new Date().toISOString(),
+              })
+              .eq('id', vehicle.id);
+
+            if (updateErr) throw new Error(updateErr.message);
+
+            // 4. Log dans l'historique
+            await supabase
+              .from('vehicle_status_history' as any)
+              .insert({
+                vehicle_id: vehicle.id,
+                company_id: vehicle.company_id,
+                old_status: 'ACTIF',
+                new_status: 'ACTIF',
+                reason: `Maintenance terminée le ${todayStr} (véhicule resté ACTIF - traitement tardif)`,
+                maintenance_record_id: record.id,
+                changed_by: 'cron',
+              });
+
+            stats.vehicles_completed_today++;
+            logger.info(
+              `✅ Étape C: ${vehicle.registration_number} — maintenance terminée aujourd'hui (était resté ACTIF)`,
+            );
+          }
+        } catch (err: any) {
+          stats.errors++;
+          logger.error(`❌ Étape C: record ${record.id}`, { error: err instanceof Error ? err.message : String(err) });
+        }
+      }
+    }
+  } catch (err: any) {
+    stats.errors++;
+    logger.error('Étape C fatal', { error: err instanceof Error ? err.message : String(err) });
+  }
+
+  // ============================================================
   // RÉPONSE
   // ============================================================
 
@@ -328,6 +402,10 @@ export async function GET(request: NextRequest) {
     step_b: {
       vehicles_checked: stats.vehicles_checked_return,
       returned_to_active: stats.vehicles_set_active,
+    },
+    step_c: {
+      description: 'Maintenances terminées aujourd\'hui — synchronisation',
+      completed_today: stats.vehicles_completed_today,
     },
     errors: stats.errors,
   });
