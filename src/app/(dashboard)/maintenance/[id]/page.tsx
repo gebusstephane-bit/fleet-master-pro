@@ -119,8 +119,8 @@ export default function MaintenanceDetailPage() {
         
         setMaintenance({
           ...maintenanceData,
-          linkedIncidents: linkedIncidents || [],
-        });
+          linkedIncidents: (linkedIncidents || []) as LinkedIncident[],
+        } as unknown as MaintenanceDetail);
       }
     } catch (error) {
       console.error('Erreur chargement:', error);
