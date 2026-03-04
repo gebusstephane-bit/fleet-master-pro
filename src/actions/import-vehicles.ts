@@ -12,6 +12,7 @@ import { revalidatePath } from 'next/cache';
 import { logger } from '@/lib/logger';
 import { PLANS } from '@/lib/plans';
 import { createClient } from '@/lib/supabase/server';
+import { VehicleImportRowSchema } from '@/lib/import-validators';
 
 export interface VehicleImportRow {
   immatriculation: string;
@@ -126,47 +127,23 @@ export async function importVehiclesBatch(
         const row = batch[j];
         const rowNum = i + j + 1;
 
-        // Validation de base
-        if (!row.immatriculation?.trim()) {
-          errors.push({ row: rowNum, field: 'immatriculation', message: 'Immatriculation requise' });
-          continue;
-        }
-        if (!row.marque?.trim()) {
-          errors.push({ row: rowNum, field: 'marque', message: 'Marque requise' });
-          continue;
-        }
-        if (!row.modele?.trim()) {
-          errors.push({ row: rowNum, field: 'modele', message: 'Modèle requis' });
+        // Validation Zod (sécurité serveur)
+        const zodResult = VehicleImportRowSchema.safeParse(row);
+        if (!zodResult.success) {
+          for (const issue of zodResult.error.issues) {
+            errors.push({
+              row: rowNum,
+              field: String(issue.path[0] ?? 'général'),
+              message: issue.message,
+            });
+          }
           continue;
         }
 
         const mileage = parseInt(row.kilometrage || '0', 10);
-        if (isNaN(mileage) || mileage < 0) {
-          errors.push({ row: rowNum, field: 'kilometrage', message: 'Kilométrage invalide (entier ≥ 0 requis)' });
-          continue;
-        }
-
         const year = row.annee ? parseInt(row.annee, 10) : null;
-
         const typeVehicule = (row.type_vehicule?.trim().toUpperCase() || 'VOITURE');
-        if (!VALID_TYPES.includes(typeVehicule)) {
-          errors.push({
-            row: rowNum,
-            field: 'type_vehicule',
-            message: `Type invalide "${typeVehicule}". Valeurs acceptées : ${VALID_TYPES.join(', ')}`,
-          });
-          continue;
-        }
-
         const carburant = (row.carburant?.trim().toLowerCase() || 'diesel');
-        if (!VALID_FUELS.includes(carburant)) {
-          errors.push({
-            row: rowNum,
-            field: 'carburant',
-            message: `Carburant invalide "${carburant}". Valeurs acceptées : ${VALID_FUELS.join(', ')}`,
-          });
-          continue;
-        }
 
         const vehicleId = crypto.randomUUID();
         const vinValue = row.vin?.trim() || row.numero_serie?.trim() || null;

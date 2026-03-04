@@ -420,7 +420,7 @@ if (typeof globalThis !== "undefined" && !isRedisConfigured()) {
     }
 
     if (cleaned > 0 && process.env.NODE_ENV === "development") {
-      console.log(`[RATE LIMITER] Cleaned ${cleaned} expired entries (memory fallback)`);
+      logger.debug(`[RATE LIMITER] Cleaned ${cleaned} expired entries (memory fallback)`);
     }
   }, 5 * 60 * 1000);
 }

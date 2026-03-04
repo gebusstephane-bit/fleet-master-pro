@@ -14,6 +14,7 @@ import { CardContent, CardDescription, CardHeader, CardTitle } from '@/component
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 
 const loginSchema = z.object({
   email: z.string().email('Adresse email invalide'),
@@ -43,7 +44,7 @@ export function LoginForm() {
     setError(null);
 
     try {
-      console.log('🔑 Tentative connexion...', data.email);
+      logger.debug('Tentative connexion...', data.email);
       
       const supabase = getSupabaseClient();
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -52,12 +53,12 @@ export function LoginForm() {
       });
 
       if (signInError) {
-        console.error('❌ Erreur connexion:', signInError);
+        logger.error('Erreur connexion:', signInError);
         throw signInError;
       }
 
-      console.log('✅ Connexion réussie:', signInData.user?.email);
-      console.log('📝 Session:', signInData.session ? 'présente' : 'absente');
+      logger.debug('Connexion réussie:', signInData.user?.email);
+      logger.debug('Session:', signInData.session ? 'présente' : 'absente');
 
       if (!signInData.session) {
         throw new Error('Pas de session créée');
@@ -71,7 +72,7 @@ export function LoginForm() {
         .single();
       
       const userRole = profile?.role;
-      console.log('👤 Rôle:', userRole);
+      logger.debug('Rôle:', userRole);
 
       // Déterminer la redirection selon le rôle
       let finalRedirect = redirect;
@@ -83,7 +84,7 @@ export function LoginForm() {
 
       // Vérifier que les cookies sont bien créés
       const cookies = document.cookie;
-      console.log('🍪 Cookies:', cookies.includes('sb-') ? 'présents' : 'absents');
+      logger.debug('Cookies:', cookies.includes('sb-') ? 'présents' : 'absents');
 
       setRedirecting(true);
       
@@ -91,11 +92,11 @@ export function LoginForm() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Redirection avec rechargement complet
-      console.log('🚀 Redirection vers:', finalRedirect);
+      logger.debug('Redirection vers:', finalRedirect);
       window.location.assign(finalRedirect);
 
     } catch (err: any) {
-      console.error('❌ Erreur:', err);
+      logger.error('Erreur:', err);
       setError(
         err.message === 'Invalid login credentials'
           ? 'Email ou mot de passe incorrect'

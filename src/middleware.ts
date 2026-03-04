@@ -9,6 +9,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { logger } from "@/lib/logger";
 import { getSuperadminEmail, isSuperadminEmail } from "@/lib/superadmin";
 import {
   checkSensitiveRateLimit,
@@ -358,11 +359,11 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user || !isSuperadminEmail(user.email || '')) {
-      console.log("❌ Middleware: Accès SuperAdmin refusé pour", user?.email);
+      logger.warn("Middleware: Accès SuperAdmin refusé pour", user?.email);
       return NextResponse.redirect(new URL("/404", request.url));
     }
 
-    console.log("✅ Middleware: Accès SuperAdmin accordé à", user.email);
+    logger.debug("Middleware: Accès SuperAdmin accordé à", user.email);
     return response;
   }
 
@@ -506,13 +507,13 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith('/scan');  // Permettre l'accès au carnet d'entretien
     
     if (isDashboardRoute) {
-      console.log('🚖 Chauffeur redirigé vers /driver-app (tentative accès dashboard):', pathname);
+      logger.debug('Chauffeur redirigé vers /driver-app (tentative accès dashboard):', pathname);
       return NextResponse.redirect(new URL('/driver-app', request.url));
     }
     
     // Si le chauffeur tente d'accéder à une route non autorisée
     if (!isAllowedRoute && pathname !== '/') {
-      console.log('🚖 Chauffeur redirigé vers /driver-app:', pathname);
+      logger.debug('Chauffeur redirigé vers /driver-app:', pathname);
       return NextResponse.redirect(new URL('/driver-app', request.url));
     }
   }
@@ -548,7 +549,7 @@ export async function middleware(request: NextRequest) {
     );
 
     if (!isAllowedRoute) {
-      console.log("🚫 Access denied - pending payment:", pathname);
+      logger.warn("Access denied - pending payment:", pathname);
       return NextResponse.redirect(new URL("/payment-pending", request.url));
     }
   }
@@ -559,7 +560,7 @@ export async function middleware(request: NextRequest) {
       !pathname.startsWith("/settings/billing") &&
       !pathname.startsWith("/api/")
     ) {
-      console.log("🚫 Access denied - unpaid:", pathname);
+      logger.warn("Access denied - unpaid:", pathname);
       return NextResponse.redirect(
         new URL("/settings/billing?status=payment_required", request.url)
       );
@@ -569,7 +570,7 @@ export async function middleware(request: NextRequest) {
   // 3. ABONNEMENT ANNULÉ
   if (subscriptionStatus === "canceled") {
     if (!pathname.startsWith("/settings/billing") && !pathname.startsWith("/pricing")) {
-      console.log("🚫 Access denied - canceled:", pathname);
+      logger.warn("Access denied - canceled:", pathname);
       return NextResponse.redirect(
         new URL("/pricing?status=reactivate_required", request.url)
       );
@@ -583,7 +584,7 @@ export async function middleware(request: NextRequest) {
         !pathname.startsWith("/settings/billing") &&
         !pathname.startsWith("/pricing")
       ) {
-        console.log("🚫 Trial expired");
+        logger.warn("Trial expired");
         return NextResponse.redirect(
           new URL("/settings/billing?trial_ended=true", request.url)
         );
@@ -599,16 +600,16 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith("/onboarding") || pathname.startsWith("/api/onboarding");
 
     if (!isOnboardingRoute) {
-      console.log("📋 Redirect to onboarding:", pathname);
+      logger.debug("Redirect to onboarding:", pathname);
       return NextResponse.redirect(new URL("/onboarding", request.url));
     }
   }
 
   // Log configuration Redis au démarrage (une seule fois)
   if (process.env.NODE_ENV === "development" && pathname === "/") {
-    console.log(
+    logger.debug(
       `[MIDDLEWARE] Redis Rate Limiting: ${
-        isRedisConfigured() ? "✅ Activé" : "⚠️ Fallback mémoire"
+        isRedisConfigured() ? "Activé" : "Fallback mémoire"
       }`
     );
   }

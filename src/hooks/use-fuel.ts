@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import {
   createFuelRecord,
   getFuelRecordsByVehicle,
@@ -22,7 +23,7 @@ export function useFuelRecords() {
     queryKey: fuelKeys.lists(),
     queryFn: async () => {
       const result = await getAllFuelRecords();
-      console.log('[useFuelRecords] Raw result:', result);
+      logger.debug('[useFuelRecords] Raw result:', result);
       // Le résultat est sous result.data car c'est une Server Action
       // @ts-ignore
       if (!result?.data?.success) throw new Error(result?.data?.error || 'Erreur');
@@ -37,7 +38,7 @@ export function useFuelRecordsByVehicle(vehicleId: string) {
     queryKey: fuelKeys.byVehicle(vehicleId),
     queryFn: async () => {
       const result = await getFuelRecordsByVehicle({ id: vehicleId });
-      console.log('[useFuelRecordsByVehicle] Raw result:', result);
+      logger.debug('[useFuelRecordsByVehicle] Raw result:', result);
       // @ts-ignore
       if (!result?.data?.success) throw new Error(result?.data?.error || 'Erreur');
       // @ts-ignore
@@ -53,7 +54,7 @@ export function useCreateFuelRecord() {
   return useMutation({
     mutationFn: async (data: Parameters<typeof createFuelRecord>[0]) => {
       const result = await createFuelRecord(data);
-      console.log('[useCreateFuelRecord] Raw result:', result);
+      logger.debug('[useCreateFuelRecord] Raw result:', result);
       // @ts-ignore
       if (!result?.data?.success) throw new Error(result?.data?.error || 'Erreur');
       // @ts-ignore
@@ -74,7 +75,7 @@ export function useFuelStats() {
     queryKey: fuelKeys.stats(),
     queryFn: async () => {
       const result = await getFuelStats();
-      console.log('[useFuelStats] Raw result:', result);
+      logger.debug('[useFuelStats] Raw result:', result);
       // @ts-ignore
       if (!result?.data?.success) throw new Error(result?.data?.error || 'Erreur');
       // @ts-ignore

@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase';
+import { logger } from '@/lib/logger';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -35,10 +36,10 @@ export async function safeQuery<T>(
     limit?: number;
   }
 ): Promise<SafeQueryResult<T>> {
-  console.log(`[safeQuery] START - Table: ${table}, CompanyId: ${companyId?.slice(0, 8)}...`);
+  logger.debug(`[safeQuery] START - Table: ${table}, CompanyId: ${companyId?.slice(0, 8)}...`);
   
   if (!companyId) {
-    console.error('[safeQuery] ERROR: No company_id provided');
+    logger.error('[safeQuery] ERROR: No company_id provided');
     return { data: null, error: new Error('No company_id provided'), debug: { stage: 'no_company_id' } };
   }
 
@@ -46,7 +47,7 @@ export async function safeQuery<T>(
 
   try {
     // Essai 1 : Requête normale avec filtre company_id
-    console.log(`[safeQuery] Attempt 1: Direct query with company_id filter`);
+    logger.debug(`[safeQuery] Attempt 1: Direct query with company_id filter`);
     const startTime = Date.now();
     
     const { data, error } = await supabaseClient
@@ -59,7 +60,7 @@ export async function safeQuery<T>(
       .limit(options?.limit || 1000);
 
     const duration = Date.now() - startTime;
-    console.log(`[safeQuery] Attempt 1 completed in ${duration}ms`, { 
+    logger.debug(`[safeQuery] Attempt 1 completed in ${duration}ms`, { 
       success: !error, 
       dataCount: data?.length,
       errorCode: (error as { code?: string })?.code,
@@ -67,13 +68,13 @@ export async function safeQuery<T>(
     });
 
     if (!error) {
-      console.log(`[safeQuery] SUCCESS: Found ${data?.length || 0} records`);
+      logger.debug(`[safeQuery] SUCCESS: Found ${data?.length || 0} records`);
       return { data: data as T[], error: null, debug: { stage: 'direct_success', count: data?.length } };
     }
 
     // Si erreur de récursion RLS, essayer sans filtre
     if (error.message?.includes('infinite recursion') || (error as { code?: string })?.code === '42P17') {
-      console.warn(`[safeQuery] RLS recursion detected (42P17), trying fallback without filter...`);
+      logger.warn(`[safeQuery] RLS recursion detected (42P17), trying fallback without filter...`);
       
       const fallbackStart = Date.now();
       const { data: allData, error: allError } = await supabaseClient
@@ -85,7 +86,7 @@ export async function safeQuery<T>(
         .limit(options?.limit || 1000);
 
       const fallbackDuration = Date.now() - fallbackStart;
-      console.log(`[safeQuery] Fallback completed in ${fallbackDuration}ms`, {
+      logger.debug(`[safeQuery] Fallback completed in ${fallbackDuration}ms`, {
         success: !allError,
         totalRecords: allData?.length,
         errorCode: (allError as { code?: string })?.code,
@@ -93,7 +94,7 @@ export async function safeQuery<T>(
       });
 
       if (allError) {
-        console.error(`[safeQuery] Fallback also failed:`, allError);
+        logger.error(`[safeQuery] Fallback also failed:`, allError);
         return { 
           data: null, 
           error: allError,
@@ -107,7 +108,7 @@ export async function safeQuery<T>(
 
       // Filtrer côté client
       const filtered = (allData || []).filter((item) => (item as CompanyIdItem).company_id === companyId);
-      console.log(`[safeQuery] Fallback SUCCESS: ${filtered.length}/${allData?.length || 0} records match company_id`);
+      logger.debug(`[safeQuery] Fallback SUCCESS: ${filtered.length}/${allData?.length || 0} records match company_id`);
       
       return { 
         data: filtered as T[], 
@@ -121,11 +122,11 @@ export async function safeQuery<T>(
     }
 
     // Autre erreur
-    console.error(`[safeQuery] Direct query failed with non-RLS error:`, error);
+    logger.error(`[safeQuery] Direct query failed with non-RLS error:`, error);
     return { data: null, error, debug: { stage: 'direct_failed', error } };
     
   } catch (e) {
-    console.error(`[safeQuery] EXCEPTION:`, e);
+    logger.error(`[safeQuery] EXCEPTION:`, e);
     const caughtError = e instanceof Error ? e : new Error(String(e));
     return { data: null, error: caughtError, debug: { stage: 'exception', error: caughtError } };
   }

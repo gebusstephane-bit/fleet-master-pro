@@ -12,6 +12,7 @@ import { revalidatePath } from 'next/cache';
 import { logger } from '@/lib/logger';
 import { PLANS } from '@/lib/plans';
 import { createClient } from '@/lib/supabase/server';
+import { DriverImportRowSchema } from '@/lib/import-validators';
 
 export interface DriverImportRow {
   nom: string;
@@ -142,25 +143,16 @@ export async function importDriversBatch(
         const row = batch[j];
         const rowNum = i + j + 1;
 
-        // Validation de base
-        if (!row.nom?.trim()) {
-          errors.push({ row: rowNum, field: 'nom', message: 'Nom requis' });
-          continue;
-        }
-        if (!row.prenom?.trim()) {
-          errors.push({ row: rowNum, field: 'prenom', message: 'Prénom requis' });
-          continue;
-        }
-        if (!row.email?.trim() || !row.email.includes('@')) {
-          errors.push({ row: rowNum, field: 'email', message: 'Email invalide' });
-          continue;
-        }
-        if (!row.telephone?.trim()) {
-          errors.push({ row: rowNum, field: 'telephone', message: 'Téléphone requis' });
-          continue;
-        }
-        if (!row.numero_permis?.trim()) {
-          errors.push({ row: rowNum, field: 'numero_permis', message: 'N° permis requis' });
+        // Validation Zod (sécurité serveur)
+        const zodResult = DriverImportRowSchema.safeParse(row);
+        if (!zodResult.success) {
+          for (const issue of zodResult.error.issues) {
+            errors.push({
+              row: rowNum,
+              field: String(issue.path[0] ?? 'général'),
+              message: issue.message,
+            });
+          }
           continue;
         }
 

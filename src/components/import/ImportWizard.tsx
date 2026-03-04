@@ -34,6 +34,10 @@ import {
   getDriversCSVTemplate,
 } from '@/lib/import-templates';
 import {
+  validateImportRows,
+  type ImportValidationResult,
+} from '@/lib/import-validators';
+import {
   importVehiclesBatch,
   type VehicleImportRow,
   type ImportRowError as VehicleImportError,
@@ -55,11 +59,6 @@ interface ImportWizardProps {
 }
 
 type ParsedRow = Record<string, string>;
-
-interface ValidationResult {
-  validRows: ParsedRow[];
-  errorRows: { row: number; issues: string[] }[];
-}
 
 // ─── Config par type ──────────────────────────────────────────────────────────
 
@@ -111,58 +110,6 @@ const CONFIG = {
   },
 } as const;
 
-// ─── Validation locale (pré-import) ──────────────────────────────────────────
-
-function validateRows(rows: ParsedRow[], type: ImportType): ValidationResult {
-  const cfg = CONFIG[type];
-  const validRows: ParsedRow[] = [];
-  const errorRows: { row: number; issues: string[] }[] = [];
-
-  rows.forEach((row, idx) => {
-    const issues: string[] = [];
-
-    // Champs requis
-    for (const field of cfg.requiredFields) {
-      if (!row[field]?.trim()) {
-        issues.push(`"${cfg.fieldLabels[field] ?? field}" est requis`);
-      }
-    }
-
-    // Validations spécifiques véhicules
-    if (type === 'vehicles') {
-      const km = parseInt(row.kilometrage || '', 10);
-      if (row.kilometrage && isNaN(km)) {
-        issues.push('Kilométrage doit être un nombre entier');
-      }
-      const validTypes = CONFIG.vehicles.validTypes as readonly string[];
-      const typeVal = row.type_vehicule?.trim().toUpperCase();
-      if (typeVal && !validTypes.includes(typeVal)) {
-        issues.push(`Type véhicule invalide (valeurs : ${validTypes.join(', ')})`);
-      }
-      const validFuels = CONFIG.vehicles.validFuels as readonly string[];
-      const fuelVal = row.carburant?.trim().toLowerCase();
-      if (fuelVal && !validFuels.includes(fuelVal)) {
-        issues.push(`Carburant invalide (valeurs : ${validFuels.join(', ')})`);
-      }
-    }
-
-    // Validations spécifiques chauffeurs
-    if (type === 'drivers') {
-      if (row.email && !row.email.includes('@')) {
-        issues.push('Email invalide');
-      }
-    }
-
-    if (issues.length > 0) {
-      errorRows.push({ row: idx + 1, issues });
-    } else {
-      validRows.push(row);
-    }
-  });
-
-  return { validRows, errorRows };
-}
-
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 export function ImportWizard({ type, open, onClose }: ImportWizardProps) {
@@ -175,7 +122,7 @@ export function ImportWizard({ type, open, onClose }: ImportWizardProps) {
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [previewRows, setPreviewRows] = useState<ParsedRow[]>([]);
   const [previewHeaders, setPreviewHeaders] = useState<string[]>([]);
-  const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [validation, setValidation] = useState<ImportValidationResult | null>(null);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [importResult, setImportResult] = useState<{
@@ -235,7 +182,7 @@ export function ImportWizard({ type, open, onClose }: ImportWizardProps) {
             setPreviewRows(rows.slice(0, 5));
             setPreviewHeaders(headers);
             setStep(3);
-            setValidation(validateRows(rows, type));
+            setValidation(validateImportRows(rows, type));
           },
           error: (err) => {
             setFileError(`Erreur de lecture CSV : ${err.message}`);
@@ -484,7 +431,7 @@ export function ImportWizard({ type, open, onClose }: ImportWizardProps) {
                 <p className="text-xs text-slate-400 mt-1">Valides</p>
               </div>
               <div className="bg-red-500/10 rounded-xl p-4 border border-red-500/20 text-center">
-                <p className="text-2xl font-bold text-red-400">{validation.errorRows.length}</p>
+                <p className="text-2xl font-bold text-red-400">{validation.errorRowCount}</p>
                 <p className="text-xs text-slate-400 mt-1">Erreurs</p>
               </div>
             </div>
@@ -524,20 +471,34 @@ export function ImportWizard({ type, open, onClose }: ImportWizardProps) {
               </div>
             )}
 
-            {/* Erreurs */}
-            {validation.errorRows.length > 0 && (
+            {/* Erreurs — tableau ligne / champ / message */}
+            {validation.errors.length > 0 && (
               <div>
                 <p className="text-sm font-medium text-red-400 mb-2 flex items-center gap-1">
                   <XCircle className="h-4 w-4" />
-                  Lignes avec erreurs ({validation.errorRows.length})
+                  Lignes avec erreurs ({validation.errorRowCount})
                 </p>
-                <div className="max-h-40 overflow-y-auto space-y-1.5">
-                  {validation.errorRows.map(({ row, issues }) => (
-                    <div key={row} className="text-xs p-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
-                      <span className="text-red-400 font-medium">Ligne {row} :</span>{' '}
-                      <span className="text-slate-300">{issues.join(' • ')}</span>
-                    </div>
-                  ))}
+                <div className="max-h-52 overflow-y-auto rounded-lg border border-red-500/20">
+                  <table className="text-xs w-full">
+                    <thead className="bg-red-500/10 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-red-400 font-medium w-14">Ligne</th>
+                        <th className="px-3 py-2 text-left text-red-400 font-medium w-36">Champ</th>
+                        <th className="px-3 py-2 text-left text-red-400 font-medium">Message</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {validation.errors.map((err, i) => (
+                        <tr key={i} className="border-t border-red-500/10 hover:bg-red-500/5">
+                          <td className="px-3 py-2 text-red-400 font-medium">{err.row}</td>
+                          <td className="px-3 py-2 text-slate-400 font-mono text-[11px]">
+                            {cfg.fieldLabels[err.field] ?? err.field}
+                          </td>
+                          <td className="px-3 py-2 text-slate-300">{err.message}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
@@ -554,7 +515,7 @@ export function ImportWizard({ type, open, onClose }: ImportWizardProps) {
               </Button>
 
               <div className="flex gap-2">
-                {validation.errorRows.length > 0 && validation.validRows.length > 0 && (
+                {validation.errorRowCount > 0 && validation.validRows.length > 0 && (
                   <Button
                     variant="outline"
                     onClick={() => handleImport(true)}
@@ -575,7 +536,7 @@ export function ImportWizard({ type, open, onClose }: ImportWizardProps) {
                   </Button>
                 )}
 
-                {validation.errorRows.length > 0 && validation.validRows.length === 0 && (
+                {validation.errorRowCount > 0 && validation.validRows.length === 0 && (
                   <Button disabled className="gap-1 opacity-50">
                     Aucune ligne valide à importer
                   </Button>

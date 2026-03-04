@@ -113,7 +113,7 @@ export const getAllFuelRecords = authActionClient
       return { success: true, data: [] };
     }
     
-    console.log('[FUEL] Recherche records pour company_id:', ctx.user.company_id);
+    logger.debug('[FUEL] Recherche records pour company_id:', ctx.user.company_id);
     
     // Essayer d'abord sans jointure pour voir si c'est la jointure qui pose problème
     const { data: rawData, error: rawError } = await supabase
@@ -124,9 +124,9 @@ export const getAllFuelRecords = authActionClient
       .limit(100);
     
     if (rawError) {
-      console.error('[FUEL] Erreur requête simple:', rawError);
+      logger.error('[FUEL] Erreur requête simple:', rawError);
     } else {
-      console.log(`[FUEL] Requête simple: ${rawData?.length || 0} records`);
+      logger.debug(`[FUEL] Requête simple: ${rawData?.length || 0} records`);
     }
     
     // Maintenant avec les jointures
@@ -142,12 +142,12 @@ export const getAllFuelRecords = authActionClient
       .limit(100);
     
     if (error) {
-      console.error('[FUEL] Erreur getAllFuelRecords:', error);
+      logger.error('[FUEL] Erreur getAllFuelRecords:', error);
       // Fallback sur la requête simple si la jointure échoue
       return { success: true, data: rawData || [] };
     }
     
-    console.log(`[FUEL] Récupéré ${data?.length || 0} records avec jointures`);
+    logger.debug(`[FUEL] Récupéré ${data?.length || 0} records avec jointures`);
     
     // Formater les données pour correspondre au type FuelRecord
     const formattedData = (data || []).map((record: any) => ({

@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { authActionClient } from '@/lib/safe-action';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // SCHÉMAS DE VALIDATION
@@ -61,7 +62,7 @@ async function verifyAdminOrDirector(userId: string, companyId: string): Promise
     .single();
   
   if (error || !profile) {
-    console.error('[verifyAdminOrDirector] Erreur:', error);
+    logger.error('[verifyAdminOrDirector] Erreur:', error);
     return false;
   }
   
@@ -70,7 +71,7 @@ async function verifyAdminOrDirector(userId: string, companyId: string): Promise
   const hasRole = allowedRoles.includes(profile.role);
   const hasCompany = profile.company_id === companyId;
   
-  console.log('[verifyAdminOrDirector]', {
+  logger.debug('[verifyAdminOrDirector]', {
     userRole: profile.role,
     userCompany: profile.company_id?.slice(0, 8),
     targetCompany: companyId.slice(0, 8),
@@ -150,12 +151,12 @@ export const createDriverAccount = authActionClient
       });
       
       if (authError || !authData.user) {
-        console.error('[createDriverAccount] Erreur création auth:', authError);
+        logger.error('[createDriverAccount] Erreur création auth:', authError);
         throw new Error(authError?.message || 'Erreur lors de la création du compte');
       }
       
       const newUserId = authData.user.id;
-      console.log('[createDriverAccount] Compte auth créé:', newUserId.slice(0, 8));
+      logger.debug('[createDriverAccount] Compte auth créé:', newUserId.slice(0, 8));
       
       // 6. Créer le profil dans la table profiles
       const { error: profileError } = await adminClient
@@ -172,7 +173,7 @@ export const createDriverAccount = authActionClient
         });
       
       if (profileError) {
-        console.error('[createDriverAccount] Erreur création profil:', profileError);
+        logger.error('[createDriverAccount] Erreur création profil:', profileError);
         // Rollback : supprimer le compte auth
         await adminClient.auth.admin.deleteUser(newUserId);
         throw new Error('Erreur création profil : ' + profileError.message);
@@ -191,13 +192,13 @@ export const createDriverAccount = authActionClient
         .eq('company_id', companyId);
       
       if (driverUpdateError) {
-        console.error('[createDriverAccount] Erreur mise à jour driver:', driverUpdateError);
+        logger.error('[createDriverAccount] Erreur mise à jour driver:', driverUpdateError);
         // Rollback complet
         await adminClient.auth.admin.deleteUser(newUserId);
         throw new Error('Erreur liaison conducteur : ' + driverUpdateError.message);
       }
       
-      console.log('[createDriverAccount] Succès:', { driverId: driverId.slice(0, 8), userId: newUserId.slice(0, 8) });
+      logger.debug('[createDriverAccount] Succès:', { driverId: driverId.slice(0, 8), userId: newUserId.slice(0, 8) });
       
       revalidatePath('/drivers');
       revalidatePath(`/drivers/${driverId}`);
@@ -211,7 +212,7 @@ export const createDriverAccount = authActionClient
       };
       
     } catch (error) {
-      console.error('[createDriverAccount] Erreur:', error);
+      logger.error('[createDriverAccount] Erreur:', error);
       throw error;
     }
   });
@@ -261,7 +262,7 @@ export const revokeDriverAccount = authActionClient
       );
       
       if (banError) {
-        console.error('[revokeDriverAccount] Erreur ban:', banError);
+        logger.error('[revokeDriverAccount] Erreur ban:', banError);
         throw new Error('Erreur lors de la révocation : ' + banError.message);
       }
       
@@ -275,7 +276,7 @@ export const revokeDriverAccount = authActionClient
         .eq('id', driverId);
       
       if (updateError) {
-        console.error('[revokeDriverAccount] Erreur update driver:', updateError);
+        logger.error('[revokeDriverAccount] Erreur update driver:', updateError);
         throw new Error('Erreur mise à jour : ' + updateError.message);
       }
       
@@ -285,7 +286,7 @@ export const revokeDriverAccount = authActionClient
         .update({ is_active: false })
         .eq('id', driver.user_id);
       
-      console.log('[revokeDriverAccount] Succès:', driverId.slice(0, 8));
+      logger.debug('[revokeDriverAccount] Succès:', driverId.slice(0, 8));
       
       revalidatePath('/drivers');
       revalidatePath(`/drivers/${driverId}`);
@@ -298,7 +299,7 @@ export const revokeDriverAccount = authActionClient
       };
       
     } catch (error) {
-      console.error('[revokeDriverAccount] Erreur:', error);
+      logger.error('[revokeDriverAccount] Erreur:', error);
       throw error;
     }
   });
@@ -344,11 +345,11 @@ export const resetDriverPassword = authActionClient
       );
       
       if (updateError) {
-        console.error('[resetDriverPassword] Erreur:', updateError);
+        logger.error('[resetDriverPassword] Erreur:', updateError);
         throw new Error('Erreur lors de la réinitialisation : ' + updateError.message);
       }
       
-      console.log('[resetDriverPassword] Succès:', driverId.slice(0, 8));
+      logger.debug('[resetDriverPassword] Succès:', driverId.slice(0, 8));
       
       return {
         success: true,
@@ -358,7 +359,7 @@ export const resetDriverPassword = authActionClient
       };
       
     } catch (error) {
-      console.error('[resetDriverPassword] Erreur:', error);
+      logger.error('[resetDriverPassword] Erreur:', error);
       throw error;
     }
   });
