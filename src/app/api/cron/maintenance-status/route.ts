@@ -4,9 +4,9 @@
  * Exécution : tous les jours à 08h00 UTC (= 09h00 CET / 10h00 CEST)
  * Configuré dans vercel.json : "0 8 * * *"
  *
- * ÉTAPE A — Passage en "maintenance" :
- *   Véhicules avec rdv_date = AUJOURD'HUI + status (RDV_PRIS|VALIDEE_DIRECTEUR)
- *   → vehicles.status = 'maintenance' + log dans vehicle_status_history
+ * ÉTAPE A — Passage en "EN_MAINTENANCE" :
+ *   Véhicules avec rdv_date = AUJOURD'HUI + status (DEMANDE_CREEE|VALIDEE_DIRECTEUR|RDV_PRIS|EN_COURS)
+ *   → vehicles.status = 'EN_MAINTENANCE' + log dans vehicle_status_history
  *
  * ÉTAPE B — Retour "actif" automatique :
  *   Véhicules en maintenance dont la durée estimée est écoulée
@@ -122,11 +122,12 @@ export async function GET(request: NextRequest) {
 
   try {
     // 1. RDV programmés aujourd'hui (statut confirmé)
+    // Note: on vérifie rdv_date ET scheduled_date pour être sûr de ne rien manquer
     const { data: todayRdvs, error: rdvErr } = await supabase
       .from('maintenance_records')
       .select('id, vehicle_id, company_id, rdv_time')
-      .eq('rdv_date', todayStr)
-      .in('status', ['RDV_PRIS', 'VALIDEE_DIRECTEUR']);
+      .or(`rdv_date.eq.${todayStr},scheduled_date.eq.${todayStr}`)
+      .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS']);
 
     if (rdvErr) {
       logger.error('Étape A: erreur lecture maintenance_records', { error: rdvErr instanceof Error ? rdvErr.message : String(rdvErr) });
