@@ -93,12 +93,14 @@ async function validateVehicleAccess(
   
   // Utiliser la fonction RPC pour vérifier le token (TEXT)
   const { data, error } = await supabase
-    .rpc('verify_qr_token', {
+    // @ts-ignore - RPC non typée dans Database
+    .rpc('verify_qr_token' as never, {
       p_vehicle_id: vehicleId,
       p_token: accessToken
     });
   
-  if (error || !data || !data.valid) {
+  const verifyResult = data as unknown as { valid: boolean } | null;
+  if (error || !verifyResult || !verifyResult.valid) {
     console.warn('[PUBLIC_SCAN] Token invalide ou véhicule non trouvé:', vehicleId);
     return null;
   }
@@ -187,7 +189,8 @@ export const createPublicFuelRecord = scanPublicActionClient
     
     // Utiliser la fonction RPC pour créer le plein
     const { data, error } = await supabase
-      .rpc('create_public_fuel_record', {
+      // @ts-ignore - RPC non typée dans Database
+      .rpc('create_public_fuel_record' as never, {
         p_vehicle_id: parsedInput.vehicleId,
         p_token: parsedInput.accessToken,
         p_fuel_type: parsedInput.fuelType,
@@ -203,14 +206,15 @@ export const createPublicFuelRecord = scanPublicActionClient
       throw new Error('Erreur lors de l\'enregistrement du plein');
     }
     
-    if (!data || !data.success) {
-      throw new Error(data?.error || 'Erreur lors de l\'enregistrement');
+    const fuelResult = data as unknown as { success: boolean; error?: string; ticket_number?: string; consumption?: number } | null;
+    if (!fuelResult || !fuelResult.success) {
+      throw new Error(fuelResult?.error || 'Erreur lors de l\'enregistrement');
     }
     
     return {
       success: true,
-      ticketNumber: data.ticket_number,
-      consumption: data.consumption ? Math.round(data.consumption * 10) / 10 : null,
+      ticketNumber: fuelResult.ticket_number,
+      consumption: fuelResult.consumption ? Math.round(fuelResult.consumption * 10) / 10 : null,
     };
   });
 
@@ -258,7 +262,8 @@ export const createPublicInspection = scanPublicActionClient
     
     // Utiliser la fonction RPC pour créer l'inspection
     const { data, error } = await supabase
-      .rpc('create_public_inspection', {
+      // @ts-ignore - RPC non typée dans Database
+      .rpc('create_public_inspection' as never, {
         p_vehicle_id: parsedInput.vehicleId,
         p_token: parsedInput.accessToken,
         p_mileage: parsedInput.mileage,
@@ -275,16 +280,17 @@ export const createPublicInspection = scanPublicActionClient
       throw new Error('Erreur lors de l\'enregistrement du contrôle');
     }
     
-    if (!data || !data.success) {
-      throw new Error(data?.error || 'Erreur lors de l\'enregistrement');
+    const inspectionResult = data as unknown as { success: boolean; error?: string; ticket_number?: string; status?: string } | null;
+    if (!inspectionResult || !inspectionResult.success) {
+      throw new Error(inspectionResult?.error || 'Erreur lors de l\'enregistrement');
     }
     
     return {
       success: true,
-      ticketNumber: data.ticket_number,
+      ticketNumber: inspectionResult.ticket_number,
       score,
       grade,
-      status: data.status,
+      status: inspectionResult.status,
       criticalIssues: reportedDefects.filter(d => d.severity === 'CRITIQUE').length,
     };
   });
@@ -316,7 +322,8 @@ export const createFuelSession = scanPublicActionClient
     // Appeler la fonction RPC create_fuel_session
     // Passer directement l'array, Supabase gère la conversion JSONB
     const { data, error } = await supabase
-      .rpc('create_fuel_session', {
+      // @ts-ignore - RPC non typée dans Database
+      .rpc('create_fuel_session' as never, {
         p_vehicle_id: parsedInput.vehicleId,
         p_token: parsedInput.accessToken,
         p_fuels: fuelsData,
