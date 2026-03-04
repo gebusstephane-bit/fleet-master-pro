@@ -245,6 +245,9 @@ export interface DashboardStats {
   alertsCount?: number;
   criticalAlerts?: number;
   todayRoutes?: number;
+  // Propriétés additionnelles pour l'UI
+  upcomingMaintenance?: number;
+  overdueMaintenance?: number;
 }
 
 // ==================== TYPES ABONNEMENT ====================
