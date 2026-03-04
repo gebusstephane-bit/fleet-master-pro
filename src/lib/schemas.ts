@@ -150,7 +150,7 @@ export const incidentSchema = z.object({
   severity: incidentSeverityEnum.optional().nullable(),
   circumstances: z.string().optional().nullable(),
   third_party_involved: z.boolean().default(false),
-  third_party_info: z.record(z.unknown()).optional().nullable(),
+  third_party_info: z.record(z.string(), z.unknown()).optional().nullable(),
   injuries_description: z.string().optional().nullable(),
   witnesses: z.array(z.unknown()).optional().nullable(),
   insurance_company: z.string().optional().nullable(),
