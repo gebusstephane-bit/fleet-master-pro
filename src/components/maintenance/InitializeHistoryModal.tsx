@@ -73,9 +73,9 @@ export function InitializeHistoryModal({
         
         if (data) {
           setVehicleDates({
-            technicalControlDate: data.technical_control_date,
-            tachyControlDate: data.tachy_control_date,
-            atpDate: data.atp_date
+            technicalControlDate: data.technical_control_date ?? undefined,
+            tachyControlDate: data.tachy_control_date ?? undefined,
+            atpDate: data.atp_date ?? undefined
           })
         }
       } catch (e) {
