@@ -185,10 +185,11 @@ export async function GET(request: NextRequest) {
         processed++
         
         // Si c'était un véhicule urgent, réinitialiser le flag needs_recalculation
-        if ((vehicle as any).isUrgent) {
+        // @ts-ignore - Propriété needs_recalculation non définie dans Database types (colonne existante en DB)
+        if (vehicle.isUrgent) {
           await supabase
             .from('maintenance_predictions')
-            .update({ needs_recalculation: false })
+            .update({ needs_recalculation: false } as never)
             .eq('vehicle_id', vehicle.id)
         }
       } catch (err: any) {
