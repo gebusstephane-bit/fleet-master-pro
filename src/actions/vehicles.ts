@@ -117,7 +117,26 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
     
     const vehicleId = crypto.randomUUID();
     
-    // 4. Créer le véhicule (RLS vérifie company_id automatiquement)
+    // 4. Normalisation du statut pour la contrainte CHECK de la DB
+    // La DB attend : 'ACTIF', 'INACTIF', 'EN_MAINTENANCE', 'ARCHIVE'
+    const statusMapping: Record<string, 'ACTIF' | 'INACTIF' | 'EN_MAINTENANCE' | 'ARCHIVE'> = {
+      'Actif': 'ACTIF',
+      'actif': 'ACTIF',
+      'ACTIF': 'ACTIF',
+      'Inactif': 'INACTIF',
+      'inactif': 'INACTIF',
+      'INACTIF': 'INACTIF',
+      'En maintenance': 'EN_MAINTENANCE',
+      'En Maintenance': 'EN_MAINTENANCE',
+      'en maintenance': 'EN_MAINTENANCE',
+      'Archivé': 'ARCHIVE',
+      'Archive': 'ARCHIVE',
+      'archive': 'ARCHIVE',
+      'ARCHIVE': 'ARCHIVE'
+    };
+    const normalizedStatus = (data.status && statusMapping[data.status]) || 'ACTIF';
+    
+    // 5. Créer le véhicule (RLS vérifie company_id automatiquement)
     // Typage strict avec le type Insert de Supabase
     type VehicleInsert = Database['public']['Tables']['vehicles']['Insert'];
     
@@ -130,7 +149,7 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
       type: data.type,
       mileage: data.mileage ?? 0,
       fuel_type: data.fuel_type as VehicleInsert['fuel_type'],
-      status: (data.status || 'ACTIF') as VehicleInsert['status'],
+      status: normalizedStatus,
       qr_code_data: `fleetmaster://vehicle/${vehicleId}`,
       purchase_date: data.purchase_date || null,
       vin: data.vin || null,
@@ -218,10 +237,32 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
       'atp_expiry',
     ] as const;
 
+    // Normalisation du statut pour la contrainte CHECK de la DB (même mapping que create)
+    const statusMapping: Record<string, 'ACTIF' | 'INACTIF' | 'EN_MAINTENANCE' | 'ARCHIVE'> = {
+      'Actif': 'ACTIF',
+      'actif': 'ACTIF',
+      'ACTIF': 'ACTIF',
+      'Inactif': 'INACTIF',
+      'inactif': 'INACTIF',
+      'INACTIF': 'INACTIF',
+      'En maintenance': 'EN_MAINTENANCE',
+      'En Maintenance': 'EN_MAINTENANCE',
+      'en maintenance': 'EN_MAINTENANCE',
+      'Archivé': 'ARCHIVE',
+      'Archive': 'ARCHIVE',
+      'archive': 'ARCHIVE',
+      'ARCHIVE': 'ARCHIVE'
+    };
+    
     const updateData: Record<string, unknown> = {
       ...data,
       updated_at: new Date().toISOString(),
     };
+    
+    // Normaliser le statut si présent
+    if (data.status) {
+      updateData.status = statusMapping[data.status] || 'ACTIF';
+    }
 
     for (const field of VEHICLE_DATE_FIELDS) {
       if (field in updateData && updateData[field] === '') {
