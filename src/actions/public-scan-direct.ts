@@ -35,7 +35,7 @@ export const createFuelSessionDirect = scanPublicActionClient
       .from('vehicles')
       .select('id, company_id, qr_code_data, mileage')
       .eq('id', parsedInput.vehicleId)
-      .eq('status', 'active')
+      .eq('status', 'ACTIF')
       .single();
     
     if (vehicleError || !vehicle) {

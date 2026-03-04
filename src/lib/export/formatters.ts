@@ -43,16 +43,12 @@ export function fileDateStamp(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Status label mappings */
+/** Status label mappings - Standard MAJUSCULE_UNDERSCORE */
 export const VEHICLE_STATUS_LABELS: Record<string, string> = {
-  active: 'Actif',
   ACTIF: 'Actif',
-  inactive: 'Inactif',
   INACTIF: 'Inactif',
-  maintenance: 'Maintenance',
-  EN_MAINTENANCE: 'Maintenance',
-  retired: 'Hors service',
-  HORS_SERVICE: 'Hors service',
+  EN_MAINTENANCE: 'En maintenance',
+  ARCHIVE: 'Archivé',
 };
 
 export const DRIVER_STATUS_LABELS: Record<string, string> = {

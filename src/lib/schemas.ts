@@ -30,7 +30,7 @@ export const vehicleSchema = z.object({
   color: z.string().min(1, "Couleur requise"),
   mileage: z.number().min(0),
   vin: z.string().optional(),
-  status: z.enum(["active", "inactive", "maintenance", "retired"]).default("active"),
+  status: z.enum(["ACTIF", "INACTIF", "EN_MAINTENANCE", "ARCHIVE"]).default("ACTIF"),
   
   // === ÉCHÉANCES RÉGLEMENTAIRES ===
   

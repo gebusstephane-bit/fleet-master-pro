@@ -112,15 +112,16 @@ export default async function DriverHomePage() {
                   variant="outline" 
                   className={cn(
                     'font-normal',
-                    vehicle.status === 'active' && 'border-green-500/50 text-green-400 bg-green-500/10',
-                    vehicle.status === 'maintenance' && 'border-amber-500/50 text-amber-400 bg-amber-500/10',
-                    vehicle.status === 'inactive' && 'border-red-500/50 text-red-400 bg-red-500/10',
+                    vehicle.status === 'ACTIF' && 'border-green-500/50 text-green-400 bg-green-500/10',
+                    vehicle.status === 'EN_MAINTENANCE' && 'border-amber-500/50 text-amber-400 bg-amber-500/10',
+                    vehicle.status === 'INACTIF' && 'border-red-500/50 text-red-400 bg-red-500/10',
+                    vehicle.status === 'ARCHIVE' && 'border-slate-500/50 text-slate-400 bg-slate-500/10',
                   )}
                 >
-                  {vehicle.status === 'active' && 'Actif'}
-                  {vehicle.status === 'maintenance' && 'Maintenance'}
-                  {vehicle.status === 'inactive' && 'Inactif'}
-                  {vehicle.status === 'retired' && 'Retiré'}
+                  {vehicle.status === 'ACTIF' && 'Actif'}
+                  {vehicle.status === 'EN_MAINTENANCE' && 'En maintenance'}
+                  {vehicle.status === 'INACTIF' && 'Inactif'}
+                  {vehicle.status === 'ARCHIVE' && 'Archivé'}
                 </Badge>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-3">

@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       const { data: regularVehicles, error: vErr } = await supabase
         .from('vehicles')
         .select('id, company_id')
-        .eq('status', 'active')
+        .eq('status', 'ACTIF')
         .not('id', 'in', `(${(urgentVehicles || []).map(v => v.vehicle_id).join(',')})`)
         .limit(remainingSlots)
 

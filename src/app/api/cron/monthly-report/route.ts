@@ -119,7 +119,7 @@ async function collectReportData(
     if (vehiclesError) throw vehiclesError;
 
     const totalVehicles = vehicles?.length || 0;
-    const activeVehicles = vehicles?.filter(v => v.status === 'active').length || 0;
+    const activeVehicles = vehicles?.filter(v => v.status === 'ACTIF').length || 0;
     const totalKm = vehicles?.reduce((sum, v) => sum + (v.mileage || 0), 0) || 0;
 
     // 2. Documents (conformité)

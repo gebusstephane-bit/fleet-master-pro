@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       .from('vehicles')
       .select('*')
       .eq('company_id', profile.company_id)
-      .eq('status', 'active')
+      .eq('status', 'ACTIF')
       .order('registration_number');
 
     // Debug: log toutes les colonnes du premier véhicule pour voir la structure

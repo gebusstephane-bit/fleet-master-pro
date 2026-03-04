@@ -52,10 +52,10 @@ const vehicleTypeLabels: Record<string, string> = {
 };
 
 const statusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  active: { label: 'Actif', variant: 'default' },
-  inactive: { label: 'Inactif', variant: 'secondary' },
-  maintenance: { label: 'Maintenance', variant: 'destructive' },
-  retired: { label: 'Retiré', variant: 'outline' },
+  ACTIF: { label: 'Actif', variant: 'default' },
+  INACTIF: { label: 'Inactif', variant: 'secondary' },
+  EN_MAINTENANCE: { label: 'En maintenance', variant: 'destructive' },
+  ARCHIVE: { label: 'Archivé', variant: 'outline' },
 };
 
 export function VehicleTable({ data, isLoading, onDelete }: VehicleTableProps) {

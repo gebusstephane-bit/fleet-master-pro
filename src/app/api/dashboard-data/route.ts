@@ -35,9 +35,9 @@ export async function GET() {
 
     const vehicleStats = {
       total: vehicles?.length || 0,
-      active: vehicles?.filter(v => v.status === 'active').length || 0,
-      maintenance: vehicles?.filter(v => v.status === 'maintenance').length || 0,
-      inactive: vehicles?.filter(v => v.status === 'inactive' || v.status === 'retired').length || 0,
+      active: vehicles?.filter(v => v.status === 'ACTIF').length || 0,
+      maintenance: vehicles?.filter(v => v.status === 'EN_MAINTENANCE').length || 0,
+      inactive: vehicles?.filter(v => v.status === 'INACTIF' || v.status === 'ARCHIVE').length || 0,
     };
 
     // 3. KPIs Chauffeurs

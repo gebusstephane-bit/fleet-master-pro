@@ -43,7 +43,7 @@ export const sendMaintenanceAlerts = authActionClient
       .from('vehicles')
       .select('id, registration_number, brand, model, mileage, next_service_due, next_service_mileage')
       .eq('company_id', ctx.user.company_id)
-      .eq('status', 'active');
+      .eq('status', 'ACTIF');
     
     const alerts: MaintenanceAlertData[] = [];
     const today = new Date();

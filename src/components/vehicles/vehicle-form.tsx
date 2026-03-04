@@ -49,7 +49,7 @@ const formSchema = z.object({
   color: z.string().min(1, "Couleur requise"),
   mileage: z.number().min(0),
   vin: z.string().optional(),
-  status: z.enum(["active", "inactive", "maintenance", "retired"]).default("active"),
+  status: z.enum(["ACTIF", "INACTIF", "EN_MAINTENANCE", "ARCHIVE"]).default("ACTIF"),
   
   // Assurance
   insurance_company: z.string().optional().transform((v) => v === '' ? null : v ?? null),
@@ -93,7 +93,7 @@ export function VehicleForm({
       color: '',
       mileage: 0,
       vin: '',
-      status: 'active',
+      status: 'ACTIF',
       insurance_company: '',
       insurance_policy_number: '',
       insurance_expiry: '',
@@ -376,10 +376,10 @@ export function VehicleForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="active">Actif</SelectItem>
-                      <SelectItem value="inactive">Inactif</SelectItem>
-                      <SelectItem value="maintenance">En maintenance</SelectItem>
-                      <SelectItem value="retired">Retiré</SelectItem>
+                      <SelectItem value="ACTIF">Actif</SelectItem>
+                      <SelectItem value="INACTIF">Inactif</SelectItem>
+                      <SelectItem value="EN_MAINTENANCE">En maintenance</SelectItem>
+                      <SelectItem value="ARCHIVE">Archivé</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

@@ -245,7 +245,7 @@ export async function GET(request: NextRequest) {
       const vehicle = vehicleMap.get(record.vehicle_id);
 
       // Véhicule inexistant ou inactif/retraité → skip
-      if (!vehicle || vehicle.status === 'inactive' || vehicle.status === 'retired') {
+      if (!vehicle || vehicle.status === 'INACTIF' || vehicle.status === 'ARCHIVE') {
         stats.skipped_inactive_vehicle++;
         continue;
       }

@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
         .from('vehicles')
         .select('id, company_id, registration_number')
         .in('id', vehicleIds)
-        .eq('status', 'active');
+        .eq('status', 'ACTIF');
 
       if (vehicleErr) {
         logger.error('Étape A: erreur lecture vehicles', { error: vehicleErr instanceof Error ? vehicleErr.message : String(vehicleErr) });
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
             const { error: updateErr } = await supabase
               .from('vehicles')
               .update({
-                status: 'maintenance',
+                status: 'EN_MAINTENANCE',
                 maintenance_started_at: now,
               })
               .eq('id', vehicle.id);
@@ -169,8 +169,8 @@ export async function GET(request: NextRequest) {
               .insert({
                 vehicle_id: vehicle.id,
                 company_id: vehicle.company_id,
-                old_status: 'active',
-                new_status: 'maintenance',
+                old_status: 'ACTIF',
+                new_status: 'EN_MAINTENANCE',
                 reason: `RDV maintenance programmé pour le ${todayStr}`,
                 maintenance_record_id: linkedRecord?.id ?? null,
                 changed_by: 'cron',
@@ -201,7 +201,7 @@ export async function GET(request: NextRequest) {
     const { data: maintenanceVehicles, error: mvErr } = await supabase
       .from('vehicles')
       .select('id, company_id, registration_number')
-      .eq('status', 'maintenance');
+      .eq('status', 'EN_MAINTENANCE');
 
     if (mvErr) {
       logger.error('Étape B: erreur lecture vehicles en maintenance', { error: mvErr instanceof Error ? mvErr.message : String(mvErr) });
@@ -253,7 +253,7 @@ export async function GET(request: NextRequest) {
             const { error: updateErr } = await supabase
               .from('vehicles')
               .update({
-                status: 'active',
+                status: 'ACTIF',
                 maintenance_ended_at: now,
               })
               .eq('id', vehicle.id);
@@ -267,8 +267,8 @@ export async function GET(request: NextRequest) {
               .insert({
                 vehicle_id: vehicle.id,
                 company_id: vehicle.company_id,
-                old_status: 'maintenance',
-                new_status: 'active',
+                old_status: 'EN_MAINTENANCE',
+                new_status: 'ACTIF',
                 reason: `Durée estimée écoulée — ${effectiveDays}j depuis rdv_date ${record.rdv_date}`,
                 maintenance_record_id: record.id,
                 changed_by: 'cron',
@@ -276,7 +276,7 @@ export async function GET(request: NextRequest) {
 
             stats.vehicles_set_active++;
             logger.info(
-              `✅ Étape B: ${vehicle.registration_number} → active (retour prévu: ${returnDate.toISOString().split('T')[0]})`,
+              `✅ Étape B: ${vehicle.registration_number} → ACTIF (retour prévu: ${returnDate.toISOString().split('T')[0]})`,
             );
           } else {
             logger.info(

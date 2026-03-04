@@ -28,7 +28,7 @@ export async function createVehicle(data: VehicleData) {
   const { error } = await supabase.from('vehicles').insert({
     ...data,
     company_id: userData.company_id,
-    status: 'active',
+    status: 'ACTIF',
   });
 
   if (error) {

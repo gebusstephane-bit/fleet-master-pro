@@ -257,7 +257,7 @@ export async function GET(request: NextRequest) {
       .select(
         'id, company_id, registration_number, brand, model, technical_control_expiry, tachy_control_expiry, atp_expiry'
       )
-      .eq('status', 'active');
+      .eq('status', 'ACTIF');
 
     if (vehiclesError || !vehicles) {
       logger.error('Cron: échec récupération véhicules', { error: vehiclesError instanceof Error ? vehiclesError.message : String(vehiclesError) });

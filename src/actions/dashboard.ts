@@ -122,13 +122,13 @@ export async function getDashboardStats(): Promise<ActionResult<DashboardStats>>
       data: {
         vehicles: {
           total: vehicles?.length || 0,
-          active: vehicles?.filter(v => (v.status as string) === 'active' || (v.status as string) === 'ACTIF').length || 0,
+          active: vehicles?.filter(v => v.status === 'ACTIF').length || 0,
           list: vehicles || [],
           totalMileage: vehicles?.reduce((s, v) => s + (v.mileage || 0), 0) || 0
         },
         drivers: {
           total: drivers?.length || 0,
-          active: drivers?.filter(d => (d.status as string) === 'active' || (d.status as string) === 'ACTIF').length || 0
+          active: drivers?.filter(d => d.status === 'active').length || 0
         },
         routes: {
           today: routes?.length || 0,

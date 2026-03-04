@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       'id, registration_number, status, technical_control_expiry, tachy_control_expiry, atp_expiry, insurance_expiry'
     )
     .eq('company_id', auth.companyId)
-    .neq('status', 'retired');
+    .neq('status', 'ARCHIVE');
 
   if (vErr) return apiError(vErr.message, 500, rateLimitHeaders);
 

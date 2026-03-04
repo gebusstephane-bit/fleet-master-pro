@@ -107,10 +107,10 @@ function MaintenanceViewToggle({
 }
 
 const statusConfig = {
-  active: { label: 'Actif', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
-  inactive: { label: 'Inactif', color: 'bg-slate-500/20 text-slate-300 border-slate-500/30' },
-  maintenance: { label: 'En maintenance', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
-  retired: { label: 'Retiré', color: 'bg-red-500/20 text-red-300 border-red-500/30' },
+  ACTIF: { label: 'Actif', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+  INACTIF: { label: 'Inactif', color: 'bg-slate-500/20 text-slate-300 border-slate-500/30' },
+  EN_MAINTENANCE: { label: 'En maintenance', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+  ARCHIVE: { label: 'Archivé', color: 'bg-slate-700/30 text-slate-300 border-slate-600/30' },
 };
 
 const typeLabels: Record<string, string> = {
@@ -193,7 +193,7 @@ export default function VehicleDetailPage() {
     );
   }
 
-  const status = statusConfig[vehicle.status as keyof typeof statusConfig] || statusConfig.inactive;
+  const status = statusConfig[vehicle.status as keyof typeof statusConfig] || statusConfig.INACTIF;
 
   // Calcul des jours pour le CT
   const daysUntilCT = vehicle.technical_control_expiry

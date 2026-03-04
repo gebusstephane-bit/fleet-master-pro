@@ -22,10 +22,10 @@ interface VehicleListVirtualProps {
 }
 
 const statusColors: Record<string, string> = {
-  active: 'bg-green-100 text-green-800',
-  inactive: 'bg-gray-100 text-gray-800',
-  maintenance: 'bg-yellow-100 text-yellow-800',
-  retired: 'bg-red-100 text-red-800',
+  ACTIF: 'bg-green-100 text-green-800',
+  INACTIF: 'bg-gray-100 text-gray-800',
+  EN_MAINTENANCE: 'bg-yellow-100 text-yellow-800',
+  ARCHIVE: 'bg-slate-100 text-slate-800',
 };
 
 // @ts-ignore
@@ -161,7 +161,10 @@ export function VehicleListVirtual({ statusFilter, onVehicleClick }: VehicleList
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className={statusColors[vehicle.status] || 'bg-gray-100'}>
-                      {vehicle.status}
+                      {vehicle.status === 'ACTIF' ? 'Actif' :
+                       vehicle.status === 'INACTIF' ? 'Inactif' :
+                       vehicle.status === 'EN_MAINTENANCE' ? 'En maintenance' :
+                       vehicle.status === 'ARCHIVE' ? 'Archivé' : vehicle.status}
                     </Badge>
                     <Link href={`/vehicles/${vehicle.id}`}>
                       <Button variant="ghost" size="sm">

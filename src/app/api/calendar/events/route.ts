@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       .from('vehicles')
       .select('id, registration_number, brand, model, type, technical_control_expiry, technical_control_date, tachy_control_expiry, tachy_control_date, atp_expiry, atp_date')
       .eq('company_id', user.company_id)
-      .eq('status', 'active');
+      .eq('status', 'ACTIF');
 
     // 3. maintenance_records avec rdv_date renseigné (non couverts par maintenance_agenda)
     const { data: rdvRecords } = await supabase

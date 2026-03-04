@@ -311,7 +311,7 @@ export interface Database {
           vin: string | null;
           color: string | null;
           mileage: number;
-          status: 'active' | 'inactive' | 'maintenance' | 'retired';
+          status: 'ACTIF' | 'INACTIF' | 'EN_MAINTENANCE' | 'ARCHIVE';
           category: string | null;
           has_fridge: boolean | null;
           next_maintenance_date: string | null;
@@ -352,7 +352,7 @@ export interface Database {
           vin?: string | null;
           color?: string | null;
           mileage?: number;
-          status?: 'active' | 'inactive' | 'maintenance' | 'retired';
+          status?: 'ACTIF' | 'INACTIF' | 'EN_MAINTENANCE' | 'ARCHIVE';
           category?: string | null;
           has_fridge?: boolean | null;
           next_maintenance_date?: string | null;
@@ -393,7 +393,7 @@ export interface Database {
           vin?: string | null;
           color?: string | null;
           mileage?: number;
-          status?: 'active' | 'inactive' | 'maintenance' | 'retired';
+          status?: 'ACTIF' | 'INACTIF' | 'EN_MAINTENANCE' | 'ARCHIVE';
           category?: string | null;
           has_fridge?: boolean | null;
           next_maintenance_date?: string | null;

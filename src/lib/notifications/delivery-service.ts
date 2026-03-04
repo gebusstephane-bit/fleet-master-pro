@@ -208,7 +208,7 @@ export async function sendNotificationToCompany(
     .select('id')
     .eq('company_id', companyId)
     // @ts-ignore
-    .eq('status', 'active');
+    .eq('status', 'ACTIF');
 
   if (error || !users) {
     logger.error('Erreur récupération utilisateurs entreprise:', { error: error?.message });

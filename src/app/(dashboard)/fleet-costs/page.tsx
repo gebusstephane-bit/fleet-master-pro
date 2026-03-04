@@ -261,10 +261,10 @@ function SummaryCard({ label, value, sub }: { label: string; value: string; sub:
 }
 
 const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
-  active: { label: 'Actif', cls: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  inactive: { label: 'Inactif', cls: 'bg-slate-700 text-slate-400 border-slate-600' },
-  maintenance: { label: 'Maintenance', cls: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-  retired: { label: 'Retiré', cls: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  ACTIF: { label: 'Actif', cls: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  INACTIF: { label: 'Inactif', cls: 'bg-slate-700 text-slate-400 border-slate-600' },
+  EN_MAINTENANCE: { label: 'En maintenance', cls: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  ARCHIVE: { label: 'Archivé', cls: 'bg-slate-600/20 text-slate-400 border-slate-500/30' },
 };
 
 function StatusBadge({ status }: { status: string }) {

@@ -44,21 +44,17 @@ const typeLabels: Record<string, string> = {
 };
 
 const statusConfig: Record<string, { color: string; label: string; bg: string }> = {
-  active: { color: 'text-emerald-400', label: 'Actif', bg: 'bg-emerald-500/15' },
   ACTIF: { color: 'text-emerald-400', label: 'Actif', bg: 'bg-emerald-500/15' },
-  inactive: { color: 'text-gray-400', label: 'Inactif', bg: 'bg-slate-500/15' },
   INACTIF: { color: 'text-gray-400', label: 'Inactif', bg: 'bg-slate-500/15' },
-  maintenance: { color: 'text-amber-400', label: 'Maintenance', bg: 'bg-amber-500/15' },
-  EN_MAINTENANCE: { color: 'text-amber-400', label: 'Maintenance', bg: 'bg-amber-500/15' },
-  retired: { color: 'text-red-400', label: 'Hors service', bg: 'bg-red-500/15' },
-  HORS_SERVICE: { color: 'text-red-400', label: 'Hors service', bg: 'bg-red-500/15' },
+  EN_MAINTENANCE: { color: 'text-amber-400', label: 'En maintenance', bg: 'bg-amber-500/15' },
+  ARCHIVE: { color: 'text-slate-400', label: 'Archivé', bg: 'bg-slate-700/30' },
 };
 
 const statusFilters = [
   { value: 'ACTIF', label: 'Actif' },
-  { value: 'EN_MAINTENANCE', label: 'Maintenance' },
+  { value: 'EN_MAINTENANCE', label: 'En maintenance' },
   { value: 'INACTIF', label: 'Inactif' },
-  { value: 'HORS_SERVICE', label: 'Hors service' },
+  { value: 'ARCHIVE', label: 'Archivé' },
 ];
 
 const typeFilters = [
@@ -166,9 +162,9 @@ export default function VehiclesPage() {
   // Stats calculation
   const stats = {
     total: vehicles?.length || 0,
-    active: vehicles?.filter((v) => v.status === 'active' || v.status === 'ACTIF').length || 0,
-    maintenance: vehicles?.filter((v) => v.status === 'maintenance' || v.status === 'EN_MAINTENANCE').length || 0,
-    inactive: vehicles?.filter((v) => ['inactive', 'INACTIF', 'retired', 'HORS_SERVICE'].includes(v.status)).length || 0,
+    active: vehicles?.filter((v) => v.status === 'ACTIF').length || 0,
+    maintenance: vehicles?.filter((v) => v.status === 'EN_MAINTENANCE').length || 0,
+    inactive: vehicles?.filter((v) => ['INACTIF', 'ARCHIVE'].includes(v.status)).length || 0,
   };
 
   // Bulk delete handler

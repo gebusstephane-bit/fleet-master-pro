@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       logger.error("API Dashboard: Erreur véhicules", { error: vError instanceof Error ? vError.message : String(vError) });
     } else {
       (results as any).vehicles.total = vehicles?.length || 0;
-      (results as any).vehicles.active = vehicles?.filter(v => v.status === "active").length || 0;
+      (results as any).vehicles.active = vehicles?.filter(v => v.status === 'ACTIF').length || 0;
       logger.info("API Dashboard: Véhicules", { total: results.vehicles.total });
     }
     

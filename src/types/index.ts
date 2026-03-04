@@ -49,7 +49,7 @@ export interface Vehicle {
   type: string;
   mileage: number;
   fuel_type: string;
-  status: 'ACTIF' | 'INACTIF' | 'EN_MAINTENANCE';
+  status: 'ACTIF' | 'INACTIF' | 'EN_MAINTENANCE' | 'ARCHIVE';
   purchase_date?: string;
   vin?: string;
   year?: number;

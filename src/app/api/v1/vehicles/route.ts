@@ -5,7 +5,7 @@ import { planHasFeature } from '@/lib/plans';
 import { z } from 'zod';
 
 const querySchema = z.object({
-  status: z.enum(['active', 'inactive', 'maintenance', 'retired']).optional(),
+  status: z.enum(['ACTIF', 'INACTIF', 'EN_MAINTENANCE', 'ARCHIVE']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   per_page: z.coerce.number().int().min(1).max(200).default(20),
 });
@@ -20,7 +20,7 @@ const createVehicleSchema = z.object({
   vin: z.string().optional(),
   color: z.string().optional(),
   mileage: z.number().min(0).optional(),
-  status: z.enum(['active', 'inactive', 'maintenance', 'retired']).optional(),
+  status: z.enum(['ACTIF', 'INACTIF', 'EN_MAINTENANCE', 'ARCHIVE']).optional(),
 });
 
 /**

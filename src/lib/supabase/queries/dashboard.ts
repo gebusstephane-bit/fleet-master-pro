@@ -37,8 +37,8 @@ export async function getDashboardStats(companyId: string): Promise<DashboardSta
     .select(
       `
       total: count(*),
-      active: count(*) filter (where status = 'active'),
-      in_maintenance: count(*) filter (where status = 'maintenance')
+      active: count(*) filter (where status = 'ACTIF'),
+      in_maintenance: count(*) filter (where status = 'EN_MAINTENANCE')
     `
     )
     .eq('company_id', companyId)

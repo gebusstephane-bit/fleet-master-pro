@@ -325,7 +325,7 @@ export const getMaintenanceAlerts = authActionClient
     const { data: vehicles, error } = await supabase
       .from('vehicles')
       .select('id, registration_number, brand, model, mileage, next_service_due, next_service_mileage')
-      .eq('status', 'active');
+      .eq('status', 'ACTIF');
     
     if (error) {
       throw new Error(`Erreur récupération véhicules: ${error.message}`);

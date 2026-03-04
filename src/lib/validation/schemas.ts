@@ -66,17 +66,13 @@ export const VehicleTypeEnum = z.enum([
 ]);
 
 /**
- * Statuts de véhicule valides
+ * Statuts de véhicule valides - Standard MAJUSCULE_UNDERSCORE
  */
 export const VehicleStatusEnum = z.enum([
   'ACTIF',
   'INACTIF',
   'EN_MAINTENANCE',
-  'HORS_SERVICE',
-  'active',
-  'inactive',
-  'maintenance',
-  'retired',
+  'ARCHIVE',
 ]);
 
 /**

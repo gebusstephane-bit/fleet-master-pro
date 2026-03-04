@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       'id, registration_number, technical_control_expiry, tachy_control_expiry, atp_expiry, insurance_expiry'
     )
     .eq('company_id', auth.companyId)
-    .neq('status', 'retired');
+    .neq('status', 'ARCHIVE');
 
   const vehicleDocs = [
     { key: 'technical_control_expiry', label: 'CT expiré' },

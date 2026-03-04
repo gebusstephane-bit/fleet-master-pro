@@ -112,7 +112,7 @@ Les headers \`X-RateLimit-*\` sont inclus dans chaque réponse.
             mileage: { type: 'integer', example: 45000 },
             status: {
               type: 'string',
-              enum: ['active', 'inactive', 'maintenance', 'retired'],
+              enum: ['ACTIF', 'INACTIF', 'EN_MAINTENANCE', 'ARCHIVE'],
             },
             technical_control_expiry: { type: 'string', format: 'date', nullable: true },
             insurance_expiry: { type: 'string', format: 'date', nullable: true },
@@ -138,7 +138,7 @@ Les headers \`X-RateLimit-*\` sont inclus dans chaque réponse.
             mileage: { type: 'integer' },
             status: {
               type: 'string',
-              enum: ['active', 'inactive', 'maintenance', 'retired'],
+              enum: ['ACTIF', 'INACTIF', 'EN_MAINTENANCE', 'ARCHIVE'],
             },
           },
         },
@@ -284,7 +284,7 @@ Les headers \`X-RateLimit-*\` sont inclus dans chaque réponse.
           tags: ['Vehicles'],
           summary: 'List vehicles',
           parameters: [
-            { in: 'query', name: 'status', schema: { type: 'string', enum: ['active', 'inactive', 'maintenance', 'retired'] } },
+            { in: 'query', name: 'status', schema: { type: 'string', enum: ['ACTIF', 'INACTIF', 'EN_MAINTENANCE', 'ARCHIVE'] } },
             { in: 'query', name: 'page', schema: { type: 'integer', default: 1 } },
             { in: 'query', name: 'per_page', schema: { type: 'integer', default: 20, maximum: 200 } },
           ],

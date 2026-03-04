@@ -41,7 +41,7 @@ export default async function PublicInspectionPage({
     .select('id, registration_number, brand, model, type, qr_code_data, status, mileage')
     .eq('id', vehicleId)
     .eq('qr_code_data', token)
-    .eq('status', 'active')
+    .eq('status', 'ACTIF')
     .single();
 
   if (error || !vehicle) {
