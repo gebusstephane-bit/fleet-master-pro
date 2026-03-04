@@ -62,7 +62,7 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>('month');
   const [date, setDate] = useState(new Date());
-  const [activeFilters, setActiveFilters] = useState<Set<EventType>>(new Set(['maintenance', 'ct', 'tachy', 'atp']));
+  const [activeFilters, setActiveFilters] = useState<Set<EventType>>(new Set(['maintenance', 'ct', 'tachy', 'atp'] as EventType[]));
   const [selectedEvent, setSelectedEvent] = useState<UnifiedCalendarEvent | null>(null);
 
   const loadEvents = useCallback(async () => {
