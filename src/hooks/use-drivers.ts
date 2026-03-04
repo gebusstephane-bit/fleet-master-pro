@@ -39,10 +39,10 @@ export function useDrivers(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: driverKeys.lists(companyId || ''),
     queryFn: async () => {
-      console.log('[useDrivers] Fetching with companyId:', companyId?.slice(0, 8));
+      logger.debug('[useDrivers] Fetching with companyId:', companyId?.slice(0, 8));
       
       if (!companyId) {
-        console.warn('[useDrivers] No companyId available');
+        logger.warn('[useDrivers] No companyId available');
         return [];
       }
       
@@ -55,22 +55,22 @@ export function useDrivers(options?: { enabled?: boolean }) {
         .order('created_at', { ascending: false });
       
       if (!error) {
-        console.log('[useDrivers] Direct query SUCCESS:', data?.length, 'records');
+        logger.debug('[useDrivers] Direct query SUCCESS:', data?.length, 'records');
         return (data || []) as unknown as Driver[];
       }
       
       // Tentative 2 : Fallback avec safeQuery si RLS error
-      console.warn('[useDrivers] Direct query failed:', error.code, error.message?.slice(0, 50));
+      logger.warn('[useDrivers] Direct query failed:', error.code, error.message?.slice(0, 50));
       
       if (error.message?.includes('infinite recursion') || error.code === '42P17') {
-        console.warn('[useDrivers] RLS recursion, trying safeQuery fallback...');
+        logger.warn('[useDrivers] RLS recursion, trying safeQuery fallback...');
         
         const { data: driversData, error: driversError, debug } = await safeQuery<Driver>('drivers', companyId, {
           orderBy: { column: 'created_at', ascending: false },
           limit: 1000,
         });
         
-        console.log('[useDrivers] safeQuery result:', { 
+        logger.debug('[useDrivers] safeQuery result:', { 
           count: driversData?.length, 
           error: driversError?.message?.slice(0, 50),
           debug 

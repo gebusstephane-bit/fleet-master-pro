@@ -43,7 +43,7 @@
     "import/no-duplicates": "off",
     
     // Code quality
-    "no-console": ["warn", { "allow": ["error"] }],
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
     "prefer-const": "error",
     "no-var": "error",
     "eqeqeq": ["error", "always", { "null": "ignore" }],
@@ -110,7 +110,6 @@
     "react/no-unescaped-entities": "off",
     "@typescript-eslint/ban-ts-comment": "off",
         "@typescript-eslint/no-unused-vars": "off",
-        "@typescript-eslint/naming-convention": "off",
         "no-console": "off"
       }
     }

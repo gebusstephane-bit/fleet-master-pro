@@ -70,10 +70,10 @@ export function useVehicles(options?: { enabled?: boolean }) {
   return useQuery<VehicleWithDriver[]>({
     queryKey: vehicleKeys.lists(companyId || ''),
     queryFn: async () => {
-      console.log('[useVehicles] Fetching with companyId:', companyId?.slice(0, 8));
+      logger.debug('[useVehicles] Fetching with companyId:', companyId?.slice(0, 8));
       
       if (!companyId) {
-        console.warn('[useVehicles] No companyId available');
+        logger.warn('[useVehicles] No companyId available');
         return [];
       }
       
@@ -94,11 +94,11 @@ export function useVehicles(options?: { enabled?: boolean }) {
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('[useVehicles] Direct query failed:', error.code, error.message?.slice(0, 100));
+        logger.error('[useVehicles] Direct query failed:', error.code, error.message?.slice(0, 100));
         throw new Error(error.message);
       }
       
-      console.log('[useVehicles] Direct query SUCCESS:', data?.length, 'records');
+      logger.debug('[useVehicles] Direct query SUCCESS:', data?.length, 'records');
       return (data || []) as unknown as VehicleWithDriver[];
     },
     enabled: options?.enabled !== false && !!companyId,
