@@ -91,7 +91,7 @@ async function fetchData(supabase: any, type: ExportType, company_id: string): P
     case 'drivers': {
       const { data, error } = await supabase
         .from('drivers')
-        .select('*, vehicles(registration_number)')
+        .select('*, vehicles!current_vehicle_id(registration_number)')
         .eq('company_id', company_id)
         .order('last_name');
       if (error) throw error;
