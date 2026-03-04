@@ -3,27 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
-import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface ActionResult<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
-}
-
-// Type pour la table driver_checklists (non définie dans Database)
-interface DriverChecklist {
-  id: string;
-  vehicle_id: string;
-  driver_id: string;
-  company_id: string;
-  checklist_type: string;
-  status: 'EN_COURS' | 'TERMINEE';
-  items: ChecklistItem[];
-  notes: string | null;
-  completed_at: string | null;
-  created_at: string;
-  updated_at: string;
 }
 
 // ============================================================
@@ -59,11 +43,6 @@ const DEFAULT_CHECKLIST_ITEMS: ChecklistItem[] = [
   { id: 'documents',      category: 'Documents',     label: 'Carte grise, assurance, permis', checked: false, comment: '' },
 ];
 
-// Helper pour accéder à une table non typée dans Supabase
-function getUntypedTable(supabase: SupabaseClient, tableName: string) {
-  return (supabase as unknown as { from: (table: string) => ReturnType<SupabaseClient['from']> }).from(tableName);
-}
-
 // ============================================================
 // CRÉER UNE CHECKLIST
 // ============================================================
@@ -88,7 +67,8 @@ export async function createChecklist(
       return { success: false, error: 'Profil ou entreprise non trouvé' };
     }
 
-    const { data, error } = await getUntypedTable(supabase, 'driver_checklists')
+    const { data, error } = await supabase
+      .from('driver_checklists')
       .insert({
         vehicle_id: vehicleId,
         driver_id: user.id,
@@ -106,7 +86,7 @@ export async function createChecklist(
     }
 
     revalidatePath('/driver-app/checklist');
-    return { success: true, data: data as DriverChecklist };
+    return { success: true, data };
   } catch (err) {
     logger.error('createChecklist: Exception', err instanceof Error ? err : new Error(String(err)));
     return { success: false, error: 'Erreur serveur' };
@@ -129,7 +109,8 @@ export async function updateChecklistItem(
     if (authError || !user) return { success: false, error: 'Non authentifié' };
 
     // Récupérer la checklist
-    const { data: checklist, error: fetchError } = await getUntypedTable(supabase, 'driver_checklists')
+    const { data: checklist, error: fetchError } = await supabase
+      .from('driver_checklists')
       .select('items')
       .eq('id', checklistId)
       .eq('driver_id', user.id)
@@ -140,11 +121,12 @@ export async function updateChecklistItem(
     }
 
     // Mettre à jour l'item
-    const items = ((checklist as { items: ChecklistItem[] }).items).map((item) =>
+    const items = (checklist.items as ChecklistItem[]).map((item) =>
       item.id === itemId ? { ...item, checked, comment } : item
     );
 
-    const { data, error } = await getUntypedTable(supabase, 'driver_checklists')
+    const { data, error } = await supabase
+      .from('driver_checklists')
       .update({ items, updated_at: new Date().toISOString() })
       .eq('id', checklistId)
       .eq('driver_id', user.id)
@@ -156,7 +138,7 @@ export async function updateChecklistItem(
       return { success: false, error: error.message };
     }
 
-    return { success: true, data: data as DriverChecklist };
+    return { success: true, data };
   } catch (err) {
     logger.error('updateChecklistItem: Exception', err instanceof Error ? err : new Error(String(err)));
     return { success: false, error: 'Erreur serveur' };
@@ -176,7 +158,8 @@ export async function completeChecklist(
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return { success: false, error: 'Non authentifié' };
 
-    const { data, error } = await getUntypedTable(supabase, 'driver_checklists')
+    const { data, error } = await supabase
+      .from('driver_checklists')
       .update({
         status: 'TERMINEE',
         notes: notes || null,
@@ -194,7 +177,7 @@ export async function completeChecklist(
     }
 
     revalidatePath('/driver-app/checklist');
-    return { success: true, data: data as DriverChecklist };
+    return { success: true, data };
   } catch (err) {
     logger.error('completeChecklist: Exception', err instanceof Error ? err : new Error(String(err)));
     return { success: false, error: 'Erreur serveur' };
@@ -211,7 +194,8 @@ export async function getActiveChecklist(vehicleId: string): Promise<ActionResul
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return { success: false, error: 'Non authentifié' };
 
-    const { data, error } = await getUntypedTable(supabase, 'driver_checklists')
+    const { data, error } = await supabase
+      .from('driver_checklists')
       .select('*')
       .eq('driver_id', user.id)
       .eq('vehicle_id', vehicleId)
@@ -225,7 +209,7 @@ export async function getActiveChecklist(vehicleId: string): Promise<ActionResul
       return { success: false, error: error.message };
     }
 
-    return { success: true, data: data as DriverChecklist | null };
+    return { success: true, data };
   } catch (err) {
     logger.error('getActiveChecklist: Exception', err instanceof Error ? err : new Error(String(err)));
     return { success: false, error: 'Erreur serveur' };
