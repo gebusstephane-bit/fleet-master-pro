@@ -77,7 +77,7 @@ export default function EditVehiclePage() {
               atp_expiry: (vehicle as any).atp_expiry ?? '',
             }}
             onSubmit={async (data) => {
-              await updateMutation.mutateAsync({ ...data, id });
+              await updateMutation.mutateAsync({ ...data, id } as unknown as Parameters<typeof updateMutation.mutateAsync>[0]);
               router.push('/vehicles');
             }}
             isSubmitting={updateMutation.isPending}
