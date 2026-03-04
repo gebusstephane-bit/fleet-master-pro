@@ -11,6 +11,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+import { requireManagerOrAbove } from '@/lib/auth-guards';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 // Schémas de validation
@@ -189,6 +190,13 @@ export async function updateNotificationPreferences(
  */
 export async function createUser(data: CreateUserData, creatorId: string) {
   try {
+    // VÉRIFICATION SÉCURITÉ : Vérifier le rôle côté serveur (incontournable)
+    try {
+      await requireManagerOrAbove();
+    } catch {
+      return { error: 'Accès refusé', data: null };
+    }
+
     const supabase = await createClient();
     // Admin client UNIQUEMENT pour les opérations auth (création user)
     const adminSupabase = createAdminClient();
@@ -321,6 +329,13 @@ export async function createUser(data: CreateUserData, creatorId: string) {
  */
 export async function updateUser(data: UpdateUserData, updaterId: string) {
   try {
+    // VÉRIFICATION SÉCURITÉ : Vérifier le rôle côté serveur (incontournable)
+    try {
+      await requireManagerOrAbove();
+    } catch {
+      return { error: 'Accès refusé', data: null };
+    }
+
     const supabase = await createClient();
     
     // Vérifier permissions (RLS)
@@ -393,6 +408,13 @@ export async function updateUser(data: UpdateUserData, updaterId: string) {
  */
 export async function deleteUser(userId: string, actorId: string) {
   try {
+    // VÉRIFICATION SÉCURITÉ : Vérifier le rôle côté serveur (incontournable)
+    try {
+      await requireManagerOrAbove();
+    } catch {
+      return { error: 'Accès refusé', data: null };
+    }
+
     const supabase = await createClient();
     const adminSupabase = createAdminClient();
     
@@ -456,6 +478,13 @@ export async function deleteUser(userId: string, actorId: string) {
  */
 export async function toggleUserStatus(userId: string, isActive: boolean, actorId: string) {
   try {
+    // VÉRIFICATION SÉCURITÉ : Vérifier le rôle côté serveur (incontournable)
+    try {
+      await requireManagerOrAbove();
+    } catch {
+      return { error: 'Accès refusé', data: null };
+    }
+
     const supabase = await createClient();
     const adminSupabase = createAdminClient();
     

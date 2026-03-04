@@ -9,6 +9,7 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { requireManagerOrAbove } from '@/lib/auth-guards';
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 
@@ -254,6 +255,13 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
  */
 export async function deleteVehicle(id: string): Promise<ActionResult> {
   try {
+    // VÉRIFICATION SÉCURITÉ : Vérifier le rôle côté serveur (incontournable)
+    try {
+      await requireManagerOrAbove();
+    } catch {
+      return { success: false, error: 'Accès refusé' };
+    }
+
     const supabase = await createClient();
     
     // 1. Vérifier auth

@@ -10,6 +10,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+import { requireManagerOrAbove } from '@/lib/auth-guards';
 import { authActionClient, idSchema } from '@/lib/safe-action';
 import { createClient } from '@/lib/supabase/server';
 
@@ -153,6 +154,13 @@ export const updateDriver = authActionClient
 export const deleteDriver = authActionClient
   .schema(idSchema)
   .action(async ({ parsedInput, ctx }) => {
+    // VÉRIFICATION SÉCURITÉ : Vérifier le rôle côté serveur (incontournable)
+    try {
+      await requireManagerOrAbove();
+    } catch {
+      throw new Error('Accès refusé');
+    }
+
     const supabase = await createClient();
     
     // Vérifier que le chauffeur existe (RLS filtre par company)
