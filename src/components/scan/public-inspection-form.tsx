@@ -191,10 +191,10 @@ export function PublicInspectionForm({ vehicleId, accessToken, vehicleInfo }: Pu
       });
 
       if (result?.data?.success) {
-        setTicketNumber(result.data.ticketNumber);
+        setTicketNumber(result.data.ticketNumber ?? '');
         setSuccess(true);
       } else {
-        setError(result?.data?.error || 'Erreur lors de l\'enregistrement');
+        setError((result?.data as { error?: string } | undefined)?.error || 'Erreur lors de l\'enregistrement');
       }
     } catch (err: any) {
       setError(err.message || 'Erreur lors de l\'enregistrement');

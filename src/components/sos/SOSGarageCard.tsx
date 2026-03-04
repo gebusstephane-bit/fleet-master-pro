@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { Wrench, Loader2, MapPin, Phone, AlertCircle, User } from 'lucide-react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
