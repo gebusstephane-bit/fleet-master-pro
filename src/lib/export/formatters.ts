@@ -55,6 +55,7 @@ export const DRIVER_STATUS_LABELS: Record<string, string> = {
   active: 'Actif',
   inactive: 'Inactif',
   on_leave: 'En congé',
+  suspended: 'Suspendu',
   terminated: 'Terminé',
 };
 

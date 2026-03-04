@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -43,13 +43,26 @@ export default function ProfilePage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [formData, setFormData] = useState({
-    firstName: user?.first_name || 'Admin',
-    lastName: user?.last_name || 'User',
-    email: user?.email || 'gebus.stephane@gmail.com',
-    phone: '07 68 48 85 02',
-    jobTitle: 'Directeur',
-    department: 'Management',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    jobTitle: '',
+    department: ''
   });
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.first_name || '',
+        lastName: user.last_name || '',
+        email: user.email || '',
+        phone: user?.phone || '', // Le champ phone existe maintenant dans le type User
+        jobTitle: '', // Champ non présent dans SQL
+        department: '' // Champ non présent dans SQL
+      });
+    }
+  }, [user]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,6 +83,7 @@ export default function ProfilePage() {
         toast.error(result.error);
       } else {
         toast.success('Profil mis à jour avec succès');
+        router.push('/settings?refresh=1');
         
       }
     } catch (err) {
@@ -208,7 +222,8 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Temporarily removing unused fields */}
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
@@ -238,7 +253,7 @@ export default function ProfilePage() {
               <Input value={user?.role || 'ADMIN'} disabled className="bg-slate-50" />
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Section Danger - Suppression de compte */}
         <Card className="border-red-500/20 bg-red-500/5">

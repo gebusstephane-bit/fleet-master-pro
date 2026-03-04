@@ -114,6 +114,143 @@ const insertData: VehicleInsert = {
 
 ---
 
+#### ✅ FICHIER 3 : `src/app/api/dashboard-data/route.ts` (CRITIQUE)
+**Problèmes** : 10 occurrences de `as any`
+- Jointures Supabase (`m.vehicles`, `p.vehicles`) non typées
+- `rdv_date as any`, `type as any`
+- Objets de retour sans typage
+
+**Solution appliquée** :
+```typescript
+// AVANT (ligne 134, 139, 144, etc.)
+const vehicle = m.vehicles as any;
+return {
+  // ...
+  service_type: translateMaintenanceType(m.type as any),
+  // ...
+} as any;
+
+// APRÈS
+import type { Database } from '@/types/supabase';
+
+// Types pour les jointures Supabase
+interface VehicleSubset {
+  registration_number: string;
+  brand: string;
+  model: string;
+}
+
+type MaintenanceWithVehicle = Database['public']['Tables']['maintenance_records']['Row'] & {
+  vehicles: VehicleSubset | null;
+};
+
+// Interfaces de retour strictes
+interface AlertItem {
+  id: string;
+  vehicle_id: string;
+  vehicle_name: string;
+  service_type: string;
+  // ...
+}
+
+// Utilisation avec cast via unknown (pattern pour jointures Supabase)
+const alerts: AlertItem[] = ((maintenanceAlerts as unknown) as MaintenanceWithVehicle[] || [])
+  .map(m => {
+    const vehicle = m.vehicles; // Plus besoin de as any
+    return {
+      id: m.id,
+      vehicle_name: vehicle ? `${vehicle.brand} ${vehicle.model}` : 'Inconnu',
+      service_type: translateMaintenanceType(m.type), // Plus besoin de as any
+      // ...
+    };
+  });
+```
+
+**Pattern clé pour jointures Supabase** :
+```typescript
+// Supabase retourne SelectQueryError si la relation n'est pas parfaitement définie
+// Solution: Cast via unknown puis type défini
+const data = ((rawData as unknown) as TypedData[] || [])
+```
+
+**Validations** :
+- ✅ Build `tsc --noEmit` passe
+- ✅ 0 `as any` dans le fichier
+- ✅ Interfaces de retour API strictement typées
+
+---
+
+## Progression Catégorie A (Sécurité/Business) ✅ COMPLÈTE
+
+| Fichier | Statut | Erreurs corrigées |
+|---------|--------|-------------------|
+| `tenant-guard.ts` | ✅ | `supabase as any` → `TenantTable` |
+| `vehicles.ts` | ✅ | `insertData as any` → `VehicleInsert` |
+| `dashboard-data/route.ts` | ✅ | 10× `as any` → types stricts |
+
+---
+
+## Progression Catégorie B (Actions serveur) ✅ COMPLÈTE
+
+| Fichier | Statut | Pattern utilisé |
+|---------|--------|-----------------|
+| `fuel.ts` | ✅ | Import `logger` manquant |
+| `driver-checklist.ts` | ✅ | Helper `getUntypedTable()` pour tables non typées |
+| `admin-sync.ts` | ✅ | Helper `callUntypedRpc()` pour RPC non typées |
+
+**Pattern établi pour tables non typées** :
+```typescript
+// Helper réutilisable
+function getUntypedTable(supabase: SupabaseClient, tableName: string) {
+  return (supabase as unknown as { 
+    from: (table: string) => ReturnType<SupabaseClient['from']> 
+  }).from(tableName);
+}
+
+// Usage
+const { data } = await getUntypedTable(supabase, 'ma_table')
+  .select('*')
+  .single();
+```
+
+**Pattern établi pour RPC non typées** :
+```typescript
+// Helper réutilisable
+function callUntypedRpc(supabase: SupabaseClient, fnName: string, args?: Record<string, unknown>) {
+  return (supabase as unknown as { 
+    rpc: (name: string, args?: Record<string, unknown>) => ReturnType<SupabaseClient['rpc']> 
+  }).rpc(fnName, args);
+}
+
+// Usage
+const { data } = await callUntypedRpc(supabase, 'ma_fonction');
+```
+
+---
+
+## 📊 STATUT GLOBAL
+
+```
+Erreurs initiales    : ~179
+Erreurs actuelles    : ~71
+Erreurs corrigées    : ~108 (60%)
+Fichiers corrigés    : 6/137
+```
+
+---
+
+## 🎯 PROCHAINE ÉTAPE
+
+**Seuil pour activer strict mode** : < 20 erreurs
+**Objectif** : Corriger ~50 erreurs supplémentaires
+
+### Catégorie C proposée (Hooks et Composants critiques) :
+1. `src/hooks/use-predictive-alerts.ts` - Cast RPC
+2. `src/lib/supabase/queries/dashboard.ts` - Multiple `as any`
+3. `src/app/api/vehicles/route.ts` - CRUD véhicules
+
+---
+
 ## Prochain fichiers à corriger
 
 ### Catégorie A (en attente)
