@@ -6,6 +6,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { createClient } from '@/lib/supabase/server';
+import type { Database } from '@/types/supabase';
+
+// Type pour l'incident avec jointures
+type IncidentWithRelations = Database['public']['Tables']['incidents']['Row'] & {
+  vehicles: { registration_number: string; brand: string; model: string; type: string } | null;
+  drivers: { first_name: string; last_name: string; phone: string | null; license_number: string } | null;
+  incident_documents: { file_name: string | null; document_type: string | null; created_at: string }[];
+};
 
 // WinAnsi normalizer (obligatoire avec pdf-lib)
 function nt(text: unknown): string {
@@ -147,8 +155,8 @@ export async function GET(
       : '-';
 
     y = drawRow('Date', dateStr, margin, y);
-    y = drawRow('Type', INCIDENT_TYPE_LABELS[incident.incident_type?.replace(/é/g, 'e').replace(/è/g, 'e')] ?? nt(incident.incident_type), margin, y);
-    y = drawRow('Gravite', SEVERITY_LABELS[incident.severity?.replace(/_/g, '_')] ?? nt(incident.severity ?? '-'), margin, y);
+    y = drawRow('Type', INCIDENT_TYPE_LABELS[incident.incident_type?.replace(/é/g, 'e').replace(/è/g, 'e') ?? ''] ?? nt(incident.incident_type), margin, y);
+    y = drawRow('Gravite', SEVERITY_LABELS[incident.severity?.replace(/_/g, '_') ?? ''] ?? nt(incident.severity ?? '-'), margin, y);
     y = drawRow('Lieu', nt(incident.location_description ?? '-'), margin, y);
 
     if (incident.circumstances) {
@@ -226,9 +234,10 @@ export async function GET(
     y -= 10;
 
     // ---- DOCUMENTS ----
-    if (incident.incident_documents?.length > 0) {
+    const incidentTyped = incident as unknown as IncidentWithRelations;
+    if (incidentTyped.incident_documents?.length > 0) {
       y = drawSection('DOCUMENTS JOINTS', y);
-      for (const doc of incident.incident_documents) {
+      for (const doc of incidentTyped.incident_documents) {
         page.drawText('  - ' + nt(doc.file_name ?? 'Document') + (doc.document_type ? ` (${nt(doc.document_type)})` : ''),
           { x: margin + 10, y, size: 9, font, color: cGray });
         y -= 13;
@@ -262,7 +271,7 @@ export async function GET(
 
     const pdfBytes = await pdfDoc.save();
 
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(pdfBytes as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
