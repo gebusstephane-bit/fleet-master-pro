@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getUsers, getUserById, createUser, updateUser, toggleUserStatus, deleteUser, updateNotificationPreferences, type CreateUserData, type UpdateUserData, type NotificationPreferences } from '@/actions/users';
 import { toast } from 'sonner';
+import { getReadableError } from '@/lib/error-messages';
 
 export interface User {
   id: string;
@@ -37,7 +38,7 @@ export function useUsers(companyId?: string) {
     
     if (result.error) {
       setError(result.error);
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
     } else if (result.data) {
       setUsers(result.data as User[]);
     }
@@ -78,7 +79,7 @@ export function useUser(userId: string | null) {
     
     if (result.error) {
       setError(result.error);
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
     } else if (result.data) {
       setUser(result.data as User);
       // @ts-ignore
@@ -115,7 +116,7 @@ export function useCreateUser() {
     const result = await createUser(data, creatorId);
     
     if (result.error) {
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
       setIsLoading(false);
       return { success: false, error: result.error };
     }
@@ -140,7 +141,7 @@ export function useUpdateUser() {
     const result = await updateUser(data, updaterId);
     
     if (result.error) {
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
       setIsLoading(false);
       return { success: false, error: result.error };
     }
@@ -165,7 +166,7 @@ export function useToggleUserStatus() {
     const result = await toggleUserStatus(userId, isActive, actorId);
     
     if (result.error) {
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
       setIsLoading(false);
       return { success: false, error: result.error };
     }
@@ -190,7 +191,7 @@ export function useDeleteUser() {
     const result = await deleteUser(userId, actorId);
     
     if (result.error) {
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
       setIsLoading(false);
       return { success: false, error: result.error };
     }
@@ -215,7 +216,7 @@ export function useUpdateNotificationPreferences() {
     const result = await updateNotificationPreferences(userId, preferences);
     
     if (result.error) {
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
       setIsLoading(false);
       return { success: false, error: result.error };
     }

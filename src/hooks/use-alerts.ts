@@ -40,7 +40,7 @@ export function useCreateAlerts() {
       queryClient.invalidateQueries({ queryKey: alertKeys.lists() });
       toast.success('Alertes mises à jour');
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(getReadableError(error)),
   });
 }
 

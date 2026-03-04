@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useUserContext } from '@/components/providers/user-provider';
 import { cacheTimes } from '@/lib/query-config';
+import { getReadableError } from '@/lib/error-messages';
 import {
   getIncidents,
   getIncident,
@@ -156,7 +157,7 @@ export function useCreateIncident() {
       queryClient.invalidateQueries({ queryKey: incidentKeys.stats(companyId) });
       toast.success('Sinistre déclaré avec succès');
     },
-    onError: (err: Error) => toast.error(err.message),
+    onError: (err: Error) => toast.error(getReadableError(err)),
   });
 }
 
@@ -177,7 +178,7 @@ export function useUpdateIncident() {
       queryClient.invalidateQueries({ queryKey: incidentKeys.stats(companyId) });
       toast.success('Sinistre mis à jour');
     },
-    onError: (err: Error) => toast.error(err.message),
+    onError: (err: Error) => toast.error(getReadableError(err)),
   });
 }
 
@@ -197,7 +198,7 @@ export function useDeleteIncident() {
       queryClient.invalidateQueries({ queryKey: incidentKeys.stats(companyId) });
       toast.success('Sinistre supprimé');
     },
-    onError: (err: Error) => toast.error(err.message),
+    onError: (err: Error) => toast.error(getReadableError(err)),
   });
 }
 
@@ -224,7 +225,7 @@ export function useAddIncidentDocument() {
       queryClient.invalidateQueries({ queryKey: incidentKeys.detail(data.incident_id) });
       toast.success('Document ajouté');
     },
-    onError: (err: Error) => toast.error(err.message),
+    onError: (err: Error) => toast.error(getReadableError(err)),
   });
 }
 
@@ -249,6 +250,6 @@ export function useDeleteIncidentDocument() {
       queryClient.invalidateQueries({ queryKey: incidentKeys.detail(incidentId) });
       toast.success('Document supprimé');
     },
-    onError: (err: Error) => toast.error(err.message),
+    onError: (err: Error) => toast.error(getReadableError(err)),
   });
 }

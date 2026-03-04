@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
+import { getReadableError } from '@/lib/error-messages';
 import {
   createFuelRecord,
   getFuelRecordsByVehicle,
@@ -66,7 +67,7 @@ export function useCreateFuelRecord() {
       queryClient.invalidateQueries({ queryKey: fuelKeys.stats() });
       toast.success('Plein enregistré');
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(getReadableError(error)),
   });
 }
 
@@ -110,6 +111,6 @@ export function useDismissFuelAnomaly() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fuelKeys.anomalies() });
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(getReadableError(error)),
   });
 }

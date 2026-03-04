@@ -65,7 +65,7 @@ export function useCreateCheckout() {
       }
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -87,7 +87,7 @@ export function useRequestEnterpriseQuote() {
       toast.success('Votre demande a été envoyée à notre équipe commerciale');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -109,7 +109,7 @@ export function useCancelSubscription() {
       toast.success('Abonnement annulé. Vous resterez sur votre plan jusqu\'à la fin de la période.');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }

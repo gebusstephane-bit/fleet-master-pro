@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { useUserContext } from '@/components/providers/user-provider';
 import { logger } from '@/lib/logger';
+import { getReadableError } from '@/lib/error-messages';
 import {
   createMaintenance,
   updateMaintenance,
@@ -246,7 +247,7 @@ export function useCreateMaintenance() {
       toast.success('Intervention créée avec succès');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -275,7 +276,7 @@ export function useUpdateMaintenance() {
       toast.success('Intervention mise à jour');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -303,7 +304,7 @@ export function useDeleteMaintenance() {
       toast.success('Intervention supprimée');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -449,7 +450,7 @@ export function useSendMaintenanceAlerts() {
       toast.success(`${data.sent} alertes envoyées à ${data.recipients} destinataires`);
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -470,7 +471,7 @@ export function useTestEmailConfig() {
       toast.success('Email de test envoyé avec succès');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }

@@ -12,6 +12,7 @@ import { logger } from '@/lib/logger';
 import { createVehicle, deleteVehicle as deleteVehicleAction, type CreateVehicleData } from '@/actions/vehicles';
 import { cacheTimes } from '@/lib/query-config';
 import { toast } from 'sonner';
+import { getReadableError } from '@/lib/error-messages';
 
 
 // Types
@@ -168,7 +169,7 @@ export function useCreateVehicle() {
     },
     onError: (error: Error) => {
       logger.error('Error creating vehicle', error);
-      toast.error(error.message || 'Impossible de créer le véhicule');
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -230,7 +231,7 @@ export function useUpdateVehicle() {
       toast.success('Véhicule mis à jour');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Erreur mise à jour');
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -256,7 +257,7 @@ export function useDeleteVehicle() {
     },
     onError: (error: Error) => {
       logger.error('Error deleting vehicle', error);
-      toast.error(error.message || 'Impossible de supprimer');
+      toast.error(getReadableError(error));
     },
   });
 }

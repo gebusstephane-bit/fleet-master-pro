@@ -16,6 +16,7 @@ import {
   type ResetDriverPasswordInput,
 } from '@/actions/driver-auth';
 import { driverKeys } from '@/hooks/use-drivers';
+import { getReadableError } from '@/lib/error-messages';
 
 // ============================================================================
 // HOOK : Créer un compte conducteur
@@ -37,7 +38,7 @@ export function useCreateDriverAccount() {
       toast.success('Compte conducteur créé avec succès');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -62,7 +63,7 @@ export function useRevokeDriverAccount() {
       toast.success('Accès révoqué avec succès');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -84,7 +85,7 @@ export function useResetDriverPassword() {
       toast.success('Mot de passe réinitialisé avec succès');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -109,7 +110,7 @@ export function useReactivateDriverAccount() {
       toast.success('Compte réactivé avec succès');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }

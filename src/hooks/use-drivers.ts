@@ -11,6 +11,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { safeQuery } from '@/lib/supabase/client-safe';
 import { useUserContext } from '@/components/providers/user-provider';
 import { logger } from '@/lib/logger';
+import { getReadableError } from '@/lib/error-messages';
 import {
   createDriver,
   updateDriver,
@@ -151,7 +152,7 @@ export function useCreateDriver() {
       toast.success('Chauffeur créé avec succès');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -175,7 +176,7 @@ export function useUpdateDriver() {
       toast.success('Chauffeur mis à jour');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -198,7 +199,7 @@ export function useDeleteDriver() {
       toast.success('Chauffeur supprimé');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }

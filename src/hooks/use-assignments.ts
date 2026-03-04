@@ -10,6 +10,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { useUserContext } from '@/components/providers/user-provider';
 import { assignDriver, unassignDriver, type AssignDriverInput } from '@/actions/assignments';
 import { DriverAssignment } from '@/types';
+import { getReadableError } from '@/lib/error-messages';
 
 // ─── Query keys ──────────────────────────────────────────────────────────────
 
@@ -118,7 +119,7 @@ export function useAssignDriver(vehicleId: string) {
       toast.success('Conducteur affecté avec succès');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -142,7 +143,7 @@ export function useUnassignDriver(vehicleId: string) {
       toast.success('Affectation clôturée');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }

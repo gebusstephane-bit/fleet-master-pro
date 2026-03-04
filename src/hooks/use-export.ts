@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
+import { getReadableError } from '@/lib/error-messages';
 
 export type ExportFormat = 'csv' | 'pdf';
 export type ExportType = 'vehicles' | 'drivers' | 'maintenance';
@@ -61,7 +62,7 @@ export function useExport({ type, onSuccess }: UseExportOptions) {
 
         onSuccess?.(format, count);
       } catch (err: any) {
-        toast.error(`Échec de l'export : ${err.message ?? 'Erreur inconnue'}`, {
+        toast.error(`Échec de l'export : ${getReadableError(err)}`, {
           id: toastId,
         });
       } finally {
