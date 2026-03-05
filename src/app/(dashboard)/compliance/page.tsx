@@ -529,9 +529,11 @@ export default function CompliancePage() {
         };
       });
 
-      // Statut Global DREAL : Non-conforme si au moins un document expiré ou manquant
-      const hasExpired = documents.some(d => d.status.status === 'expired');
-      const hasMissing = documents.some(d => d.status.status === 'missing');
+      // Statut Global DREAL : Non-conforme si au moins un document OBLIGATOIRE expiré ou manquant
+      // L'ADR est exclu du calcul car non obligatoire pour tous (ex: transport frigo)
+      const obligatoryDocs = documents.filter(d => d.name !== 'ADR');
+      const hasExpired = obligatoryDocs.some(d => d.status.status === 'expired');
+      const hasMissing = obligatoryDocs.some(d => d.status.status === 'missing');
       const isCompliant = !hasExpired && !hasMissing;
 
       return {

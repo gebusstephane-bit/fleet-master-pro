@@ -534,11 +534,11 @@ function drawDriversSection(
     }
     
     // Determine row color and global status (DREAL : binaire)
+    // Documents obligatoires uniquement (ADR exclu car non obligatoire pour tous)
     const statuses = [
       getDocStatus(d.license_expiry).status,
       getDocStatus(d.medical_certificate_expiry).status,
       getDocStatus(cqcFcoDate).status,
-      getDocStatus(d.adr_certificate_expiry).status,
     ];
     
     const hasExpired = statuses.includes('expired');
