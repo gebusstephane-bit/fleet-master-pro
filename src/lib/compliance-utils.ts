@@ -42,8 +42,8 @@ export interface ComplianceScore {
 export function getDocumentStatus(
   expiryDate: Date | string | null | undefined
 ): DocumentStatusResult {
-  // Cas document non renseigné
-  if (!expiryDate) {
+  // Cas document non renseigné (null, undefined, ou chaîne vide)
+  if (!expiryDate || expiryDate === '') {
     return {
       status: 'missing',
       daysRemaining: null,

@@ -6,6 +6,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { Database } from '@/types/supabase';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { logger } from '@/lib/logger';
 
 // Client standard (respecte RLS)
 export async function createClient() {
@@ -59,7 +60,11 @@ export async function getUserWithCompany() {
     const { data: { user }, error } = await supabase.auth.getUser();
     
     if (error || !user) {
-      console.error('getUserWithCompany: Auth error', error);
+      logger.error('Auth operation failed', {
+        operation: 'getUserWithCompany',
+        error: error?.message,
+        code: error?.code,
+      });
       return null;
     }
     
@@ -71,7 +76,10 @@ export async function getUserWithCompany() {
       .maybeSingle();
     
     if (profileError) {
-      console.error('getUserWithCompany: Profile fetch error', profileError);
+      logger.errorWithError('Profile fetch failed', profileError, {
+        operation: 'getUserWithCompany',
+        userId: user.id.substring(0, 8) + '...',
+      });
     }
     
     // Récupérer les infos de la company si company_id existe
@@ -133,7 +141,9 @@ export async function getUserWithCompany() {
     
     return userData;
   } catch (e) {
-    console.error('getUserWithCompany error:', e);
+    logger.errorWithError('Unexpected error in getUserWithCompany', e, {
+      operation: 'getUserWithCompany',
+    });
     return null;
   }
 }

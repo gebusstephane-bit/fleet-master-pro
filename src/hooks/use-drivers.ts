@@ -171,6 +171,8 @@ export function useUpdateDriver() {
     onSuccess: (_, variables) => {
       if (companyId) {
         queryClient.invalidateQueries({ queryKey: driverKeys.lists(companyId) });
+        // ✅ Invalider le cache compliance pour synchroniser avec la page Compliance
+        queryClient.invalidateQueries({ queryKey: ['compliance', 'list', companyId] });
       }
       queryClient.invalidateQueries({ queryKey: driverKeys.detail(variables.id) });
       toast.success('Chauffeur mis à jour');

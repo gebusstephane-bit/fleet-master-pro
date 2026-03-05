@@ -69,6 +69,7 @@ const driverDocuments = [
   { key: 'fimo_expiry' as const, fallback: 'fimo_date' as const, label: 'FIMO' },
   { key: 'medical_certificate_expiry' as const, label: 'Visite médicale' },
   { key: 'adr_certificate_expiry' as const, label: 'ADR' },
+  { key: 'cqc_expiry' as const, label: 'CQC' }, // ✅ Ajout du CQC
 ];
 
 // ============================================

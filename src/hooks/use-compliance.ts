@@ -38,6 +38,7 @@ export interface DriverComplianceData {
   fcos_expiry: string | null;
   medical_certificate_expiry: string | null;
   adr_certificate_expiry: string | null;
+  cqc_expiry: string | null; // ✅ Ajout du champ CQC
 }
 
 export interface ComplianceData {
@@ -101,7 +102,8 @@ export function useCompliance(options?: { enabled?: boolean }) {
           fimo_expiry,
           fcos_expiry,
           medical_certificate_expiry,
-          adr_certificate_expiry
+          adr_certificate_expiry,
+          cqc_expiry
         `)
         .eq('company_id', companyId)
         .order('created_at', { ascending: false });
@@ -174,6 +176,7 @@ export function useCompliance(options?: { enabled?: boolean }) {
         fcos_expiry: d.fcos_expiry,
         medical_certificate_expiry: d.medical_certificate_expiry,
         adr_certificate_expiry: d.adr_certificate_expiry,
+        cqc_expiry: d.cqc_expiry,
       }));
 
       return { vehicles, drivers };

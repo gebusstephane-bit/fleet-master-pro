@@ -154,9 +154,10 @@ async function applyRateLimit(
     const isVercelCron = vercelCronSecret === process.env.CRON_SECRET;
 
     if (!isVercelCron && process.env.NODE_ENV === "production") {
-      console.warn(
-        `🚫 Rate limit: Tentative d'accès au cron sans secret Vercel: ${ip}`
-      );
+      logger.warn('Unauthorized cron access attempt', {
+        ip: ip.replace(/(\d+\.\d+)\.\d+\.\d+$/, '$1.***.***'),
+        route: pathname,
+      });
       return new NextResponse(
         JSON.stringify({ error: "Accès non autorisé aux endpoints cron" }),
         { status: 403, headers: { "Content-Type": "application/json" } }
@@ -170,7 +171,11 @@ async function applyRateLimit(
   }
 
   if (!result.success) {
-    console.warn(`🚫 Rate limit dépassé pour ${ip} sur ${pathname}`);
+    logger.warn('Rate limit exceeded', {
+      ip: ip.replace(/(\d+\.\d+)\.\d+\.\d+$/, '$1.***.***'),
+      route: pathname,
+      routeType,
+    });
 
     const message =
       routeType === "checkout"
@@ -225,9 +230,10 @@ async function checkAdminAuthorization(
     const secret = request.headers.get("x-admin-secret");
 
     if (!verifyAdminSecret(secret, process.env.SUPERADMIN_SETUP_SECRET)) {
-      console.warn(
-        `🚫 Tentative accès admin non autorisée (reset-user-password): ${ip}`
-      );
+      logger.warn('Unauthorized admin access attempt', {
+        route: 'reset-user-password',
+        ip: ip.replace(/(\d+\.\d+)\.\d+\.\d+$/, '$1.***.***'),
+      });
       return new NextResponse(
         JSON.stringify({
           error: "Unauthorized",
@@ -248,9 +254,10 @@ async function checkAdminAuthorization(
     const secret = request.headers.get("X-Setup-Secret");
 
     if (!verifyAdminSecret(secret, process.env.SUPERADMIN_SETUP_SECRET)) {
-      console.warn(
-        `🚫 Tentative accès admin non autorisée (create-superadmin): ${ip}`
-      );
+      logger.warn('Unauthorized admin access attempt', {
+        route: 'create-superadmin',
+        ip: ip.replace(/(\d+\.\d+)\.\d+\.\d+$/, '$1.***.***'),
+      });
       return new NextResponse(
         JSON.stringify({
           error: "Unauthorized",
@@ -268,7 +275,10 @@ async function checkAdminAuthorization(
   }
 
   // Autres routes admin: bloquer par défaut
-  console.warn(`🚫 Route admin non reconnue: ${pathname}`);
+  logger.warn('Unknown admin route access attempt', {
+    route: pathname,
+    ip: ip.replace(/(\d+\.\d+)\.\d+\.\d+$/, '$1.***.***'),
+  });
   return new NextResponse(
     JSON.stringify({
       error: "Forbidden",
@@ -293,7 +303,10 @@ export async function middleware(request: NextRequest) {
     const rateLimitResult = await checkSensitiveRateLimit(`admin:${ip}`);
 
     if (!rateLimitResult.success) {
-      console.warn(`🚫 Rate limit admin dépassé pour ${ip}`);
+      logger.warn('Admin rate limit exceeded', {
+        ip: ip.replace(/(\d+\.\d+)\.\d+\.\d+$/, '$1.***.***'),
+        route: pathname,
+      });
       return new NextResponse(
         JSON.stringify({
           error: "Too Many Requests",
@@ -359,11 +372,15 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user || !isSuperadminEmail(user.email || '')) {
-      logger.warn("Middleware: Accès SuperAdmin refusé pour", user?.email);
+      logger.warn('SuperAdmin access denied', {
+        email: user?.email ? user.email.substring(0, 2) + '***@***' : 'anonymous',
+      });
       return NextResponse.redirect(new URL("/404", request.url));
     }
 
-    logger.debug("Middleware: Accès SuperAdmin accordé à", user.email);
+    logger.debug('SuperAdmin access granted', {
+      email: user.email ? user.email.substring(0, 2) + '***@***' : 'unknown',
+    });
     return response;
   }
 
@@ -381,7 +398,9 @@ export async function middleware(request: NextRequest) {
     const rateLimitResult = await checkSensitiveRateLimit(`scan:${ip}`);
     
     if (!rateLimitResult.success) {
-      console.warn(`🚫 Rate limit scan dépassé pour ${ip}`);
+      logger.warn('QR scan rate limit exceeded', {
+        ip: ip.replace(/(\d+\.\d+)\.\d+\.\d+$/, '$1.***.***'),
+      });
       return new NextResponse(
         JSON.stringify({
           error: "Too Many Requests",
