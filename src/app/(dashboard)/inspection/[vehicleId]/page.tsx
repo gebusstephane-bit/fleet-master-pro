@@ -21,6 +21,7 @@ import {
 import { useVehicle } from '@/hooks/use-vehicles';
 import { createInspectionSafe } from '@/actions/inspections-safe';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PhotoUploadSection } from '@/components/inspection/photo-upload';
 
 // Types simplifiés
 type CheckStatus = 'OK' | 'WARNING' | 'CRITICAL';
@@ -185,6 +186,7 @@ export default function InspectionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   
   // Données formulaire
   const [mileage, setMileage] = useState('');
@@ -279,6 +281,7 @@ export default function InspectionPage() {
           spare: 'GOOD',
         },
         reportedDefects: defects,
+        photos: photoUrls,
         driverName,
         inspectorNotes: notes + `\n\nÉtat global: ${config.label} (${score}%)\nPoints contrôlés: ${checks.filter(c => c.status === 'OK').length}/${checks.length} OK`,
         location,
@@ -719,6 +722,13 @@ export default function InspectionPage() {
                       rows={3}
                     />
                   </div>
+
+                  {/* Upload Photos */}
+                  <Separator className="bg-slate-700" />
+                  <PhotoUploadSection
+                    onPhotosChange={setPhotoUrls}
+                    maxPhotos={4}
+                  />
 
                   <div className="flex gap-3">
                     <Button variant="outline" onClick={() => setStep(2)} className="flex-1">

@@ -188,17 +188,41 @@ export interface Inspection {
   id: string;
   company_id: string;
   vehicle_id: string;
-  driver_id?: string;
-  type: 'DAILY' | 'WEEKLY' | 'MONTHLY';
-  status: 'PASSED' | 'FAILED' | 'PENDING';
+  created_by?: string;
   mileage: number;
-  fuel_level?: number;
-  cleanliness_exterior?: number;
-  cleanliness_interior?: number;
-  tire_condition?: string;
-  lights_working?: boolean;
-  notes?: string;
-  created_by: string;
+  fuel_level: number;
+  adblue_level?: number;
+  gnr_level?: number;
+  cleanliness_exterior: number;
+  cleanliness_interior: number;
+  cleanliness_cargo_area?: number;
+  compartment_c1_temp?: number;
+  compartment_c2_temp?: number;
+  tires_condition: {
+    front_left?: { pressure?: number; wear?: string; damage?: string };
+    front_right?: { pressure?: number; wear?: string; damage?: string };
+    rear_left?: { pressure?: number; wear?: string; damage?: string };
+    rear_right?: { pressure?: number; wear?: string; damage?: string };
+    spare?: { pressure?: number; wear?: string; damage?: string };
+  };
+  reported_defects: Array<{
+    id: string;
+    description: string;
+    severity: 'CRITIQUE' | 'MAJEUR' | 'MINEUR';
+    category: string;
+  }>;
+  photos: string[];  // URLs des photos dans le bucket storage (max 4)
+  driver_name: string;
+  driver_signature?: string;
+  inspector_notes?: string;
+  location?: string;
+  status: 'PENDING' | 'COMPLETED' | 'ISSUES_FOUND' | 'CRITICAL_ISSUES' | 'REFUSEE';
+  score?: number;
+  grade?: string;
+  defects_count?: number;
+  validated_at?: string;
+  validated_by?: string;
+  inspection_date?: string;
   created_at: string;
   updated_at: string;
 }
