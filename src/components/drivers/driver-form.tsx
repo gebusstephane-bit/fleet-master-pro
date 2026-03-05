@@ -109,7 +109,8 @@ export function DriverForm({
   isSubmitting = false,
   submitLabel = 'Enregistrer',
 }: DriverFormProps) {
-  const [docsOpen, setDocsOpen] = useState(false);
+  // OUVERT par défaut pour que les utilisateurs voient tous les champs réglementaires
+  const [docsOpen, setDocsOpen] = useState(true);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema) as Resolver<FormData>,

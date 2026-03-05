@@ -34,10 +34,20 @@ export default function NewDriverPage() {
   const handleSubmit = async (formData: any) => {
     try {
       // 1. Créer le conducteur dans la base de données
+      // Normaliser les dates vides en null
+      const normalizeDate = (date: string | null | undefined) => date === '' ? null : date ?? null;
+      
       const submitData = {
         ...formData,
-        hire_date: formData.hire_date ?? null,
-        cqc_expiry: formData.cqc_expiry ?? null,
+        hire_date: normalizeDate(formData.hire_date),
+        cqc_expiry: normalizeDate(formData.cqc_expiry),
+        driver_card_expiry: normalizeDate(formData.driver_card_expiry),
+        fimo_date: normalizeDate(formData.fimo_date),
+        fcos_expiry: normalizeDate(formData.fcos_expiry),
+        qi_date: normalizeDate(formData.qi_date),
+        medical_certificate_expiry: normalizeDate(formData.medical_certificate_expiry),
+        adr_certificate_expiry: normalizeDate(formData.adr_certificate_expiry),
+        birth_date: normalizeDate(formData.birth_date),
       };
       
       const result = await createMutation.mutateAsync(submitData);
