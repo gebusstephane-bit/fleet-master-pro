@@ -72,12 +72,14 @@ ON CONFLICT (id) DO NOTHING;
 -- ÉTAPE 6 : Politiques RLS pour le bucket inspections
 -- ============================================================================
 -- Politique : Lecture publique (photos accessibles via URL)
-CREATE POLICY IF NOT EXISTS "Inspection photos are publicly accessible"
+DROP POLICY IF EXISTS "Inspection photos are publicly accessible" ON storage.objects;
+CREATE POLICY "Inspection photos are publicly accessible"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'inspections');
 
 -- Politique : Insertion uniquement pour utilisateurs authentifiés
-CREATE POLICY IF NOT EXISTS "Authenticated users can upload inspection photos"
+DROP POLICY IF EXISTS "Authenticated users can upload inspection photos" ON storage.objects;
+CREATE POLICY "Authenticated users can upload inspection photos"
 ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (
@@ -90,7 +92,8 @@ WITH CHECK (
 );
 
 -- Politique : Suppression uniquement par le propriétaire de l'entreprise
-CREATE POLICY IF NOT EXISTS "Users can delete their company inspection photos"
+DROP POLICY IF EXISTS "Users can delete their company inspection photos" ON storage.objects;
+CREATE POLICY "Users can delete their company inspection photos"
 ON storage.objects FOR DELETE
 TO authenticated
 USING (
