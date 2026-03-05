@@ -49,6 +49,7 @@ interface VehicleWithScore extends VehicleComplianceData {
 
 interface DriverWithScore extends DriverComplianceData {
   score: number;
+  isCompliant?: boolean;
   documents: Array<{ name: string; status: DocumentStatusResult }>;
 }
 
@@ -62,14 +63,13 @@ const vehicleDocuments = [
   { key: 'insurance_expiry' as const, fallback: null, label: 'Assurance' },
 ];
 
+// Configuration DREAL simplifiée : uniquement les documents obligatoires
+// CQC (FCO) = fusion de fcos_expiry et cqc_expiry (la date la plus restrictive)
 const driverDocuments = [
   { key: 'license_expiry' as const, label: 'Permis de conduire' },
-  { key: 'driver_card_expiry' as const, label: 'Carte Conducteur' },
-  { key: 'fcos_expiry' as const, label: 'FCO' },
-  { key: 'fimo_expiry' as const, fallback: 'fimo_date' as const, label: 'FIMO' },
   { key: 'medical_certificate_expiry' as const, label: 'Visite médicale' },
+  { key: 'cqc_fco' as const, label: 'CQC (FCO)' }, // Fusion CQC + FCO
   { key: 'adr_certificate_expiry' as const, label: 'ADR' },
-  { key: 'cqc_expiry' as const, label: 'CQC' }, // ✅ Ajout du CQC
 ];
 
 // ============================================
@@ -99,7 +99,7 @@ function DocumentStatusBadge({ status }: { status: DocumentStatusResult }) {
 }
 
 /**
- * Score de conformité avec barre de progression
+ * Score de conformité avec barre de progression (pour véhicules)
  */
 function ComplianceScore({ score }: { score: number }) {
   const colorClass = score >= 80 ? 'text-emerald-400' : score >= 50 ? 'text-amber-400' : 'text-red-400';
@@ -115,6 +115,27 @@ function ComplianceScore({ score }: { score: number }) {
       </div>
       <span className={cn('text-sm font-medium w-12 text-right', colorClass)}>{score}%</span>
     </div>
+  );
+}
+
+/**
+ * Statut Global binaire DREAL : Conforme / Non-conforme
+ * Non-conforme si au moins un document est expiré ou manquant
+ */
+function GlobalStatusBadge({ isCompliant }: { isCompliant: boolean }) {
+  if (isCompliant) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border bg-emerald-500/15 text-emerald-400 border-emerald-500/20">
+        <CheckCircle className="h-3.5 w-3.5" />
+        Conforme
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border bg-red-500/15 text-red-400 border-red-500/20">
+      <AlertCircle className="h-3.5 w-3.5" />
+      Non-conforme
+    </span>
   );
 }
 
@@ -182,7 +203,7 @@ function VehiclesTable({
               </th>
             ))}
             <th className="text-left py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider w-32">
-              Score
+              Statut Global
             </th>
           </tr>
         </thead>
@@ -335,7 +356,7 @@ function DriversTable({
                 </td>
               ))}
               <td className="py-3 px-4">
-                <ComplianceScore score={driver.score} />
+                <GlobalStatusBadge isCompliant={driver.isCompliant ?? driver.score === 100} />
               </td>
             </tr>
           ))}
@@ -377,14 +398,7 @@ function DriversMobileCards({
               </div>
             </div>
             <div className="text-right">
-              <span
-                className={cn(
-                  'text-sm font-bold',
-                  driver.score >= 80 ? 'text-emerald-400' : driver.score >= 50 ? 'text-amber-400' : 'text-red-400'
-                )}
-              >
-                {driver.score}%
-              </span>
+              <GlobalStatusBadge isCompliant={driver.isCompliant ?? driver.score === 100} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -483,30 +497,112 @@ export default function CompliancePage() {
     });
   }, [data?.vehicles]);
 
-  // Préparer les données des conducteurs avec scores
+  // Préparer les données des conducteurs avec statut DREAL
   const driversWithScores: DriverWithScore[] = useMemo(() => {
     if (!data?.drivers) return [];
 
     return data.drivers.map((driver) => {
+      // Calculer la date CQC/FCO fusionnée (la plus restrictive = la plus proche)
+      const fcosDate = driver.fcos_expiry;
+      const cqcDate = driver.cqc_expiry || driver.cqc_expiry_date;
+      
+      let cqcFcoDate: string | null = null;
+      if (fcosDate && cqcDate) {
+        // Prendre la date la plus proche (la plus restrictive)
+        cqcFcoDate = new Date(fcosDate) < new Date(cqcDate) ? fcosDate : cqcDate;
+      } else {
+        cqcFcoDate = fcosDate || cqcDate || null;
+      }
+
       const documents = driverDocuments.map((doc) => {
-        const date = (driver[doc.key] as string | null) || (doc.fallback ? (driver[doc.fallback] as string | null) : null);
+        let date: string | null = null;
+        
+        if (doc.key === 'cqc_fco') {
+          date = cqcFcoDate;
+        } else {
+          date = (driver[doc.key as keyof DriverComplianceData] as string | null) || null;
+        }
+        
         return {
           name: doc.label,
           status: getDocumentStatus(date),
         };
       });
 
-      const scoreData = calculateComplianceScore(
-        documents.map((d) => ({ name: d.name, expiryDate: d.status.daysRemaining !== null ? new Date(Date.now() + d.status.daysRemaining * 24 * 60 * 60 * 1000).toISOString() : null }))
-      );
+      // Statut Global DREAL : Non-conforme si au moins un document expiré ou manquant
+      const hasExpired = documents.some(d => d.status.status === 'expired');
+      const hasMissing = documents.some(d => d.status.status === 'missing');
+      const isCompliant = !hasExpired && !hasMissing;
 
       return {
         ...driver,
         documents,
-        score: scoreData.score,
+        score: isCompliant ? 100 : 0, // 100 = Conforme, 0 = Non-conforme
+        isCompliant,
       };
     });
   }, [data?.drivers]);
+
+  // ─── Export CSV handler (DREAL format) ──────────────────────────────────────
+  const handleExportCSV = useCallback(() => {
+    if (!driversWithScores.length) return;
+
+    // Headers DREAL simplifiés
+    const headers = [
+      'CONDUCTEUR',
+      'PERMIS_EXPIRATION',
+      'PERMIS_JOURS_RESTANTS',
+      'VISITE_MEDICALE_EXPIRATION',
+      'VISITE_MEDICALE_JOURS_RESTANTS',
+      'CQC_FCO_EXPIRATION',
+      'CQC_FCO_JOURS_RESTANTS',
+      'ADR_EXPIRATION',
+      'ADR_JOURS_RESTANTS',
+      'STATUT_GLOBAL',
+    ];
+
+    const rows = driversWithScores.map((driver) => {
+      const permis = driver.documents.find(d => d.name === 'Permis de conduire')?.status;
+      const visite = driver.documents.find(d => d.name === 'Visite médicale')?.status;
+      const cqcFco = driver.documents.find(d => d.name === 'CQC (FCO)')?.status;
+      const adr = driver.documents.find(d => d.name === 'ADR')?.status;
+
+      const formatDate = (status: DocumentStatusResult | undefined) => {
+        if (!status || status.daysRemaining === null) return 'NON_RENSEIGNE';
+        const date = new Date();
+        date.setDate(date.getDate() + status.daysRemaining);
+        return date.toISOString().split('T')[0];
+      };
+
+      return [
+        `${driver.first_name} ${driver.last_name}`,
+        formatDate(permis),
+        permis?.daysRemaining?.toString() ?? 'N/A',
+        formatDate(visite),
+        visite?.daysRemaining?.toString() ?? 'N/A',
+        formatDate(cqcFco),
+        cqcFco?.daysRemaining?.toString() ?? 'N/A',
+        formatDate(adr),
+        adr?.daysRemaining?.toString() ?? 'N/A',
+        driver.isCompliant ? 'CONFORME' : 'NON_CONFORME',
+      ];
+    });
+
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(row => row.join(';')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `conformite-DREAL-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [driversWithScores]);
 
   // Filtrer les véhicules
   const filteredVehicles = useMemo(() => {
@@ -624,24 +720,35 @@ export default function CompliancePage() {
               Rapport du {reportDate}
             </p>
           </div>
-          <Button 
-            variant="outline" 
-            className="gap-2" 
-            onClick={handleExportPDF}
-            disabled={isExporting || isLoading}
-          >
-            {isExporting ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                Génération...
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                Exporter PDF
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="gap-2" 
+              onClick={handleExportCSV}
+              disabled={isLoading}
+            >
+              <FileText className="h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button 
+              variant="outline" 
+              className="gap-2" 
+              onClick={handleExportPDF}
+              disabled={isExporting || isLoading}
+            >
+              {isExporting ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Génération...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Exporter PDF
+                </>
+              )}
+            </Button>
+          </div>
         </motion.div>
 
         {/* KPI Cards */}

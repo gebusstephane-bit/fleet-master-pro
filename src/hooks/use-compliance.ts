@@ -38,7 +38,8 @@ export interface DriverComplianceData {
   fcos_expiry: string | null;
   medical_certificate_expiry: string | null;
   adr_certificate_expiry: string | null;
-  cqc_expiry: string | null; // ✅ Ajout du champ CQC
+  cqc_expiry: string | null;
+  cqc_expiry_date: string | null; // Champ legacy pour rétrocompatibilité
 }
 
 export interface ComplianceData {
@@ -177,7 +178,8 @@ export function useCompliance(options?: { enabled?: boolean }) {
         fcos_expiry: d.fcos_expiry,
         medical_certificate_expiry: d.medical_certificate_expiry,
         adr_certificate_expiry: d.adr_certificate_expiry,
-        cqc_expiry: d.cqc_expiry || d.cqc_expiry_date, // Fallback sur champ legacy
+        cqc_expiry: d.cqc_expiry || d.cqc_expiry_date,
+        cqc_expiry_date: d.cqc_expiry_date || null,
       }));
 
       return { vehicles, drivers };

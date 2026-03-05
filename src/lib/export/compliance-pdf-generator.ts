@@ -60,7 +60,10 @@ export interface DriverCompliancePDF {
   license_expiry: string | null;
   driver_card_expiry: string | null;
   fcos_expiry: string | null;
+  cqc_expiry: string | null;
+  cqc_expiry_date: string | null;
   medical_certificate_expiry: string | null;
+  adr_certificate_expiry: string | null;
 }
 
 export interface CompliancePDFData {
@@ -158,9 +161,19 @@ function calculateGlobalScore(data: CompliancePDFData): number {
     });
   });
   
-  // Driver documents
+  // Driver documents (format DREAL : uniquement les documents obligatoires)
   data.drivers.forEach(d => {
-    ['license_expiry', 'driver_card_expiry', 'fcos_expiry', 'medical_certificate_expiry'].forEach(key => {
+    // Calculer la date CQC/FCO fusionnée (la plus restrictive)
+    const fcosDate = d.fcos_expiry;
+    const cqcDate = d.cqc_expiry || d.cqc_expiry_date;
+    let cqcFcoDate: string | null = null;
+    if (fcosDate && cqcDate) {
+      cqcFcoDate = new Date(fcosDate) < new Date(cqcDate) ? fcosDate : cqcDate;
+    } else {
+      cqcFcoDate = fcosDate || cqcDate || null;
+    }
+    
+    ['license_expiry', 'medical_certificate_expiry', 'adr_certificate_expiry'].forEach(key => {
       const date = d[key as keyof DriverCompliancePDF] as string | null;
       if (date) {
         totalDocs++;
@@ -169,6 +182,13 @@ function calculateGlobalScore(data: CompliancePDFData): number {
         else if (status.status === 'warning') validDocs += 0.5;
       }
     });
+    // CQC/FCO fusionné
+    if (cqcFcoDate) {
+      totalDocs++;
+      const status = getDocStatus(cqcFcoDate);
+      if (status.status === 'valid') validDocs++;
+      else if (status.status === 'warning') validDocs += 0.5;
+    }
   });
   
   return totalDocs > 0 ? Math.round((validDocs / totalDocs) * 100) : 100;
@@ -443,7 +463,7 @@ function drawVehiclesSection(
   return pn;
 }
 
-// ─── PAGE: DRIVERS SECTION ───────────────────────────────────────────────────
+// ─── PAGE: DRIVERS SECTION (FORMAT DREAL) ────────────────────────────────────
 function drawDriversSection(
   pdfDoc: PDFDocument, fonts: Fonts, drivers: DriverCompliancePDF[], startPageNum: number
 ): number {
@@ -462,17 +482,18 @@ function drawDriversSection(
   
   let y = PAGE_H - 80;
   
-  // Column widths
+  // Column widths (format DREAL : 5 colonnes + statut)
   const colW = [
     110,  // Nom
-    95,   // Permis
-    95,   // Carte conducteur
-    95,   // FCO
-    95,   // Visite medicale
+    90,   // Permis
+    90,   // Visite medicale
+    90,   // CQC (FCO)
+    90,   // ADR
+    70,   // Statut Global
   ];
   
-  // Table header
-  const headers = ['CONDUCTEUR', 'PERMIS', 'CARTE COND.', 'FCO', 'VISITE MED.'];
+  // Table header (format DREAL)
+  const headers = ['CONDUCTEUR', 'PERMIS', 'VISITE MED.', 'CQC (FCO)', 'ADR', 'STATUT'];
   let x = MARGIN;
   headers.forEach((h, i) => {
     rect(page, x, y - HDR_H, colW[i], HDR_H, C.blue);
@@ -502,17 +523,31 @@ function drawDriversSection(
     
     const bg = idx % 2 === 0 ? C.white : C.grayLight;
     
-    // Determine row color based on most critical document
+    // Calculer la date CQC/FCO fusionnée
+    const fcosDate = d.fcos_expiry;
+    const cqcDate = d.cqc_expiry || d.cqc_expiry_date;
+    let cqcFcoDate: string | null = null;
+    if (fcosDate && cqcDate) {
+      cqcFcoDate = new Date(fcosDate) < new Date(cqcDate) ? fcosDate : cqcDate;
+    } else {
+      cqcFcoDate = fcosDate || cqcDate || null;
+    }
+    
+    // Determine row color and global status (DREAL : binaire)
     const statuses = [
       getDocStatus(d.license_expiry).status,
-      getDocStatus(d.driver_card_expiry).status,
-      getDocStatus(d.fcos_expiry).status,
       getDocStatus(d.medical_certificate_expiry).status,
+      getDocStatus(cqcFcoDate).status,
+      getDocStatus(d.adr_certificate_expiry).status,
     ];
+    
+    const hasExpired = statuses.includes('expired');
+    const hasMissing = statuses.includes('missing');
+    const isCompliant = !hasExpired && !hasMissing;
+    
     let rowColor = C.green;
-    if (statuses.includes('expired')) rowColor = C.red;
-    else if (statuses.includes('warning')) rowColor = C.orange;
-    else if (statuses.includes('missing')) rowColor = C.gray;
+    if (hasExpired) rowColor = C.red;
+    else if (hasMissing) rowColor = C.gray;
     
     // Row background
     x = MARGIN;
@@ -530,12 +565,12 @@ function drawDriversSection(
     txt(page, 'Conducteur', x, y - 22, 7, fonts.regular, C.gray);
     x += colW[0];
     
-    // Documents
+    // Documents (format DREAL)
     const docs = [
       { date: d.license_expiry, label: 'Permis', type: d.license_type },
-      { date: d.driver_card_expiry, label: 'Carte' },
-      { date: d.fcos_expiry, label: 'FCO' },
       { date: d.medical_certificate_expiry, label: 'Visite' },
+      { date: cqcFcoDate, label: 'CQC/FCO' },
+      { date: d.adr_certificate_expiry, label: 'ADR' },
     ];
     
     docs.forEach((doc) => {
@@ -557,8 +592,13 @@ function drawDriversSection(
       }
       txt(page, label, x + 18, y - 22, 6, fonts.regular, C.gray);
       
-      x += colW[docs.indexOf(doc) + 1] || 95;
+      x += colW[docs.indexOf(doc) + 1] || 90;
     });
+    
+    // Statut Global (DREAL : binaire)
+    const statusBg = isCompliant ? C.green : C.red;
+    rect(page, x + 8, y - 20, 54, 16, statusBg);
+    txt(page, isCompliant ? 'CONFORME' : 'NON CONFORME', x + 12, y - 14, 6, fonts.bold, C.white);
     
     y -= ROW_H;
   });
@@ -598,22 +638,31 @@ function drawActionsSection(
   });
   
   data.drivers.forEach(d => {
+    // Calculer la date CQC/FCO fusionnée
+    const fcosDate = d.fcos_expiry;
+    const cqcDate = d.cqc_expiry || d.cqc_expiry_date;
+    let cqcFcoDate: string | null = null;
+    if (fcosDate && cqcDate) {
+      cqcFcoDate = new Date(fcosDate) < new Date(cqcDate) ? fcosDate : cqcDate;
+    } else {
+      cqcFcoDate = fcosDate || cqcDate || null;
+    }
+    
     const docs = [
-      { key: 'license_expiry', label: 'Permis' },
-      { key: 'driver_card_expiry', label: 'Carte conducteur' },
-      { key: 'fcos_expiry', label: 'FCO' },
-      { key: 'medical_certificate_expiry', label: 'Visite medicale' },
+      { key: 'license_expiry', label: 'Permis', date: d.license_expiry },
+      { key: 'medical_certificate_expiry', label: 'Visite medicale', date: d.medical_certificate_expiry },
+      { key: 'cqc_fco', label: 'CQC (FCO)', date: cqcFcoDate },
+      { key: 'adr_certificate_expiry', label: 'ADR', date: d.adr_certificate_expiry },
     ];
     
     docs.forEach(doc => {
-      const date = d[doc.key as keyof DriverCompliancePDF] as string | null;
-      const status = getDocStatus(date);
+      const status = getDocStatus(doc.date);
       if (status.status === 'expired' || status.status === 'warning') {
         actions.push({
           type: 'driver',
           name: `${d.first_name} ${d.last_name}`,
           doc: doc.label,
-          date,
+          date: doc.date,
           urgency: status.days !== null ? status.days : -999,
         });
       }

@@ -149,7 +149,10 @@ export async function GET(request: NextRequest) {
           license_expiry,
           driver_card_expiry,
           fcos_expiry,
-          medical_certificate_expiry
+          cqc_expiry,
+          cqc_expiry_date,
+          medical_certificate_expiry,
+          adr_certificate_expiry
         `)
         .eq('company_id', companyId)
         .order('last_name', { ascending: true });
@@ -157,7 +160,7 @@ export async function GET(request: NextRequest) {
       if (driversError) {
         logger.error('[API Compliance Report] Erreur conducteurs', { error: driversError.message });
       } else {
-        drivers = (driversData || []).map(d => ({
+        drivers = (driversData || []).map((d: any) => ({
           id: d.id,
           first_name: d.first_name,
           last_name: d.last_name,
@@ -165,7 +168,10 @@ export async function GET(request: NextRequest) {
           license_expiry: d.license_expiry,
           driver_card_expiry: d.driver_card_expiry,
           fcos_expiry: d.fcos_expiry,
+          cqc_expiry: d.cqc_expiry,
+          cqc_expiry_date: d.cqc_expiry_date || null,
           medical_certificate_expiry: d.medical_certificate_expiry,
+          adr_certificate_expiry: d.adr_certificate_expiry,
         }));
       }
     }
