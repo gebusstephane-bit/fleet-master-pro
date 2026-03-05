@@ -103,7 +103,8 @@ export function useCompliance(options?: { enabled?: boolean }) {
           fcos_expiry,
           medical_certificate_expiry,
           adr_certificate_expiry,
-          cqc_expiry
+          cqc_expiry,
+          cqc_expiry_date
         `)
         .eq('company_id', companyId)
         .order('created_at', { ascending: false });
@@ -176,7 +177,7 @@ export function useCompliance(options?: { enabled?: boolean }) {
         fcos_expiry: d.fcos_expiry,
         medical_certificate_expiry: d.medical_certificate_expiry,
         adr_certificate_expiry: d.adr_certificate_expiry,
-        cqc_expiry: d.cqc_expiry,
+        cqc_expiry: d.cqc_expiry || d.cqc_expiry_date, // Fallback sur champ legacy
       }));
 
       return { vehicles, drivers };

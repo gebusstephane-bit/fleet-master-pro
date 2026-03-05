@@ -110,6 +110,7 @@ export interface Driver {
   // CQC
   cqc_card_number?: string | null;
   cqc_expiry?: string | null;
+  cqc_expiry_date?: string | null; // Champ legacy pour rétrocompatibilité
   cqc_category?: string | null;
   // Scores
   safety_score?: number | null;

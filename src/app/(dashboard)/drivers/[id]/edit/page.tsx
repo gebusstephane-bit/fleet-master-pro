@@ -98,7 +98,8 @@ export default function EditDriverPage() {
               // @ts-ignore
               cqc_card_number: driverData.cqc_card_number || '',
               // @ts-ignore
-              cqc_expiry: driverData.cqc_expiry || null,
+              // Fallback sur cqc_expiry_date pour la rétrocompatibilité
+              cqc_expiry: driverData.cqc_expiry || driverData.cqc_expiry_date || null,
               // @ts-ignore
               cqc_category: driverData.cqc_category || 'GOODS',
               // @ts-ignore

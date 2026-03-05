@@ -93,6 +93,8 @@ export const createDriver = authActionClient
         company_id: ctx.user.company_id,
         // Calculé depuis status : actif = active ou on_leave
         is_active: parsedInput.status === 'active' || parsedInput.status === 'on_leave',
+        // Synchroniser les deux champs CQC pour rétrocompatibilité
+        cqc_expiry_date: parsedInput.cqc_expiry,
       })
       .select()
       .single();
@@ -132,6 +134,10 @@ export const updateDriver = authActionClient
         ...updates,
         ...(updates.status !== undefined && {
           is_active: updates.status === 'active' || updates.status === 'on_leave',
+        }),
+        // Synchroniser les deux champs CQC pour rétrocompatibilité
+        ...(updates.cqc_expiry !== undefined && {
+          cqc_expiry_date: updates.cqc_expiry,
         }),
       })
       .eq('id', id)
