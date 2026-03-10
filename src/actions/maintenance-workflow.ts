@@ -440,9 +440,16 @@ export const scheduleMaintenanceRDV = authActionClient
       .eq('company_id', ctx.user.company_id)
       .eq('role', USER_ROLE.EXPLOITANT);
     const recipients = [...directors, ...(exploitants || []), requesterData];
-    
+
+    // DEBUG TEMPORAIRE — à retirer après diagnostic
+    console.log('[EMAIL DEBUG] maintenance.requested_by:', maintenance.requested_by);
+    console.log('[EMAIL DEBUG] requesterData:', JSON.stringify(requesterData));
+    console.log('[EMAIL DEBUG] directors:', JSON.stringify(directors.map(d => ({ email: d.email, role: 'ADMIN/DIR' }))));
+    console.log('[EMAIL DEBUG] exploitants:', JSON.stringify((exploitants || []).map(e => ({ email: e.email }))));
+    console.log('[EMAIL DEBUG] recipients final:', JSON.stringify(recipients.map(r => r?.email)));
+
     const formattedDate = format(new Date(parsedInput.rdvDate), 'EEEE d MMMM yyyy', { locale: fr });
-    
+
     for (const recipient of recipients) {
       await sendEmail({
         to: recipient?.email || '',
