@@ -5,107 +5,74 @@ import { useRef } from "react";
 import { UserPlus, QrCode, BarChart3, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-// =============================================================================
-// Données — 3 étapes
-// =============================================================================
-
 const steps = [
   {
     number: "01",
     icon: UserPlus,
     title: "Créez votre compte en 5 minutes",
     description:
-      "Inscrivez-vous gratuitement, renseignez votre entreprise et vos premiers véhicules. Notre assistant de démarrage vous guide pas à pas — aucune compétence technique requise.",
+      "Inscrivez-vous gratuitement, renseignez votre entreprise et vos premiers véhicules. Notre assistant de démarrage vous guide pas à pas.",
     detail: "Essai 14 jours sans CB · Import de données existantes · Accès immédiat",
-    gradientFrom: "#06b6d4",
-    gradientTo: "#3b82f6",
-    iconBg: "bg-cyan-500/10 border-cyan-500/20",
-    iconColor: "text-cyan-400",
-    numberColor: "text-cyan-500/30",
-    connectorColor: "from-cyan-500/30 to-blue-500/30",
+    gradient: "from-[#00d4ff] to-blue-500",
   },
   {
     number: "02",
     icon: QrCode,
     title: "Générez vos QR codes d'inspection",
     description:
-      "Imprimez les QR codes et collez-les sur vos véhicules. Vos chauffeurs scannent avec leur téléphone (sans app à installer) pour remplir les inspections. La conformité devient instantanée.",
+      "Imprimez les QR codes et collez-les sur vos véhicules. Vos chauffeurs scannent avec leur téléphone (sans app à installer) pour remplir les inspections.",
     detail: "QR codes imprimables · Inspections via navigateur · Photos et signatures",
-    gradientFrom: "#3b82f6",
-    gradientTo: "#8b5cf6",
-    iconBg: "bg-blue-500/10 border-blue-500/20",
-    iconColor: "text-blue-400",
-    numberColor: "text-blue-500/30",
-    connectorColor: "from-blue-500/30 to-violet-500/30",
+    gradient: "from-blue-500 to-violet-500",
   },
   {
     number: "03",
     icon: BarChart3,
     title: "Pilotez et restez conforme",
     description:
-      "Recevez les alertes de documents, anticipez les maintenances avec l'IA, suivez vos coûts. Votre flotte est sous contrôle — sans surveillance GPS, sans stress.",
+      "Recevez les alertes de documents, anticipez les maintenances avec l'IA, suivez vos coûts. Votre flotte est sous contrôle — sans surveillance GPS.",
     detail: "Alertes auto · Maintenance prédictive · Rapports conformité",
-    gradientFrom: "#10b981",
-    gradientTo: "#06b6d4",
-    iconBg: "bg-emerald-500/10 border-emerald-500/20",
-    iconColor: "text-emerald-400",
-    numberColor: "text-emerald-500/30",
-    connectorColor: null, // dernière étape — pas de connecteur
+    gradient: "from-violet-500 to-[#00d4ff]",
   },
 ];
-
-// =============================================================================
-// Composant
-// =============================================================================
 
 export function HowItWorks() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section ref={ref} className="py-24 bg-[#0a0f1a] relative overflow-hidden">
-      {/* Fond */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: `radial-gradient(ellipse at 50% 50%, rgba(6,182,212,0.04) 0%, transparent 65%)`,
-        }}
-      />
-
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-
-        {/* ── En-tête ── */}
+    <section ref={ref} className="py-24 relative overflow-hidden">
+      {/* Background aurora */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#00d4ff]/5 to-transparent pointer-events-none" />
+      
+      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <span className="inline-block text-sm font-semibold text-cyan-400 uppercase tracking-wider mb-4">
+          <span className="inline-flex items-center gap-2 glass-cosmic px-4 py-2 rounded-full text-xs font-medium uppercase tracking-[0.15em] text-[#00d4ff] mb-6">
             Comment ça marche
           </span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white">
-            Opérationnel en{" "}
-            <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              10 minutes
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6">
+            <span className="text-cosmic-display">
+              Opérationnel en
             </span>
+            <span className="text-cosmic-gradient"> 10 minutes</span>
           </h2>
-          <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
+          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
             Trois étapes suffisent pour transformer la gestion de votre flotte.
             Pas d'installation matérielle, pas de formation longue.
           </p>
         </motion.div>
 
-        {/* ── Étapes — disposition en ligne sur desktop ── */}
+        {/* Steps */}
         <div className="relative grid md:grid-cols-3 gap-8">
-
-          {/* Ligne de connexion desktop */}
-          <div
-            className="hidden md:block absolute top-16 left-[16.67%] right-[16.67%] h-px"
-            style={{
-              background: `linear-gradient(90deg, rgba(6,182,212,0.3), rgba(59,130,246,0.3), rgba(139,92,246,0.3))`,
-            }}
-          />
+          {/* Connection line */}
+          <div className="hidden md:block absolute top-20 left-[16.67%] right-[16.67%] h-px">
+            <div className="h-full bg-gradient-to-r from-[#00d4ff]/50 via-blue-500/50 to-violet-500/50" />
+          </div>
 
           {steps.map((step, index) => (
             <motion.div
@@ -114,42 +81,39 @@ export function HowItWorks() {
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{
                 duration: 0.6,
-                delay: index * 0.18,
+                delay: index * 0.2,
                 ease: [0.22, 1, 0.36, 1],
               }}
               className="relative flex flex-col items-center text-center"
             >
-              {/* Numéro en arrière-plan */}
+              {/* Number background */}
               <span
-                className={`absolute -top-4 text-[120px] font-black leading-none select-none pointer-events-none ${step.numberColor}`}
+                className="absolute -top-4 text-[100px] font-black leading-none select-none pointer-events-none text-white/5"
                 aria-hidden="true"
               >
                 {step.number}
               </span>
 
-              {/* Icône */}
+              {/* Icon */}
               <div className="relative z-10 mb-6">
                 <div
-                  className={`w-16 h-16 rounded-2xl border ${step.iconBg} flex items-center justify-center shadow-lg`}
-                  style={{
-                    boxShadow: `0 0 30px rgba(6,182,212,0.12)`,
-                  }}
+                  className="w-16 h-16 rounded-2xl glass-cosmic flex items-center justify-center shadow-[0_0_30px_rgba(0,212,255,0.2)]"
                 >
-                  <step.icon className={`h-8 w-8 ${step.iconColor}`} />
+                  <step.icon className="h-8 w-8 text-[#00d4ff]" />
                 </div>
 
-                {/* Numéro de badge */}
+                {/* Step badge */}
                 <span
-                  className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                  className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-black shadow-lg"
                   style={{
-                    background: `linear-gradient(135deg, ${step.gradientFrom}, ${step.gradientTo})`,
+                    background: `linear-gradient(135deg, ${step.gradient.includes('00d4ff') ? '#00d4ff' : step.gradient.includes('blue') ? '#3b82f6' : '#8b5cf6'}, ${step.gradient.includes('violet') ? '#8b5cf6' : step.gradient.includes('00d4ff') ? '#00d4ff' : '#3b82f6'})`,
                   }}
                 >
                   {index + 1}
                 </span>
               </div>
 
-              {/* Titre */}
+              {/* Title */}
               <h3 className="text-lg font-bold text-white mb-3 px-2">
                 {step.title}
               </h3>
@@ -159,26 +123,26 @@ export function HowItWorks() {
                 {step.description}
               </p>
 
-              {/* Détails techniques */}
+              {/* Detail */}
               <p className="text-xs text-slate-600 font-medium">{step.detail}</p>
             </motion.div>
           ))}
         </div>
 
-        {/* ── CTA sous les étapes ── */}
+        {/* CTA */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.6 }}
+          transition={{ duration: 0.6, delay: 0.8 }}
           className="text-center mt-16"
         >
           <Link href="/register">
-            <button className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold text-base shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:-translate-y-1 transition-all duration-300">
+            <button className="btn-cosmic">
               Démarrer mon essai gratuit
-              <ArrowRight className="h-5 w-5" />
+              <ArrowRight className="h-4 w-4" />
             </button>
           </Link>
-          <p className="text-sm text-slate-600 mt-3">
+          <p className="text-sm text-slate-600 mt-4">
             Sans carte bancaire · Annulation à tout moment · 14 jours complets
           </p>
         </motion.div>

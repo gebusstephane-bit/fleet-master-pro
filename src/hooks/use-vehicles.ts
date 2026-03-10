@@ -40,6 +40,12 @@ export interface Vehicle {
   tachy_control_expiry?: string;
   atp_date?: string;
   atp_expiry?: string;
+  // ADR (transport de marchandises dangereuses)
+  detailed_type?: string;
+  adr_certificate_date?: string;
+  adr_certificate_expiry?: string;
+  adr_equipment_check_date?: string;
+  adr_equipment_expiry?: string;
   drivers?: {
     id: string;
     first_name: string;
@@ -183,6 +189,11 @@ const VEHICLE_DATE_FIELDS = [
   'tachy_control_expiry',
   'atp_date',
   'atp_expiry',
+  // ADR (transport de marchandises dangereuses)
+  'adr_certificate_date',
+  'adr_certificate_expiry',
+  'adr_equipment_check_date',
+  'adr_equipment_expiry',
 ] as const;
 
 function sanitizeVehicleDates(data: Record<string, unknown>): Record<string, unknown> {

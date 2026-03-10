@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -115,7 +116,7 @@ export async function GET(request: NextRequest) {
     const { data: test5, error: err5 } = await supabase
       .from('vehicles')
       .select('id, registration_number, status')
-      .eq('status', 'EN_MAINTENANCE');
+      .eq('status', VEHICLE_STATUS.EN_MAINTENANCE);
     
     diagnostics.tests.vehicles_in_maintenance = {
       success: !err5,

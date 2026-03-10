@@ -124,9 +124,19 @@ export const createCheckoutSession = authActionClient
     // Créer la session de checkout
     const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY!));
     
+    // Vérification explicite : si annuel demandé mais non configuré → erreur claire
+    const yearlyEnvVars: Record<string, string | undefined> = {
+      ESSENTIAL: process.env.STRIPE_PRICE_ID_ESSENTIAL_YEARLY,
+      PRO: process.env.STRIPE_PRICE_ID_PRO_YEARLY,
+      UNLIMITED: process.env.STRIPE_PRICE_ID_UNLIMITED_YEARLY,
+    };
+    if (yearly && !yearlyEnvVars[plan]) {
+      throw new Error("L'offre annuelle n'est pas encore disponible en ligne. Contactez-nous à contact@fleet-master.fr pour en bénéficier.");
+    }
+
     const planConfig = PLAN_PRICE_IDS[plan];
     const priceId = yearly ? planConfig.yearly : planConfig.monthly;
-    
+
     if (!priceId) {
       throw new Error('Price ID non configuré pour ce plan');
     }

@@ -22,6 +22,7 @@ import { useUser } from '@/hooks/use-user';
 import { EmptyState } from '@/components/ui/empty-state';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { USER_ROLE } from '@/constants/enums';
 
 interface MaintenanceRequest {
   id: string;
@@ -53,7 +54,7 @@ export default function MaintenancePage() {
   const [selectedRequest, setSelectedRequest] = useState<MaintenanceRequest | null>(null);
   const { data: user } = useUser();
 
-  const isDirector = user?.role === 'ADMIN' || user?.role === 'DIRECTEUR';
+  const isDirector = user?.role === USER_ROLE.ADMIN || user?.role === USER_ROLE.DIRECTEUR;
 
   const loadRequests = async () => {
     setLoading(true);

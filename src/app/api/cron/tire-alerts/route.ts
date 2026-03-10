@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { USER_ROLE } from '@/constants/enums';
 import { TREAD_DEPTH_THRESHOLDS } from '@/lib/axle-configurations';
+import { logger } from '@/lib/logger';
 
 // ----------------------------------------------------------------
 // CRON : Alertes pneumatiques — quotidien à 06h00
@@ -77,7 +79,7 @@ export async function GET(request: NextRequest) {
       .from('profiles')
       .select('id, company_id')
       .in('company_id', companyIds)
-      .in('role', ['ADMIN', 'DIRECTEUR']);
+      .in('role', [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR]);
 
     if (!profiles || profiles.length === 0) {
       return NextResponse.json({ ok: true, processed: 0 });
@@ -176,7 +178,7 @@ export async function GET(request: NextRequest) {
       notificationsSent: notificationsToInsert.length,
     });
   } catch (err) {
-    console.error('[cron/tire-alerts]', err);
+    logger.error('[cron/tire-alerts]', err);
     return NextResponse.json(
       { error: 'Internal error', details: String(err) },
       { status: 500 }

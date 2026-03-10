@@ -120,7 +120,7 @@ export function DataTable<T>({
                       column.align === 'right' && 'text-right'
                     )}
                   >
-                    {column.render ? column.render(item) : (item as any)[column.key]}
+                    {column.render ? column.render(item) : (item as Record<string, unknown>)[column.key] as React.ReactNode}
                   </TableCell>
                 ))}
               </TableRow>

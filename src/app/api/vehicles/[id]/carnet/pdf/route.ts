@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import {
   generateCarnetPDF,
   type VehicleCarnetData,
@@ -75,7 +76,7 @@ export async function GET(
       .eq('company_id', company_id)
       .order('created_at', { ascending: false });
 
-    if (maintErr) console.error('[carnet/pdf] maintenance_records error:', maintErr);
+    if (maintErr) logger.error('[carnet/pdf] maintenance_records error:', maintErr);
 
     // ── 6. Fetch inspections ───────────────────────────────────────────────
     const { data: inspectionsRaw, error: inspErr } = await adminClient
@@ -84,7 +85,7 @@ export async function GET(
       .eq('vehicle_id', vehicleId)
       .order('created_at', { ascending: false });
 
-    if (inspErr) console.error('[carnet/pdf] vehicle_inspections error:', inspErr);
+    if (inspErr) logger.error('[carnet/pdf] vehicle_inspections error:', inspErr);
 
     // ── 7. Fetch fuel records (last 6 months) ──────────────────────────────
     const sixMonthsAgo = new Date();
@@ -98,7 +99,7 @@ export async function GET(
       .gte('created_at', sixMonthsAgo.toISOString())
       .order('created_at', { ascending: false });
 
-    if (fuelErr) console.error('[carnet/pdf] fuel_records error:', fuelErr);
+    if (fuelErr) logger.error('[carnet/pdf] fuel_records error:', fuelErr);
 
     // ── 8. Build carnet data ───────────────────────────────────────────────
     const carnetData: VehicleCarnetData = {
@@ -147,7 +148,7 @@ export async function GET(
       },
     });
   } catch (err) {
-    console.error('[carnet/pdf] Error:', err);
+    logger.error('[carnet/pdf] Error:', err);
     return new NextResponse('Erreur interne lors de la generation du carnet PDF', { status: 500 });
   }
 }

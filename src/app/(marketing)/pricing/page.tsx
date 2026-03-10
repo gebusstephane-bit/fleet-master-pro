@@ -1,98 +1,295 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { Check, Sparkles, ArrowRight, HelpCircle, X, Info, Shield, Zap, Phone, Lock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from "framer-motion";
+import { useRef, useState } from "react";
+import Link from "next/link";
+import { Check, ArrowRight, Zap, Crown, Rocket, HelpCircle, Lock, Shield, Headphones } from "lucide-react";
+import { Navbar } from "@/components/landing/Navbar";
+import { WarpEffect } from "@/components/landing/FXLayer";
+import { PLANS, ACTIVE_PLANS, getYearlySavings } from "@/lib/plans";
+import type { PlanId } from "@/lib/plans";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/components/ui/accordion';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/accordion";
 
-// Configuration des plans
-const PLANS = {
+// ─── Accents par plan (identiques à PricingTeaser) ──────────────────────────
+const PLAN_ACCENTS: Record<string, {
+  accent: string;
+  glow: string;
+  icon: React.ElementType;
+}> = {
   essential: {
-    id: 'essential',
-    name: 'ESSENTIAL',
-    priceMonthly: 29,
-    priceYearly: 23, // -20%
-    yearlyTotal: 276,
-    maxVehicles: 5,
-    maxUsers: 10,
-    popular: false,
-    features: [
-      '5 véhicules',
-      '10 conducteurs',
-      'Conformité de base',
-      'Inspections QR',
-      'Carnet d\'entretien',
-      'Support communauté',
-    ],
-    cta: 'Essayer gratuitement 14 jours',
+    accent: "#64748b",
+    glow: "rgba(100, 116, 139, 0.6)",
+    icon: Zap,
   },
   pro: {
-    id: 'pro',
-    name: 'PRO',
-    priceMonthly: 49,
-    priceYearly: 39, // -20%
-    yearlyTotal: 468,
-    maxVehicles: 20,
-    maxUsers: 50,
-    popular: true,
-    features: [
-      '20 véhicules',
-      '50 conducteurs',
-      'Tout Essential +',
-      'Rapports avancés',
-      'Webhooks',
-      'Support email',
-      'TCO & coûts',
-    ],
-    cta: 'Essayer gratuitement 14 jours',
+    accent: "#00d4ff",
+    glow: "rgba(0, 212, 255, 0.8)",
+    icon: Crown,
   },
   unlimited: {
-    id: 'unlimited',
-    name: 'UNLIMITED',
-    priceMonthly: 129,
-    priceYearly: 103, // -20%
-    yearlyTotal: 1236,
-    maxVehicles: 999,
-    maxUsers: 999,
-    popular: false,
-    features: [
-      'Véhicules illimités',
-      'Conducteurs illimités',
-      'Tout Pro +',
-      'API publique',
-      'Assistant IA réglementaire',
-      'Export comptable',
-      'Support prioritaire',
-    ],
-    cta: 'Essayer gratuitement 14 jours',
+    accent: "#a78bfa",
+    glow: "rgba(167, 139, 250, 0.6)",
+    icon: Rocket,
   },
 };
 
-// Tableau comparatif
-const COMPARISON_DATA = [
-  { feature: 'Prix/mois (10 véhicules)', fleetmaster: '49€', quartix: '~300€', webfleet: '~400€' },
-  { feature: 'Conformité réglementaire', fleetmaster: '✅ Inclus', quartix: '⚠️ Partiel', webfleet: '✅' },
-  { feature: 'Inspections QR sans app', fleetmaster: '✅ Unique', quartix: '❌', webfleet: '❌' },
-  { feature: 'SOS panne intelligent', fleetmaster: '✅', quartix: '❌', webfleet: '⚠️' },
-  { feature: 'Géolocalisation', fleetmaster: '❌ (RGPD+)', quartix: '✅', webfleet: '✅', tooltip: 'Pas de traceur GPS = meilleur RGPD, moins cher, pas de surveillance des chauffeurs' },
-  { feature: 'Sans engagement', fleetmaster: '✅', quartix: '❌', webfleet: '❌' },
-];
+// ─── Carte pricing avec effet Black Hole (copie exacte de PricingTeaser) ────
+function PricingCard({
+  planId,
+  index,
+  yearly,
+}: {
+  planId: string;
+  index: number;
+  yearly: boolean;
+}) {
+  const plan = PLANS[planId as PlanId];
+  const pa = PLAN_ACCENTS[planId] || PLAN_ACCENTS.essential;
+  const Icon = pa.icon;
+  const savings = getYearlySavings(planId as PlanId);
+  const displayPrice = yearly ? Math.round(plan.priceYearly / 12) : plan.priceMonthly;
 
-// FAQ
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const mouseX = useMotionValue(0.5);
+  const mouseY = useMotionValue(0.5);
+
+  const rotateX = useSpring(useTransform(mouseY, [0, 1], [8, -8]), { stiffness: 300, damping: 30 });
+  const rotateY = useSpring(useTransform(mouseX, [0, 1], [-8, 8]), { stiffness: 300, damping: 30 });
+
+  const borderX = useSpring(useTransform(mouseX, [0, 1], [0, 100]), { stiffness: 500, damping: 30 });
+  const borderY = useSpring(useTransform(mouseY, [0, 1], [0, 100]), { stiffness: 500, damping: 30 });
+
+  const angle = useTransform(() => {
+    const x = mouseX.get();
+    const y = mouseY.get();
+    return Math.atan2(y - 0.5, x - 0.5) * (180 / Math.PI) + 90;
+  });
+  const smoothAngle = useSpring(angle, { stiffness: 500, damping: 30 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    mouseX.set((e.clientX - rect.left) / rect.width);
+    mouseY.set((e.clientY - rect.top) / rect.height);
+  };
+
+  const handleMouseLeave = () => {
+    mouseX.set(0.5);
+    mouseY.set(0.5);
+    setIsHovered(false);
+  };
+
+  return (
+    <motion.div
+      ref={cardRef}
+      initial={{ opacity: 0, y: 60, rotateX: 20 }}
+      animate={{ opacity: 1, y: 0, rotateX: 0 }}
+      transition={{ duration: 0.8, delay: index * 0.15, ease: [0.22, 1, 0.36, 1] }}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        rotateX: isHovered ? rotateX : 0,
+        rotateY: isHovered ? rotateY : 0,
+        transformStyle: "preserve-3d",
+      }}
+      className={`relative group ${plan.popular ? "lg:-mt-6 lg:mb-6 z-20" : "z-10"}`}
+    >
+      {/* Glow externe au repos */}
+      <div
+        className="absolute -inset-1 rounded-2xl blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-700"
+        style={{ background: `radial-gradient(circle at 50% 50%, ${pa.glow} 0%, transparent 70%)` }}
+      />
+
+      {/* Carte principale avec bandeau lumineux */}
+      <div className="relative rounded-2xl overflow-hidden" style={{ transformStyle: "preserve-3d" }}>
+
+        {/* BANDEAU LUMINEUX 4D */}
+        <motion.div
+          className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+          style={{
+            background: `conic-gradient(from ${smoothAngle.get()}deg at ${borderX.get()}% ${borderY.get()}%, transparent 0deg, ${pa.accent} 20deg, ${pa.accent} 40deg, transparent 60deg, transparent 360deg)`,
+            filter: "blur(8px)",
+          }}
+        />
+
+        {/* Bordure fine */}
+        <motion.div
+          className="absolute inset-[1px] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+          style={{
+            background: `conic-gradient(from ${smoothAngle.get()}deg at ${borderX.get()}% ${borderY.get()}%, transparent 0deg, ${pa.accent} 10deg, ${pa.accent} 30deg, transparent 50deg, transparent 360deg)`,
+          }}
+        />
+
+        {/* Fond */}
+        <div
+          className="relative h-full rounded-2xl overflow-hidden transition-all duration-500"
+          style={{
+            background: isHovered
+              ? "linear-gradient(135deg, #020617 0%, #0f172a 50%, #020617 100%)"
+              : "linear-gradient(135deg, rgba(15, 23, 42, 0.6) 0%, rgba(30, 41, 59, 0.4) 100%)",
+            backdropFilter: "blur(20px)",
+          }}
+        >
+          {/* Spotlight interne */}
+          <motion.div
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+            style={{
+              background: `radial-gradient(circle at ${borderX.get()}% ${borderY.get()}%, ${pa.glow} 0%, transparent 50%)`,
+            }}
+          />
+
+          {/* Badge POPULAIRE */}
+          {plan.popular && (
+            <motion.div
+              className="absolute -top-px left-1/2 -translate-x-1/2 z-20"
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.5, duration: 0.5 }}
+            >
+              <div
+                className="flex items-center gap-1.5 px-5 py-2 rounded-b-xl font-bold text-xs uppercase tracking-wider shadow-lg"
+                style={{
+                  background: `linear-gradient(135deg, ${pa.accent} 0%, #3b82f6 100%)`,
+                  color: "#000",
+                  boxShadow: `0 10px 40px ${pa.glow}`,
+                }}
+              >
+                <Zap className="h-3.5 w-3.5" />
+                Le plus choisi
+              </div>
+            </motion.div>
+          )}
+
+          <div className="relative p-8 flex flex-col h-full">
+            {/* Icône et nom */}
+            <div className="flex items-center gap-3 mb-4">
+              <motion.div
+                className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300"
+                style={{
+                  background: isHovered
+                    ? `linear-gradient(135deg, ${pa.accent}30 0%, ${pa.accent}10 100%)`
+                    : "rgba(255,255,255,0.05)",
+                  border: `1px solid ${isHovered ? pa.accent : "rgba(255,255,255,0.1)"}`,
+                  boxShadow: isHovered ? `0 0 30px ${pa.glow}` : "none",
+                }}
+                whileHover={{ scale: 1.1, rotate: 5 }}
+              >
+                <Icon className="h-6 w-6 transition-colors duration-300" style={{ color: pa.accent }} />
+              </motion.div>
+              <div>
+                <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+                <p className="text-xs uppercase tracking-wider" style={{ color: pa.accent }}>
+                  {plan.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Prix */}
+            <div className="mb-6">
+              <div className="flex items-baseline gap-1">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={`${planId}-${yearly}`}
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    transition={{ duration: 0.2 }}
+                    className="text-5xl font-extrabold tabular-nums tracking-tight transition-all duration-300"
+                    style={{
+                      color: pa.accent,
+                      textShadow: isHovered ? `0 0 40px ${pa.glow}` : "none",
+                    }}
+                  >
+                    {displayPrice}€
+                  </motion.span>
+                </AnimatePresence>
+                <span className="text-slate-500 text-sm">/mois</span>
+              </div>
+              {yearly ? (
+                <p className="text-xs text-slate-400 mt-1">
+                  {plan.priceYearly}€/an · <span style={{ color: pa.accent }}>Économisez {savings}€</span>
+                </p>
+              ) : (
+                <p className="text-sm text-slate-400 mt-1">{plan.description}</p>
+              )}
+            </div>
+
+            {/* Features */}
+            <ul className="flex-1 space-y-3 mb-8">
+              {plan.features.map((feature, i) => (
+                <motion.li
+                  key={feature}
+                  className="flex items-start gap-3"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 + i * 0.08 }}
+                >
+                  <motion.div
+                    className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-300"
+                    style={{
+                      background: isHovered ? `${pa.accent}30` : "rgba(255,255,255,0.1)",
+                      border: `1px solid ${isHovered ? pa.accent : "transparent"}`,
+                    }}
+                  >
+                    <Check className="h-3 w-3" style={{ color: pa.accent }} />
+                  </motion.div>
+                  <span className="text-sm text-slate-300">{feature}</span>
+                </motion.li>
+              ))}
+            </ul>
+
+            {/* CTA */}
+            <Link
+              href={`/register?plan=${planId}&billing=${yearly ? "yearly" : "monthly"}`}
+              className="mt-auto"
+            >
+              <motion.button
+                className="w-full py-3.5 rounded-xl font-semibold text-sm relative overflow-hidden transition-all duration-300"
+                style={{
+                  background: plan.popular
+                    ? `linear-gradient(135deg, ${pa.accent} 0%, #3b82f6 100%)`
+                    : isHovered
+                    ? `linear-gradient(135deg, ${pa.accent}20 0%, ${pa.accent}10 100%)`
+                    : "rgba(255,255,255,0.05)",
+                  color: plan.popular ? "#000" : isHovered ? "#fff" : "#94a3b8",
+                  border: `1px solid ${isHovered || plan.popular ? pa.accent : "rgba(255,255,255,0.1)"}`,
+                  boxShadow: isHovered || plan.popular ? `0 0 30px ${pa.glow}` : "none",
+                }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {/* Shimmer */}
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                  initial={{ x: "-100%" }}
+                  whileHover={{ x: "100%" }}
+                  transition={{ duration: 0.6 }}
+                />
+                <span className="relative flex items-center justify-center gap-2">
+                  Essai gratuit 14 jours
+                  <ArrowRight
+                    className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                    style={{ color: plan.popular ? "#000" : pa.accent }}
+                  />
+                </span>
+              </motion.button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── FAQ ────────────────────────────────────────────────────────────────────
 const FAQ_ITEMS = [
   {
     question: "L'essai gratuit nécessite-t-il une carte bancaire ?",
@@ -100,7 +297,7 @@ const FAQ_ITEMS = [
   },
   {
     question: "Que se passe-t-il après l'essai ?",
-    answer: "À la fin des 14 jours, vous pouvez choisir le plan qui vous convient. Si vous ne faites pas de choix, votre compte passe automatiquement sur le plan Essential avec 1 véhicule pour garder l'accès à vos données.",
+    answer: "À la fin des 14 jours, vous pouvez choisir le plan qui vous convient. Si vous ne faites pas de choix, votre compte passe automatiquement sur le plan Essential avec 5 véhicules pour garder l'accès à vos données.",
   },
   {
     question: "Puis-je changer de plan ?",
@@ -116,326 +313,268 @@ const FAQ_ITEMS = [
   },
 ];
 
+// ─── Page ────────────────────────────────────────────────────────────────────
 export default function PricingPage() {
-  const [yearly, setYearly] = useState(true);
+  const [yearly, setYearly] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                <span className="text-white font-bold text-lg">F</span>
-              </div>
-              <span className="font-bold text-xl text-gray-900">FleetMaster</span>
-            </Link>
-            <nav className="hidden md:flex items-center gap-8">
-              <Link href="/#features" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-                Fonctionnalités
-              </Link>
-              <Link href="/pricing" className="text-sm font-medium text-blue-600">
-                Tarifs
-              </Link>
-              <Link href="/#faq" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-                FAQ
-              </Link>
-            </nav>
-            <div className="flex items-center gap-4">
-              <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900">
-                Connexion
-              </Link>
-              <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700">
-                <Link href="/register">Commencer</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <main className="min-h-screen text-white overflow-x-hidden relative bg-[#020617]">
+      {/* Effets de fond identiques à la landing */}
+      <WarpEffect />
 
-      <main className="py-16 lg:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Hero - En-tête accrocheur */}
-          <div className="text-center mb-12">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              {/* Badge essai gratuit */}
-              <div className="mb-6">
-                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 px-4 py-1.5 text-sm font-medium">
-                  <Check className="w-4 h-4 mr-1.5 inline" />
-                  Essai gratuit 14 jours — Sans carte bancaire
-                </Badge>
-              </div>
+      {/* Nébuleuse de fond */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(0,212,255,0.15)_0%,_transparent_70%)]" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-[100px]" />
+      </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
-                Gérez votre flotte à{' '}
-                <span className="text-blue-600">1/10ème du prix</span>
-                <br className="hidden sm:block" />
-                de Webfleet ou Quartix
-              </h1>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Sans GPS. Sans engagement. Sans surprise.
-              </p>
-            </motion.div>
-          </div>
+      {/* Navbar identique à la landing */}
+      <Navbar />
 
-          {/* Tableau comparatif */}
+      {/* Section pricing */}
+      <section className="pt-32 pb-24 relative overflow-hidden">
+        {/* Background gradient cosmos */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#00d4ff]/5 to-transparent pointer-events-none" />
+
+        {/* Glows massifs */}
+        <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#00d4ff]/10 rounded-full blur-[200px] pointer-events-none" />
+        <div className="absolute top-1/2 right-1/3 translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-violet-500/10 rounded-full blur-[200px] pointer-events-none" />
+
+        {/* Grid floor */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-1/2 bg-[linear-gradient(to_top,rgba(0,212,255,0.03)_1px,transparent_1px),linear-gradient(to_right,rgba(0,212,255,0.03)_1px,transparent_1px)] bg-[size:80px_80px] [transform:perspective(1000px)_rotateX(70deg)] [transform-origin:bottom] opacity-20 pointer-events-none"
+          style={{ maskImage: "linear-gradient(to top, black 0%, transparent 100%)" }}
+        />
+
+        <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+          {/* Header */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="mb-16 max-w-4xl mx-auto"
+            transition={{ duration: 0.8 }}
+            className="text-center mb-16"
           >
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">Comparaison des solutions</h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Feature</th>
-                      <th className="text-center px-6 py-4 text-sm font-bold text-blue-600">FleetMaster Pro</th>
-                      <th className="text-center px-6 py-4 text-sm font-medium text-gray-500">Quartix</th>
-                      <th className="text-center px-6 py-4 text-sm font-medium text-gray-500">Webfleet</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {COMPARISON_DATA.map((row, index) => (
-                      <tr key={index} className="border-b border-gray-100 last:border-0">
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex items-center gap-2">
-                            {row.feature}
-                            {row.tooltip && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger>
-                                    <Info className="w-4 h-4 text-gray-400" />
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="max-w-xs">{row.tooltip}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-center text-sm font-medium text-blue-600">
-                          {row.fleetmaster}
-                        </td>
-                        <td className="px-6 py-4 text-center text-sm text-gray-600">
-                          {row.quartix}
-                        </td>
-                        <td className="px-6 py-4 text-center text-sm text-gray-600">
-                          {row.webfleet}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <motion.span
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold uppercase tracking-[0.2em] mb-8 border transition-all duration-300"
+              style={{
+                background: "rgba(0, 212, 255, 0.1)",
+                borderColor: "rgba(0, 212, 255, 0.3)",
+                color: "#00d4ff",
+              }}
+              whileHover={{
+                scale: 1.05,
+                boxShadow: "0 0 40px rgba(0,212,255,0.4)",
+                borderColor: "rgba(0, 212, 255, 0.8)",
+              }}
+            >
+              Tarifs
+            </motion.span>
+
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6">
+              <span className="text-cosmic-display">Transparent.</span>
+              <br />
+              <span className="text-cosmic-gradient">Sans surprise.</span>
+            </h1>
+
+            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+              Essai gratuit 14 jours sur tous les plans.
+              <span className="text-white font-medium"> Sans carte bancaire.</span>
+            </p>
           </motion.div>
 
-          {/* Toggle Mensuel/Annuel */}
+          {/* Toggle mensuel / annuel */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="flex flex-col items-center mb-12"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="flex items-center justify-center gap-4 mb-16"
           >
-            <div className="flex items-center gap-4 mb-2">
-              <span className={`text-sm font-medium ${!yearly ? 'text-gray-900' : 'text-gray-500'}`}>
-                Mensuel
-              </span>
-              <button
-                onClick={() => setYearly(!yearly)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  yearly ? 'bg-blue-600' : 'bg-gray-200'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    yearly ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-              <span className={`text-sm font-medium ${yearly ? 'text-gray-900' : 'text-gray-500'}`}>
-                Annuel
-              </span>
-            </div>
-            <span className="text-sm text-green-600 font-medium">
-              {yearly ? 'Économisez 20% avec l\'annuel' : 'Passez à l\'annuel pour économiser 20%'}
+            <span className={`text-sm font-medium transition-colors ${!yearly ? "text-white" : "text-slate-500"}`}>
+              Mensuel
             </span>
+            <button
+              onClick={() => setYearly(!yearly)}
+              className={`relative w-14 h-7 rounded-full transition-colors duration-300 focus:outline-none ${yearly ? "bg-[#00d4ff]" : "bg-[#0f172a] border border-white/10"}`}
+              aria-label="Basculer facturation annuelle"
+            >
+              <span
+                className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300 ${yearly ? "translate-x-7" : "translate-x-0"}`}
+              />
+            </button>
+            <span className={`text-sm font-medium transition-colors ${yearly ? "text-white" : "text-slate-500"}`}>
+              Annuel
+            </span>
+            <AnimatePresence>
+              {yearly && (
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border"
+                  style={{
+                    background: "rgba(0, 212, 255, 0.1)",
+                    borderColor: "rgba(0, 212, 255, 0.3)",
+                    color: "#00d4ff",
+                  }}
+                >
+                  🎉 Économisez jusqu&apos;à 2 mois offerts
+                </motion.span>
+              )}
+            </AnimatePresence>
           </motion.div>
 
-          {/* Pricing Cards */}
-          <div className="grid md:grid-cols-3 gap-8 items-start max-w-6xl mx-auto mb-20">
-            {Object.values(PLANS).map((plan, index) => (
-              <motion.div
-                key={plan.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className={`relative rounded-2xl p-6 ${
-                  plan.popular
-                    ? 'bg-white shadow-xl border-2 border-blue-500 scale-105 z-10 lg:-mt-4'
-                    : 'bg-white border border-gray-200 shadow-sm'
-                }`}
-              >
-                {/* Popular badge */}
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="inline-flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                      <Sparkles className="h-4 w-4" />
-                      Recommandé
-                    </span>
-                  </div>
-                )}
-
-                {/* Plan name */}
-                <div className="mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">{plan.name}</h3>
-                </div>
-
-                {/* Price */}
-                <div className="mb-6">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-gray-900">
-                      {yearly ? plan.priceYearly : plan.priceMonthly}€
-                    </span>
-                    <span className="text-gray-500">/mois</span>
-                  </div>
-                  {yearly ? (
-                    <p className="text-sm text-gray-500 mt-1">
-                      {plan.yearlyTotal}€ facturés annuellement
-                      <span className="text-green-600 ml-2">
-                        (-20%)
-                      </span>
-                    </p>
-                  ) : (
-                    <p className="text-sm text-gray-500 mt-1">
-                      soit {plan.priceYearly}€/mois en annuel
-                    </p>
-                  )}
-                </div>
-
-                {/* CTA */}
-                <Button
-                  asChild
-                  className={`w-full mb-6 ${
-                    plan.popular
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-gray-900 hover:bg-gray-800 text-white'
-                  }`}
-                  size="lg"
-                >
-                  <Link href="/register">
-                    {plan.cta}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-
-                <p className="text-xs text-center text-gray-500 mb-6">
-                  Sans carte bancaire requise
-                </p>
-
-                {/* Features */}
-                <div className="space-y-3">
-                  {plan.features.map((feature) => (
-                    <div key={feature} className="flex items-start gap-3">
-                      <Check className="h-5 w-5 flex-shrink-0 text-green-500" />
-                      <span className="text-sm text-gray-600">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
+          {/* Pricing Cards — 3D Grid */}
+          <div className="grid lg:grid-cols-3 gap-8 items-center" style={{ perspective: "1500px" }}>
+            {ACTIVE_PLANS.map((planId, index) => (
+              <PricingCard key={planId} planId={planId} index={index} yearly={yearly} />
             ))}
           </div>
 
-          {/* FAQ Section */}
+          {/* Trust row */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="max-w-3xl mx-auto mb-20"
-          >
-            <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
-              Questions fréquentes
-            </h2>
-            <Accordion type="single" collapsible className="w-full">
-              {FAQ_ITEMS.map((item, index) => (
-                <AccordionItem key={index} value={`item-${index}`}>
-                  <AccordionTrigger className="text-left">
-                    <span className="flex items-center gap-2">
-                      <HelpCircle className="h-5 w-5 text-blue-500 flex-shrink-0" />
-                      {item.question}
-                    </span>
-                  </AccordionTrigger>
-                  <AccordionContent className="text-gray-600 pl-7">
-                    {item.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </motion.div>
-
-          {/* Bandeau de confiance */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
-            className="border-t border-gray-200 pt-12"
+            className="mt-16 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-slate-500"
           >
-            <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <Lock className="h-5 w-5 text-blue-600" />
-                <span>Données hébergées en France</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-blue-600" />
-                <span>Conformité RGPD</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-blue-600" />
-                <span>Mise en service en 10 min</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone className="h-5 w-5 text-blue-600" />
-                <span>Support en français</span>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* CTA Final */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="mt-16 text-center bg-blue-600 rounded-2xl p-12 text-white"
-          >
-            <h2 className="text-3xl font-bold mb-4">
-              Prêt à optimiser votre flotte ?
-            </h2>
-            <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
-              Rejoignez plus de 200 transporteurs qui font confiance à FleetMaster Pro
-              pour gérer leur flotte au quotidien.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="bg-white text-blue-600 hover:bg-blue-50">
-                <Link href="/register">Commencer l&apos;essai gratuit</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
-                <Link href="/#features">Voir les fonctionnalités</Link>
-              </Button>
-            </div>
+            <span className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-slate-600" />
+              Paiement sécurisé Stripe
+            </span>
+            <span className="hidden sm:block text-slate-700">·</span>
+            <span className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-slate-600" />
+              Annulation à tout moment
+            </span>
+            <span className="hidden sm:block text-slate-700">·</span>
+            <span className="flex items-center gap-2">
+              <Headphones className="h-4 w-4 text-slate-600" />
+              Support inclus dans chaque plan
+            </span>
           </motion.div>
         </div>
-      </main>
-    </div>
+      </section>
+
+      {/* Section Pourquoi FleetMaster */}
+      <section className="py-20 relative">
+        <div className="relative mx-auto max-w-5xl px-6 lg:px-8">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-2xl font-bold text-white text-center mb-10"
+          >
+            Pourquoi choisir FleetMaster ?
+          </motion.h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: Shield,
+                color: "#00d4ff",
+                title: "Conformité réglementaire intégrée",
+                description: "FIMO, FCO, ATP, tachygraphe : toutes vos obligations suivies automatiquement avec alertes avant expiration.",
+              },
+              {
+                icon: Zap,
+                color: "#a78bfa",
+                title: "Inspections QR sans application",
+                description: "Vos conducteurs scannent un QR Code pour déclarer leur inspection. Aucune application à télécharger.",
+              },
+              {
+                icon: Lock,
+                color: "#10b981",
+                title: "Données hébergées en France",
+                description: "Vos données restent sur des serveurs français. Conformité RGPD garantie, sans transfert vers des tiers.",
+              },
+            ].map(({ icon: Icon, color, title, description }, i) => (
+              <motion.div
+                key={title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + i * 0.1 }}
+                className="card-holographic p-6 group"
+              >
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-all duration-300"
+                  style={{ background: `${color}15`, border: `1px solid ${color}30` }}
+                >
+                  <Icon className="h-5 w-5" style={{ color }} />
+                </div>
+                <h3 className="text-sm font-semibold text-white mb-2">{title}</h3>
+                <p className="text-sm text-slate-400">{description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-20 relative">
+        <div className="relative mx-auto max-w-3xl px-6 lg:px-8">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-2xl font-bold text-white text-center mb-10"
+          >
+            Questions fréquentes
+          </motion.h2>
+          <Accordion type="single" collapsible className="w-full space-y-2">
+            {FAQ_ITEMS.map((item, index) => (
+              <AccordionItem
+                key={index}
+                value={`item-${index}`}
+                className="glass-cosmic rounded-xl px-5 border-0"
+              >
+                <AccordionTrigger className="text-left text-white hover:no-underline py-4">
+                  <span className="flex items-center gap-3">
+                    <HelpCircle className="h-4 w-4 flex-shrink-0" style={{ color: "#00d4ff" }} />
+                    <span className="text-sm font-medium">{item.question}</span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="text-slate-400 text-sm pl-7 pb-4">
+                  {item.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      </section>
+
+      {/* CTA Final */}
+      <section className="py-20 relative">
+        <div className="relative mx-auto max-w-3xl px-6 lg:px-8 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="glass-cosmic rounded-2xl p-12"
+          >
+            <h2 className="text-3xl font-extrabold mb-4">
+              <span className="text-cosmic-gradient">Prêt à simplifier la gestion</span>
+              <br />
+              <span className="text-white">de votre flotte ?</span>
+            </h2>
+            <p className="text-slate-400 mb-8 max-w-xl mx-auto">
+              Démarrez en 10 minutes. Sans engagement, sans carte bancaire.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/register">
+                <button className="btn-cosmic">Commencer l&apos;essai gratuit</button>
+              </Link>
+              <Link href="/#features">
+                <button className="btn-cosmic-secondary">Voir les fonctionnalités</button>
+              </Link>
+            </div>
+            <p className="mt-6 text-xs text-slate-600 flex items-center justify-center gap-4 flex-wrap">
+              <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[#00d4ff]" /> Essai 14 jours</span>
+              <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[#00d4ff]" /> Sans engagement</span>
+              <span className="flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-[#00d4ff]" /> RGPD · Données en France</span>
+            </p>
+          </motion.div>
+        </div>
+      </section>
+    </main>
   );
 }

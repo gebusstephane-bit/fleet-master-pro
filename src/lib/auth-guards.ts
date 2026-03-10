@@ -6,6 +6,7 @@
  * sensible pour éviter les accès non autorisés par appel direct.
  */
 
+import { USER_ROLE } from '@/constants/enums';
 import { createClient } from './supabase/server';
 
 // Rôles utilisateur dans profiles.role
@@ -112,7 +113,7 @@ export async function requireRoleAtLeast(minRole: UserRole) {
  * Vérifie que l'utilisateur est ADMIN ou SUPER_ADMIN
  */
 export async function requireAdmin() {
-  return requireRole(['ADMIN', 'SUPER_ADMIN']);
+  return requireRole([USER_ROLE.ADMIN, 'SUPER_ADMIN']);
 }
 
 /**
@@ -120,7 +121,7 @@ export async function requireAdmin() {
  * Pour les actions de gestion (suppression, configuration)
  */
 export async function requireManagerOrAbove() {
-  return requireRole(['ADMIN', 'DIRECTEUR', 'SUPER_ADMIN']);
+  return requireRole([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, 'SUPER_ADMIN']);
 }
 
 /**
@@ -128,7 +129,7 @@ export async function requireManagerOrAbove() {
  * Pour les actions opérationnelles (création, modification)
  */
 export async function requireAgentOrAbove() {
-  return requireRole(['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC', 'SUPER_ADMIN']);
+  return requireRole([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC, 'SUPER_ADMIN']);
 }
 
 /**

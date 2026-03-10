@@ -26,7 +26,6 @@ const footerLinks = {
   ],
 };
 
-/** Coordonnées mises à jour — contact@fleet-master.fr */
 const contactInfo = [
   {
     icon: Mail,
@@ -47,47 +46,34 @@ const contactInfo = [
 
 export function Footer() {
   return (
-    <footer className="bg-[#09090b] text-[#a1a1aa] border-t border-white/[0.06]">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
+    <footer className="relative border-t border-white/10 bg-black/50 backdrop-blur-xl">
+      {/* Top gradient line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#00d4ff]/50 to-transparent" />
+      
+      <div className="mx-auto max-w-7xl px-6 lg:px-8 py-16">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
-
-          {/* ── Logo & description ── */}
+          {/* Logo & description */}
           <div className="col-span-2">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <svg width="28" height="28" viewBox="0 0 32 32" fill="none" className="text-white">
-                <rect width="32" height="32" rx="8" fill="currentColor"/>
-                <g transform="translate(4, 4)">
-                  <circle cx="12" cy="12" r="4" fill="#0A0A0A"/>
-                  <circle cx="12" cy="2" r="2.5" fill="#0A0A0A"/>
-                  <circle cx="21" cy="8" r="2.5" fill="#0A0A0A"/>
-                  <circle cx="21" cy="16" r="2.5" fill="#0A0A0A"/>
-                  <circle cx="12" cy="22" r="2.5" fill="#0A0A0A"/>
-                  <circle cx="3" cy="16" r="2.5" fill="#0A0A0A"/>
-                  <circle cx="3" cy="8" r="2.5" fill="#0A0A0A"/>
-                  <path d="M12 12L12 4.5" stroke="#0A0A0A" strokeWidth="1.5" strokeLinecap="round"/>
-                  <path d="M12 12L18.5 8" stroke="#0A0A0A" strokeWidth="1.5" strokeLinecap="round"/>
-                  <path d="M12 12L18.5 16" stroke="#0A0A0A" strokeWidth="1.5" strokeLinecap="round"/>
-                  <path d="M12 12L12 19.5" stroke="#0A0A0A" strokeWidth="1.5" strokeLinecap="round"/>
-                  <path d="M12 12L5.5 16" stroke="#0A0A0A" strokeWidth="1.5" strokeLinecap="round"/>
-                  <path d="M12 12L5.5 8" stroke="#0A0A0A" strokeWidth="1.5" strokeLinecap="round"/>
-                </g>
-              </svg>
+            <Link href="/" className="flex items-center gap-3 mb-4 group">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00d4ff] to-blue-500 flex items-center justify-center shadow-[0_0_20px_rgba(0,212,255,0.4)] group-hover:shadow-[0_0_30px_rgba(0,212,255,0.6)] transition-shadow">
+                <span className="text-black font-bold text-sm">FM</span>
+              </div>
               <span className="text-lg font-bold text-white">FleetMaster</span>
             </Link>
-            <p className="text-[#71717a] text-sm mb-6 max-w-xs">
+            <p className="text-slate-500 text-sm mb-6 max-w-xs">
               La plateforme de gestion de flotte qui anticipe les pannes et réduit vos coûts d'exploitation.
             </p>
-            <div className="flex gap-4">
+            <div className="flex gap-3">
               <a
                 href="#"
-                className="w-10 h-10 rounded-full bg-[#27272a] flex items-center justify-center hover:bg-[#3f3f46] transition-colors"
+                className="w-10 h-10 rounded-lg glass-cosmic flex items-center justify-center hover:border-[#00d4ff]/50 hover:text-[#00d4ff] transition-all"
                 aria-label="LinkedIn"
               >
                 <Linkedin className="h-5 w-5" />
               </a>
               <a
                 href="#"
-                className="w-10 h-10 rounded-full bg-[#27272a] flex items-center justify-center hover:bg-[#3f3f46] transition-colors"
+                className="w-10 h-10 rounded-lg glass-cosmic flex items-center justify-center hover:border-[#00d4ff]/50 hover:text-[#00d4ff] transition-all"
                 aria-label="Twitter"
               >
                 <Twitter className="h-5 w-5" />
@@ -95,13 +81,13 @@ export function Footer() {
             </div>
           </div>
 
-          {/* ── Liens produit ── */}
+          {/* Links */}
           <div>
-            <h4 className="font-semibold text-white mb-4">Produit</h4>
+            <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider">Produit</h4>
             <ul className="space-y-3">
               {footerLinks.produit.map((link) => (
                 <li key={link.name}>
-                  <Link href={link.href} className="text-sm hover:text-white transition-colors">
+                  <Link href={link.href} className="text-sm text-slate-500 hover:text-[#00d4ff] transition-colors">
                     {link.name}
                   </Link>
                 </li>
@@ -109,13 +95,12 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* ── Liens ressources ── */}
           <div>
-            <h4 className="font-semibold text-white mb-4">Ressources</h4>
+            <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider">Ressources</h4>
             <ul className="space-y-3">
               {footerLinks.ressources.map((link) => (
                 <li key={link.name}>
-                  <Link href={link.href} className="text-sm hover:text-white transition-colors">
+                  <Link href={link.href} className="text-sm text-slate-500 hover:text-[#00d4ff] transition-colors">
                     {link.name}
                   </Link>
                 </li>
@@ -123,17 +108,17 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* ── Coordonnées de contact ── */}
+          {/* Contact */}
           <div>
-            <h4 className="font-semibold text-white mb-4">Contact</h4>
+            <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider">Contact</h4>
             <ul className="space-y-3">
               {contactInfo.map((item) => (
                 <li key={item.label}>
                   <Link
                     href={item.href}
-                    className="flex items-center gap-2 text-sm hover:text-white transition-colors group"
+                    className="flex items-center gap-2 text-sm text-slate-500 hover:text-[#00d4ff] transition-colors group"
                   >
-                    <item.icon className="h-4 w-4 text-cyan-500/60 group-hover:text-cyan-400 flex-shrink-0 transition-colors" />
+                    <item.icon className="h-4 w-4 text-slate-600 group-hover:text-[#00d4ff] transition-colors" />
                     {item.label}
                   </Link>
                 </li>
@@ -142,9 +127,9 @@ export function Footer() {
           </div>
         </div>
 
-        {/* ── Bas de footer ── */}
-        <div className="mt-12 pt-8 border-t border-white/[0.08] flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-[#71717a]">
+        {/* Bottom */}
+        <div className="mt-12 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-sm text-slate-600">
             © {new Date().getFullYear()} FleetMaster Pro. Tous droits réservés.
           </p>
           <div className="flex gap-6">
@@ -152,7 +137,7 @@ export function Footer() {
               <Link
                 key={link.name}
                 href={link.href}
-                className="text-sm text-[#71717a] hover:text-white transition-colors"
+                className="text-sm text-slate-600 hover:text-[#00d4ff] transition-colors"
               >
                 {link.name}
               </Link>

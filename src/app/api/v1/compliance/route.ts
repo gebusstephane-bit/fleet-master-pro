@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { withApiAuth, apiSuccess, apiError } from '@/lib/api-auth';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 const SOON_DAYS = 30;
 
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
       'id, registration_number, status, technical_control_expiry, tachy_control_expiry, atp_expiry, insurance_expiry'
     )
     .eq('company_id', auth.companyId)
-    .neq('status', 'ARCHIVE');
+    .neq('status', VEHICLE_STATUS.ARCHIVE);
 
   if (vErr) return apiError(vErr.message, 500, rateLimitHeaders);
 
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
   const { data: drivers, error: dErr } = await supabase
     .from('drivers')
     .select(
-      'id, first_name, last_name, status, license_expiry, medical_certificate_expiry, fimo_expiry, fcos_expiry, cqc_expiry, driver_card_expiry'
+      'id, first_name, last_name, status, license_expiry, medical_certificate_expiry, fimo_expiry, fcos_expiry, cqc_expiry_date, driver_card_expiry'
     )
     .eq('company_id', auth.companyId)
     .eq('is_active', true);
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
     { key: 'medical_certificate_expiry', label: 'Certificat médical' },
     { key: 'fimo_expiry', label: 'FIMO' },
     { key: 'fcos_expiry', label: 'FCOS' },
-    { key: 'cqc_expiry', label: 'CQC' },
+    { key: 'cqc_expiry_date', label: 'CQC' },
     { key: 'driver_card_expiry', label: 'Carte conducteur' },
   ] as const;
 

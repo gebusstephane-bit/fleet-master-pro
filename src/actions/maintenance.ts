@@ -10,7 +10,9 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+import { VEHICLE_STATUS, USER_ROLE } from '@/constants/enums';
 import { authActionClient, idSchema } from '@/lib/safe-action';
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/types/supabase';
 import { maintenanceSchema } from '@/lib/schemas/maintenance';
@@ -30,8 +32,12 @@ const typeToDb: Record<string, string> = {
 };
 
 /**
- * Créer une intervention
- * RLS : Vérifie que le véhicule appartient à la company
+ * Crée une nouvelle intervention de maintenance.
+ * Mappe le statut frontend vers les valeurs DB et calcule les dates réglementaires.
+ * Met à jour les dates CT/Tachy/ATP sur le véhicule si l'intervention est terminée.
+ * @param parsedInput - Données de l'intervention validées par maintenanceSchema
+ * @param ctx - Contexte d'authentification avec user.company_id
+ * @returns L'intervention créée avec les données du véhicule
  */
 export const createMaintenance = authActionClient
   .schema(maintenanceSchema)
@@ -148,7 +154,7 @@ export const createMaintenance = authActionClient
           .eq('id', vehicleId);
           
         if (vehicleError) {
-          console.error('[MAINTENANCE] Erreur maj fiche véhicule:', vehicleError);
+          logger.error('[MAINTENANCE] Erreur maj fiche véhicule:', vehicleError);
         }
       }
     }
@@ -171,8 +177,10 @@ export const createMaintenance = authActionClient
   });
 
 /**
- * Récupérer toutes les interventions
- * RLS : Filtre automatiquement par company_id
+ * Récupère toutes les interventions de maintenance de la société.
+ * Inclut les informations des véhicules (immatriculation, marque, modèle).
+ * @param ctx - Contexte d'authentification
+ * @returns Liste des interventions triées par date de demande décroissante
  */
 export const getMaintenances = authActionClient
   .action(async ({ ctx }) => {
@@ -184,7 +192,7 @@ export const getMaintenances = authActionClient
         *,
         vehicles(registration_number, brand, model, mileage, next_service_due, next_service_mileage)
       `)
-      .order('service_date', { ascending: false });
+      .order('requested_at', { ascending: false });
     
     if (error) {
       throw new Error(`Erreur récupération: ${error.message}`);
@@ -194,7 +202,10 @@ export const getMaintenances = authActionClient
   });
 
 /**
- * Récupérer les interventions d'un véhicule
+ * Récupère les interventions d'un véhicule spécifique.
+ * @param parsedInput - Objet contenant l'ID du véhicule
+ * @param ctx - Contexte d'authentification
+ * @returns Liste des interventions du véhicule
  */
 export const getMaintenancesByVehicle = authActionClient
   .schema(z.object({ vehicleId: z.string().uuid() }))
@@ -202,7 +213,7 @@ export const getMaintenancesByVehicle = authActionClient
     const supabase = await createClient();
     
     const { data, error } = await supabase
-      .from('maintenance_with_details')
+      .from('maintenance_records')
       .select('*')
       .eq('vehicle_id', parsedInput.vehicleId)
       .order('requested_at', { ascending: false });
@@ -215,8 +226,11 @@ export const getMaintenancesByVehicle = authActionClient
   });
 
 /**
- * Récupérer une intervention
- * RLS : Filtre par company_id
+ * Récupère une intervention par son ID avec détails complets.
+ * Inclut le véhicule concerné et les documents associés.
+ * @param parsedInput - Objet contenant l'ID de l'intervention
+ * @param ctx - Contexte d'authentification
+ * @returns L'intervention avec véhicule et documents
  */
 export const getMaintenanceById = authActionClient
   .schema(idSchema)
@@ -241,8 +255,11 @@ export const getMaintenanceById = authActionClient
   });
 
 /**
- * Mettre à jour une intervention
- * RLS : Vérifie l'appartenance à la company
+ * Met à jour une intervention de maintenance existante.
+ * Gère le changement de véhicule et les pièces remplacées.
+ * @param parsedInput - Données partielles incluant l'ID de l'intervention
+ * @param ctx - Contexte d'authentification
+ * @returns L'intervention mise à jour
  */
 export const updateMaintenance = authActionClient
   .schema(maintenanceSchema.partial().extend({ id: z.string().uuid() }))
@@ -266,8 +283,8 @@ export const updateMaintenance = authActionClient
       .update({
         ...updates,
         vehicle_id: vehicleId,
-        parts_replaced: partsReplaced as any,
-      } as any)
+        parts_replaced: partsReplaced as string[] | undefined,
+      })
       .eq('id', id)
       .select()
       .single();
@@ -282,8 +299,10 @@ export const updateMaintenance = authActionClient
   });
 
 /**
- * Supprimer une intervention
- * RLS : Vérifie l'appartenance
+ * Supprime définitivement une intervention de maintenance.
+ * @param parsedInput - Objet contenant l'ID de l'intervention
+ * @param ctx - Contexte d'authentification
+ * @returns Confirmation de suppression
  */
 export const deleteMaintenance = authActionClient
   .schema(idSchema)
@@ -315,8 +334,11 @@ export const deleteMaintenance = authActionClient
   });
 
 /**
- * Récupérer les alertes maintenance
- * RLS : Filtre les véhicules par company_id
+ * Génère les alertes de maintenance préventive basées sur les échéances.
+ * Alertes sur kilométrage (si dépassement de 2000 km) et dates (si < 30 jours).
+ * Niveaux de criticité : CRITICAL (dépassé), WARNING (< 7j ou 500km), INFO.
+ * @param ctx - Contexte d'authentification
+ * @returns Liste des alertes avec véhicule, type, sévérité et message
  */
 export const getMaintenanceAlerts = authActionClient
   .action(async ({ ctx }) => {
@@ -325,7 +347,7 @@ export const getMaintenanceAlerts = authActionClient
     const { data: vehicles, error } = await supabase
       .from('vehicles')
       .select('id, registration_number, brand, model, mileage, next_service_due, next_service_mileage')
-      .eq('status', 'ACTIF');
+      .eq('status', VEHICLE_STATUS.ACTIF);
     
     if (error) {
       throw new Error(`Erreur récupération véhicules: ${error.message}`);
@@ -378,8 +400,10 @@ export const getMaintenanceAlerts = authActionClient
   });
 
 /**
- * Statistiques maintenance
- * RLS : Filtre par company_id
+ * Calcule les statistiques de maintenance pour l'année en cours.
+ * Agrège les coûts par type d'intervention (routine, repair, inspection).
+ * @param ctx - Contexte d'authentification
+ * @returns Statistiques avec coût total, nombre d'interventions et répartition par type
  */
 export const getMaintenanceStats = authActionClient
   .action(async ({ ctx }) => {
@@ -387,8 +411,8 @@ export const getMaintenanceStats = authActionClient
     
     const { data, error } = await supabase
       .from('maintenance_records')
-      .select('cost, type, service_date')
-      .gte('service_date', new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
+      .select('cost, type, requested_at')
+      .gte('requested_at', new Date(new Date().getFullYear(), 0, 1).toISOString());
     
     if (error) {
       throw new Error(`Erreur stats: ${error.message}`);
@@ -413,123 +437,3 @@ export const getMaintenanceStats = authActionClient
   });
 
 
-// ============================================
-// WORKFLOW DE STATUT - Gestion des transitions
-// ============================================
-
-const ALLOWED_MANAGER_ROLES = ['ADMIN', 'MANAGER', 'DIRECTEUR'];
-
-/**
- * Met à jour le statut d'une maintenance avec validation des transitions
- * Visible UNIQUEMENT pour roles admin et manager
- */
-export async function updateMaintenanceStatus(
-  maintenanceId: string,
-  newStatus: string,
-  additionalData?: { scheduled_date?: string; notes?: string }
-): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
-  
-  // Vérifier l'authentification et le rôle
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: 'Non authentifié' };
-  }
-  
-  // Récupérer le profil pour vérifier le rôle
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role, company_id')
-    .eq('id', user.id)
-    .single();
-  
-  if (profileError || !profile) {
-    return { success: false, error: 'Profil utilisateur non trouvé' };
-  }
-  
-  if (!ALLOWED_MANAGER_ROLES.includes(profile.role)) {
-    return { success: false, error: 'Accès refusé - Réservé aux administrateurs et managers' };
-  }
-  
-  // Définition des transitions valides
-  const TRANSITIONS: Record<string, string[]> = {
-    'DEMANDE_CREEE': ['VALIDEE', 'REFUSEE'],
-    'VALIDEE': ['RDV_PRIS'],
-    'VALIDEE_DIRECTEUR': ['RDV_PRIS'],
-    'RDV_PRIS': ['EN_COURS'],
-    'EN_COURS': ['TERMINEE'],
-    'TERMINEE': [],
-    'REFUSEE': ['DEMANDE_CREEE']
-  };
-  
-  // Récupérer le statut actuel
-  const { data: current, error: fetchError } = await supabase
-    .from('maintenance_records')
-    .select('status, company_id')
-    .eq('id', maintenanceId)
-    .single();
-  
-  if (fetchError || !current) {
-    return { success: false, error: 'Intervention non trouvée' };
-  }
-  
-  // Vérifier l'appartenance à la company
-  if (current.company_id !== profile.company_id && profile.role !== 'ADMIN') {
-    return { success: false, error: 'Accès non autorisé à cette intervention' };
-  }
-  
-  // Vérifier que la transition est valide
-  const allowedTransitions = TRANSITIONS[current.status] || [];
-  if (!allowedTransitions.includes(newStatus)) {
-    return { success: false, error: `Transition de statut invalide: ${current.status} → ${newStatus}` };
-  }
-  
-  // Préparer les données de mise à jour
-  const updateData: Record<string, unknown> = {
-    status: newStatus,
-    updated_at: new Date().toISOString(),
-  };
-  
-  // Ajouter les données additionnelles
-  if (additionalData?.scheduled_date) {
-    updateData.scheduled_date = additionalData.scheduled_date;
-  }
-  if (additionalData?.notes) {
-    updateData.notes = additionalData.notes;
-  }
-  
-  // Si passage à TERMINEE, ajouter completed_at
-  if (newStatus === 'TERMINEE') {
-    updateData.completed_at = new Date().toISOString();
-  }
-  
-  // Si passage à VALIDEE, enregistrer validated_at
-  if (newStatus === 'VALIDEE') {
-    updateData.validated_at = new Date().toISOString();
-  }
-  
-  // Exécuter la mise à jour
-  const { error: updateError } = await supabase
-    .from('maintenance_records')
-    .update(updateData)
-    .eq('id', maintenanceId);
-  
-  if (updateError) {
-    return { success: false, error: updateError.message };
-  }
-  
-  // Ajouter l'historique de statut
-  await supabase.from('maintenance_status_history').insert({
-    maintenance_id: maintenanceId,
-    old_status: current.status,
-    new_status: newStatus,
-    changed_by: user.id,
-    notes: additionalData?.notes,
-  });
-  
-  // Revalidation des chemins
-  revalidatePath('/maintenance');
-  revalidatePath(`/maintenance/${maintenanceId}`);
-  
-  return { success: true };
-}

@@ -18,6 +18,7 @@ export interface VehicleComplianceData {
   immatriculation: string;
   marque: string;
   modele: string;
+  type?: string | null; // Type de véhicule (VL, PL, etc.)
   technical_control_date: string | null;
   technical_control_expiry: string | null;
   tachy_control_date: string | null;
@@ -25,6 +26,12 @@ export interface VehicleComplianceData {
   atp_date: string | null;
   atp_expiry: string | null;
   insurance_expiry: string | null;
+  // Champs pour activités spéciales (ADR, Frigo)
+  adr_certificate_date?: string | null;
+  adr_certificate_expiry?: string | null;
+  adr_equipment_check_date?: string | null;
+  adr_equipment_expiry?: string | null;
+  frigo_calibration_date?: string | null;
 }
 
 export interface DriverComplianceData {
@@ -72,6 +79,7 @@ export function useCompliance(options?: { enabled?: boolean }) {
       const supabase = getSupabaseClient();
 
       // Récupérer les véhicules avec leurs dates réglementaires
+      // NOTE: Les champs ADR sont optionnels - la migration SQL doit être appliquée
       const vehiclesPromise = supabase
         .from('vehicles')
         .select(`
@@ -79,13 +87,18 @@ export function useCompliance(options?: { enabled?: boolean }) {
           registration_number,
           brand,
           model,
+          type,
           technical_control_date,
           technical_control_expiry,
           tachy_control_date,
           tachy_control_expiry,
           atp_date,
           atp_expiry,
-          insurance_expiry
+          insurance_expiry,
+          adr_certificate_date,
+          adr_certificate_expiry,
+          adr_equipment_check_date,
+          adr_equipment_expiry
         `)
         .eq('company_id', companyId)
         .order('created_at', { ascending: false });
@@ -104,7 +117,6 @@ export function useCompliance(options?: { enabled?: boolean }) {
           fcos_expiry,
           medical_certificate_expiry,
           adr_certificate_expiry,
-          cqc_expiry,
           cqc_expiry_date
         `)
         .eq('company_id', companyId)
@@ -158,6 +170,7 @@ export function useCompliance(options?: { enabled?: boolean }) {
         immatriculation: v.registration_number,
         marque: v.brand,
         modele: v.model,
+        type: v.type,
         technical_control_date: v.technical_control_date,
         technical_control_expiry: v.technical_control_expiry,
         tachy_control_date: v.tachy_control_date,
@@ -165,6 +178,11 @@ export function useCompliance(options?: { enabled?: boolean }) {
         atp_date: v.atp_date,
         atp_expiry: v.atp_expiry,
         insurance_expiry: v.insurance_expiry,
+        // Champs ADR optionnels - disponibles après migration SQL
+        adr_certificate_date: v.adr_certificate_date || null,
+        adr_certificate_expiry: v.adr_certificate_expiry || null,
+        adr_equipment_check_date: v.adr_equipment_check_date || null,
+        adr_equipment_expiry: v.adr_equipment_expiry || null,
       }));
 
       const drivers: DriverComplianceData[] = driverData.map((d: any) => ({
@@ -178,7 +196,7 @@ export function useCompliance(options?: { enabled?: boolean }) {
         fcos_expiry: d.fcos_expiry,
         medical_certificate_expiry: d.medical_certificate_expiry,
         adr_certificate_expiry: d.adr_certificate_expiry,
-        cqc_expiry: d.cqc_expiry || d.cqc_expiry_date,
+        cqc_expiry: d.cqc_expiry_date,
         cqc_expiry_date: d.cqc_expiry_date || null,
       }));
 

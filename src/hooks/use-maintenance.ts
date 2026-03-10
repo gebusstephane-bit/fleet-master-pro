@@ -46,6 +46,27 @@ export interface Maintenance {
   } | null;
 }
 
+// Type étendu pour les réponses Supabase avec jointure
+interface MaintenanceRecordWithVehicle {
+  id: string;
+  company_id: string;
+  vehicle_id: string;
+  type: string;
+  status: string;
+  priority: string;
+  description?: string;
+  rdv_date?: string | null;
+  rdv_time?: string | null;
+  created_at: string;
+  updated_at: string;
+  vehicles?: {
+    id: string;
+    registration_number: string;
+    brand: string;
+    model: string;
+  } | null;
+}
+
 // Clés de cache
 export const maintenanceKeys = {
   all: ['maintenance'] as const,
@@ -81,7 +102,7 @@ export function useMaintenances(options?: { enabled?: boolean }) {
           vehicles(registration_number, brand, model)
         `)
         .eq('company_id', companyId)
-        .order('scheduled_date', { ascending: false });
+        .order('requested_at', { ascending: false });
       
       if (error) {
         logger.error('Error fetching maintenances', error);
@@ -96,7 +117,7 @@ export function useMaintenances(options?: { enabled?: boolean }) {
               *,
               vehicles(registration_number, brand, model)
             `)
-            .order('scheduled_date', { ascending: false });
+            .order('requested_at', { ascending: false });
           
           if (!allError && allData) {
             const filtered = allData.filter(m => m.company_id === companyId);
@@ -170,7 +191,7 @@ export function useMaintenancesByVehicle(vehicleId: string, options?: { enabled?
         .select('*')
         .eq('vehicle_id', vehicleId)
         .eq('company_id', companyId)
-        .order('scheduled_date', { ascending: false });
+        .order('requested_at', { ascending: false });
       
       if (error) {
         logger.error('Error fetching maintenances by vehicle', error);
@@ -347,17 +368,18 @@ export function useMaintenanceAlerts(options?: { enabled?: boolean }) {
 
       // Mapper vers la forme attendue par le dashboard
       const now = new Date();
-      return (data || []).map(m => {
-        const vehicle = (m as any).vehicles;
+      return (data || []).map((m: unknown) => {
+        const record = m as MaintenanceRecordWithVehicle;
+        const vehicle = record.vehicles;
         const vehicleName = vehicle
           ? `${vehicle.brand} ${vehicle.model} (${vehicle.registration_number})`
           : 'Véhicule inconnu';
-        const rdvDate = (m as any).rdv_date as string | null;
+        const rdvDate = record.rdv_date ?? null;
         const daysUntil = rdvDate
           ? Math.ceil((new Date(rdvDate).getTime() - now.getTime()) / 86_400_000)
           : null;
 
-        const priorityRaw: string = (m as any).priority || 'NORMAL';
+        const priorityRaw = record.priority || 'NORMAL';
         const severity =
           priorityRaw === 'CRITICAL' || priorityRaw === 'critical' ? 'CRITICAL'
           : priorityRaw === 'HIGH' || priorityRaw === 'high' ? 'WARNING'
@@ -366,11 +388,11 @@ export function useMaintenanceAlerts(options?: { enabled?: boolean }) {
           : 'INFO';
 
         return {
-          ...m,
+          ...record,
           vehicleName,
           severity,
           dueDate: rdvDate ? new Date(rdvDate).toLocaleDateString('fr-FR') : '—',
-          message: (m as any).description || `Maintenance ${m.type || ''}`.trim(),
+          message: record.description || `Maintenance ${record.type || ''}`.trim(),
         };
       });
     },
@@ -408,19 +430,19 @@ export function useMaintenanceStats(options?: { enabled?: boolean }) {
         .from('maintenance_records')
         .select('id', { count: 'exact' })
         .eq('company_id', companyId)
-        .eq('status', 'scheduled');
+        .eq('status', 'RDV_PRIS');
       
       const { data: inProgressData } = await supabase
         .from('maintenance_records')
         .select('id', { count: 'exact' })
         .eq('company_id', companyId)
-        .eq('status', 'in_progress');
+        .eq('status', 'EN_COURS');
       
       const { data: completedData } = await supabase
         .from('maintenance_records')
         .select('id', { count: 'exact' })
         .eq('company_id', companyId)
-        .eq('status', 'completed');
+        .eq('status', 'TERMINEE');
       
       return {
         total: total || 0,

@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import { upsertPushSubscription } from '@/lib/push/subscriptions';
 
 export const runtime = 'nodejs';
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, id: row.id }, { status: 201 });
   } catch (err) {
-    console.error('[/api/push/subscribe] Error:', err);
+    logger.error('[/api/push/subscribe] Error:', err);
     return NextResponse.json({ error: 'Erreur interne' }, { status: 500 });
   }
 }

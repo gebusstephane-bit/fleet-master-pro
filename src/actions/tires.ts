@@ -5,6 +5,7 @@
  * Auth pattern: createClient + getUser + profiles (même que vehicles.ts)
  */
 
+import { USER_ROLE } from '@/constants/enums';
 import { createClient } from '@/lib/supabase/server';
 import { TREAD_DEPTH_THRESHOLDS } from '@/lib/axle-configurations';
 
@@ -110,7 +111,7 @@ export async function saveAxleConfig(
   const profile = await getAuthProfile(supabase);
   if (!profile) return { success: false, error: 'Non authentifié' };
 
-  if (!['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'].includes(profile.role)) {
+  if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC] as string[]).includes(profile.role))) {
     return { success: false, error: 'Permissions insuffisantes' };
   }
 
@@ -266,7 +267,7 @@ export async function mountTire(params: {
   const profile = await getAuthProfile(supabase);
   if (!profile) return { success: false, error: 'Non authentifié' };
 
-  if (!['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'].includes(profile.role)) {
+  if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC] as string[]).includes(profile.role))) {
     return { success: false, error: 'Permissions insuffisantes' };
   }
 

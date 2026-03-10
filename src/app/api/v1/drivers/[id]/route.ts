@@ -17,7 +17,7 @@ export async function GET(
   const select = [
     'id', 'company_id', 'first_name', 'last_name', 'email', 'phone',
     'status', 'license_number', 'license_type', 'license_expiry',
-    'medical_certificate_expiry', 'fimo_expiry', 'fcos_expiry', 'cqc_expiry',
+    'medical_certificate_expiry', 'fimo_expiry', 'fcos_expiry', 'cqc_expiry_date',
     'adr_certificate_expiry', 'adr_classes', 'driver_card_number',
     'driver_card_expiry', 'hire_date', 'contract_type',
     'current_vehicle_id', 'is_active', 'created_at', 'updated_at',

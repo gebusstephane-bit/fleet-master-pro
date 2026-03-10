@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { DriverStepSchema } from "@/lib/onboarding/validation";
 
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.error("Error creating driver:", error);
+      logger.error("Error creating driver:", error);
       return NextResponse.json(
         { error: "Erreur création chauffeur" },
         { status: 500 }
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, driverId: driver.id });
   } catch (error) {
-    console.error("Error in driver onboarding:", error);
+    logger.error("Error in driver onboarding:", error);
     return NextResponse.json(
       { error: "Erreur serveur" },
       { status: 500 }

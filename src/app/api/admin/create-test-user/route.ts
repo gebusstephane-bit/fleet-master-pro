@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   // Vérifier qu'on est en développement
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (companyError) {
-      console.error('Company error:', companyError);
+      logger.error('Company error:', companyError);
       return NextResponse.json(
         { error: 'Erreur création entreprise: ' + companyError.message },
         { status: 500 }
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (authError) {
-      console.error('Auth error:', authError);
+      logger.error('Auth error:', authError);
       return NextResponse.json(
         { error: 'Erreur création auth: ' + authError.message },
         { status: 500 }
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (profileError) {
-      console.error('Profile error:', profileError);
+      logger.error('Profile error:', profileError);
       return NextResponse.json(
         { error: 'Erreur création profil: ' + profileError.message },
         { status: 500 }
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Create test user error:', error);
+    logger.error('Create test user error:', error);
     return NextResponse.json(
       { error: 'Erreur interne: ' + error.message },
       { status: 500 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -38,12 +38,24 @@ import {
   vehicleTypeConfig,
   type VehicleType,
 } from '@/lib/vehicle/calculate-dates';
+import { 
+  getVehicleTypesForActivity,
+  getDbTypeFromDetailedType,
+  requiresFieldForActivity,
+  getVehicleTypeDescription,
+  type VehicleTypeOption,
+} from '@/lib/vehicle/vehicle-types-config';
+import { useCompanyActivities } from '@/hooks/use-company-activities';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 const formSchema = z.object({
   registration_number: z.string().min(1, "Immatriculation requise"),
   brand: z.string().min(1, "Marque requise"),
   model: z.string().min(1, "Modèle requis"),
   year: z.number().min(1990).max(new Date().getFullYear() + 1),
+  // Type détaillé (pour l'affichage dans le formulaire)
+  detailed_type: z.string().min(1, "Type de véhicule requis"),
+  // Type DB (pour la base de données) - calculé automatiquement
   type: z.enum(["VOITURE", "FOURGON", "POIDS_LOURD", "POIDS_LOURD_FRIGO", "TRACTEUR_ROUTIER", "REMORQUE", "REMORQUE_FRIGO"]),
   fuel_type: z.enum(["diesel", "gasoline", "electric", "hybrid", "lpg"]),
   color: z.string().min(1, "Couleur requise"),
@@ -62,6 +74,11 @@ const formSchema = z.object({
   tachy_control_expiry: z.string().optional().transform((v) => v === '' ? null : v ?? null),
   atp_date: z.string().optional().transform((v) => v === '' ? null : v ?? null),
   atp_expiry: z.string().optional().transform((v) => v === '' ? null : v ?? null),
+  // Champs spécifiques par activité
+  adr_certificate_date: z.string().optional().transform((v) => v === '' ? null : v ?? null),
+  adr_certificate_expiry: z.string().optional().transform((v) => v === '' ? null : v ?? null),
+  adr_equipment_check_date: z.string().optional().transform((v) => v === '' ? null : v ?? null),
+  adr_equipment_expiry: z.string().optional().transform((v) => v === '' ? null : v ?? null),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -79,7 +96,19 @@ export function VehicleForm({
   isSubmitting = false,
   submitLabel = 'Enregistrer',
 }: VehicleFormProps) {
+  // Récupérer l'activité de l'entreprise pour adapter les types de véhicules
+  const { data: companyActivities } = useCompanyActivities();
+  const primaryActivity = useMemo(() => {
+    return companyActivities?.find(a => a.is_primary)?.activity || null;
+  }, [companyActivities]);
+  
+  // Liste des types de véhicules disponibles selon l'activité
+  const availableVehicleTypes = useMemo(() => {
+    return getVehicleTypesForActivity(primaryActivity);
+  }, [primaryActivity]);
+  
   const [vehicleType, setVehicleType] = useState<VehicleType | ''>(defaultValues?.type || '');
+  const [detailedType, setDetailedType] = useState<string>(defaultValues?.detailed_type || '');
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema) as Resolver<FormData>,
@@ -88,12 +117,13 @@ export function VehicleForm({
       brand: '',
       model: '',
       year: new Date().getFullYear(),
+      detailed_type: '',
       type: undefined,
       fuel_type: 'diesel',
       color: '',
       mileage: 0,
       vin: '',
-      status: 'ACTIF',
+      status: VEHICLE_STATUS.ACTIF,
       insurance_company: '',
       insurance_policy_number: '',
       insurance_expiry: '',
@@ -103,6 +133,10 @@ export function VehicleForm({
       tachy_control_expiry: '',
       atp_date: '',
       atp_expiry: '',
+      adr_certificate_date: '',
+      adr_certificate_expiry: '',
+      adr_equipment_check_date: '',
+      adr_equipment_expiry: '',
       ...defaultValues,
     },
   });
@@ -110,7 +144,41 @@ export function VehicleForm({
   // Effet pour recalculer les dates quand le type ou la date CT change
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
-      if (name === 'type' && value.type) {
+      // Quand le detailed_type change, mettre à jour le type DB
+      if (name === 'detailed_type' && value.detailed_type) {
+        const dbType = getDbTypeFromDetailedType(value.detailed_type);
+        setDetailedType(value.detailed_type);
+        setVehicleType(dbType);
+        form.setValue('type', dbType, { shouldValidate: false });
+        
+        // Recalculer toutes les dates si on a une date CT
+        const ctDate = form.getValues('technical_control_date');
+        if (ctDate) {
+          try {
+            const dates = calculateRegulatoryDates(dbType, ctDate);
+            form.setValue('technical_control_expiry', format(dates.technicalControlExpiry, 'yyyy-MM-dd'));
+            if (dates.tachyControlExpiry) {
+              form.setValue('tachy_control_date', format(dates.tachyControlDate!, 'yyyy-MM-dd'));
+              form.setValue('tachy_control_expiry', format(dates.tachyControlExpiry, 'yyyy-MM-dd'));
+            } else {
+              form.setValue('tachy_control_date', '');
+              form.setValue('tachy_control_expiry', '');
+            }
+            if (dates.atpExpiry) {
+              form.setValue('atp_date', format(dates.atpDate!, 'yyyy-MM-dd'));
+              form.setValue('atp_expiry', format(dates.atpExpiry, 'yyyy-MM-dd'));
+            } else {
+              form.setValue('atp_date', '');
+              form.setValue('atp_expiry', '');
+            }
+          } catch (e) {
+            console.warn('Erreur calcul dates:', e);
+          }
+        }
+      }
+      
+      // Fallback: si le type change directement (compatibilité legacy)
+      if (name === 'type' && value.type && !value.detailed_type) {
         setVehicleType(value.type as VehicleType);
         
         // Recalculer toutes les dates si on a une date CT
@@ -168,6 +236,28 @@ export function VehicleForm({
           console.warn('Erreur recalcul ATP:', e);
         }
       }
+      
+      // Recalculer l'expiration ADR quand la date ADR change (+1 an)
+      if (name === 'adr_certificate_date' && value.adr_certificate_date) {
+        try {
+          const date = new Date(value.adr_certificate_date);
+          const expiry = new Date(date.setFullYear(date.getFullYear() + 1));
+          form.setValue('adr_certificate_expiry', format(expiry, 'yyyy-MM-dd'));
+        } catch (e) {
+          console.warn('Erreur recalcul ADR cert:', e);
+        }
+      }
+      
+      // Recalculer l'expiration équipement ADR quand la date change (+1 an)
+      if (name === 'adr_equipment_check_date' && value.adr_equipment_check_date) {
+        try {
+          const date = new Date(value.adr_equipment_check_date);
+          const expiry = new Date(date.setFullYear(date.getFullYear() + 1));
+          form.setValue('adr_equipment_expiry', format(expiry, 'yyyy-MM-dd'));
+        } catch (e) {
+          console.warn('Erreur recalcul ADR équipement:', e);
+        }
+      }
     });
     
     return () => subscription.unsubscribe();
@@ -176,6 +266,10 @@ export function VehicleForm({
   const typeConfig = vehicleType ? vehicleTypeConfig[vehicleType] : null;
   const showTachy = vehicleType && requiresTachy(vehicleType as VehicleType);
   const showATP = vehicleType && requiresATP(vehicleType as VehicleType);
+  
+  // Affichage des champs spécifiques selon l'activité de l'entreprise
+  const showADRCert = requiresFieldForActivity('ADR_CERT', primaryActivity);
+  const showADREquipment = requiresFieldForActivity('ADR_EQUIPEMENT', primaryActivity);
 
   return (
     <Form {...form}>
@@ -250,42 +344,54 @@ export function VehicleForm({
               )}
             />
 
-            {/* Type de véhicule - CRITIQUE pour les échéances */}
+            {/* Type de véhicule détaillé - basé sur l'activité de l'entreprise */}
             <FormField
               control={form.control}
-              name="type"
+              name="detailed_type"
               render={({ field }) => (
                 <FormItem>
                   <FormLabelText>Type de véhicule *</FormLabelText>
                   <Select 
                     onValueChange={(value) => {
                       field.onChange(value);
-                      setVehicleType(value as VehicleType);
+                      const dbType = getDbTypeFromDetailedType(value);
+                      setDetailedType(value);
+                      setVehicleType(dbType);
+                      // Mettre à jour aussi le type DB pour la compatibilité
+                      form.setValue('type', dbType, { shouldValidate: false });
                     }} 
                     value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez le type" />
+                        <SelectValue placeholder="Sélectionnez le type de véhicule" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="VOITURE">🚗 Voiture</SelectItem>
-                      <SelectItem value="FOURGON">🚐 Fourgon</SelectItem>
-                      <SelectItem value="POIDS_LOURD">🚛 Poids Lourd</SelectItem>
-                      <SelectItem value="POIDS_LOURD_FRIGO">🚛❄️ PL Frigorifique</SelectItem>
-                      <SelectItem value="TRACTEUR_ROUTIER">🚜 Tracteur Routier</SelectItem>
-                      <SelectItem value="REMORQUE">🚛 Remorque</SelectItem>
-                      <SelectItem value="REMORQUE_FRIGO">🚛❄️ Remorque Frigorifique</SelectItem>
+                    <SelectContent className="max-h-[400px]">
+                      {availableVehicleTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          <div className="flex flex-col">
+                            <span>{type.label}</span>
+                            {type.description && (
+                              <span className="text-xs text-slate-400">{type.description}</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Détermine automatiquement les échéances réglementaires
+                    {primaryActivity 
+                      ? `Types adaptés à votre activité: ${primaryActivity.replace(/_/g, ' ')}`
+                      : 'Détermine automatiquement les échéances réglementaires'}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            
+            {/* Champ caché pour le type DB (legacy compatibility) */}
+            <input type="hidden" {...form.register('type')} />
 
             {/* Carburant */}
             <FormField
@@ -640,6 +746,103 @@ export function VehicleForm({
                     )}
                   />
                 </div>
+              </div>
+            )}
+
+            {/* Section ADR (activité ADR uniquement) */}
+            {(showADRCert || showADREquipment) && (
+              <div className="border-l-4 border-orange-500 pl-4 space-y-4 pt-4">
+                <h4 className="font-semibold text-orange-700 flex items-center gap-2">
+                  ⚠️ ADR - Matières Dangereuses
+                </h4>
+                
+                {showADRCert && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="adr_certificate_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabelText>Date dernier agrément ADR</FormLabelText>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              {...field} 
+                              value={field.value || ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="adr_certificate_expiry"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabelText>Expiration agrément ADR</FormLabelText>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              {...field} 
+                              value={field.value || ''}
+                              className="bg-orange-50 text-orange-700 font-medium"
+                            />
+                          </FormControl>
+                          <FormDescription className="text-orange-600">
+                            + 1 an depuis la date d'agrément
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {showADREquipment && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="adr_equipment_check_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabelText>Date dernier contrôle équipement ADR</FormLabelText>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              {...field} 
+                              value={field.value || ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="adr_equipment_expiry"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabelText>Expiration contrôle équipement</FormLabelText>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              {...field} 
+                              value={field.value || ''}
+                              className="bg-orange-50 text-orange-700 font-medium"
+                            />
+                          </FormControl>
+                          <FormDescription className="text-orange-600">
+                            + 1 an depuis le contrôle
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
               </div>
             )}
 

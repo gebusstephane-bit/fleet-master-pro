@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Truck, AlertTriangle, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 interface VehicleListVirtualProps {
   statusFilter?: string;
@@ -181,10 +182,10 @@ export function VehicleListVirtual({ statusFilter, onVehicleClick }: VehicleList
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className={statusColors[vehicle.status] || 'bg-gray-100'}>
-                      {vehicle.status === 'ACTIF' ? 'Actif' :
-                       vehicle.status === 'INACTIF' ? 'Inactif' :
-                       vehicle.status === 'EN_MAINTENANCE' ? 'En maintenance' :
-                       vehicle.status === 'ARCHIVE' ? 'Archivé' : vehicle.status}
+                      {vehicle.status === VEHICLE_STATUS.ACTIF ? 'Actif' :
+                       vehicle.status === VEHICLE_STATUS.INACTIF ? 'Inactif' :
+                       vehicle.status === VEHICLE_STATUS.EN_MAINTENANCE ? 'En maintenance' :
+                       vehicle.status === VEHICLE_STATUS.ARCHIVE ? 'Archivé' : vehicle.status}
                     </Badge>
                     <Link href={`/vehicles/${vehicle.id}`}>
                       <Button variant="ghost" size="sm">

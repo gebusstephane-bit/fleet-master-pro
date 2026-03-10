@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,9 +27,24 @@ import {
   Clock,
   Info,
   Snowflake,
+  AlertTriangle as AlertTriangleIcon,
+  Plus,
+  Package,
+  AlertOctagon,
+  Truck,
+  Construction,
+  Heart,
+  Maximize2,
+  Activity,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import '@/app/(dashboard)/detail-pages-premium.css';
 import { useVehicle } from '@/hooks/use-vehicles';
+import { useVehicleCurrentActivity, useAssignVehicleActivity } from '@/hooks/use-vehicle-activities';
+import type { TransportActivity } from '@/actions/vehicle-activities';
 import { useMaintenancesByVehicle } from '@/hooks/use-maintenance';
 import { useFuelRecordsByVehicle } from '@/hooks/use-fuel';
 import { useVehicleReliabilityScore } from '@/hooks/use-reliability-score';
@@ -46,9 +61,15 @@ import { UpcomingMaintenance } from '@/components/vehicles/UpcomingMaintenance';
 import { VehicleInspections } from '@/components/vehicles/vehicle-inspections';
 import { TCODashboard } from '@/components/vehicles/TCODashboard';
 import { VehicleTiresTab } from '@/components/tires/VehicleTiresTab';
-import { VehicleKPIBar } from '@/components/vehicles/VehicleKPIBar';
 import { differenceInDays, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { getSupabaseClient } from '@/lib/supabase/client';
+
+// 🆕 NOUVEAUX COMPOSANTS REDESIGN
+import { CriticalAlertBanner } from '@/components/vehicles/CriticalAlertBanner';
+import { RegulatoryTimelineCompact } from '@/components/vehicles/RegulatoryTimelineCompact';
+import { MaintenancePredictionsPanel } from '@/components/vehicles/MaintenancePredictionsPanel';
+
 import { cn } from '@/lib/utils';
 
 // Composant interne pour le toggle Liste/Timeline
@@ -67,14 +88,14 @@ function MaintenanceViewToggle({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-1">
+      <div className="flex items-center gap-1 rounded-xl bg-slate-900/50 p-1 border border-slate-800">
         <button
           onClick={() => setViewMode('list')}
           className={cn(
-            'flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all',
+            'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
             viewMode === 'list'
-              ? 'bg-cyan-600 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-slate-700'
+              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+              : 'text-slate-400 hover:text-slate-200'
           )}
         >
           <List className="h-4 w-4" />
@@ -83,10 +104,10 @@ function MaintenanceViewToggle({
         <button
           onClick={() => setViewMode('timeline')}
           className={cn(
-            'flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all',
+            'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
             viewMode === 'timeline'
-              ? 'bg-cyan-600 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-slate-700'
+              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+              : 'text-slate-400 hover:text-slate-200'
           )}
         >
           <GitBranch className="h-4 w-4" />
@@ -120,6 +141,33 @@ const typeLabels: Record<string, string> = {
   POIDS_LOURD_FRIGO: '🚛❄️ PL Frigorifique',
 };
 
+const detailedTypeLabels: Record<string, string> = {
+  PL_BACHE: 'PL Bâché',
+  PL_FOURGON: 'PL Fourgon',
+  PL_PLATEAU: 'PL Plateau',
+  PL_FRIGO: 'PL Frigorifique',
+  PL_CITERNE_VRAC: 'PL Citerne vrac',
+  PL_CITERNE_CITERNE: 'PL Citerne citerne',
+  PL_CITERNE_DISTRIB: 'PL Citerne distribution',
+  PL_FOURGON_ADR: 'PL Fourgon ADR',
+  PL_BENNE_TP: 'PL Benne TP',
+  PL_PORTE_ENGINS: 'PL Porte-engins',
+  PL_PLATEAU_EXCEPT: 'PL Plateau exceptionnel',
+  TRACTEUR_ROUTIER: 'Tracteur routier',
+  REMORQUE_FRIGO: 'Remorque frigorifique',
+  REMORQUE_PLATEAU: 'Remorque plateau',
+  REMORQUE_RIDEAUX: 'Remorque rideaux',
+  REMORQUE_CITERNE: 'Remorque citerne',
+  REMORQUE_BENNE: 'Remorque benne',
+  VL_BERLINE: 'Berline',
+  VL_BREAK: 'Break',
+  VL_FOURGON: 'Fourgon',
+  VL_PICKUP: 'Pickup',
+  VL_BENNE: 'Benne',
+  VL_FRIGO: 'Frigorifique',
+  VL_CITERNE: 'Citerne',
+};
+
 const fuelLabels: Record<string, string> = {
   diesel: 'Diesel',
   gasoline: 'Essence',
@@ -140,8 +188,8 @@ export default function VehicleDetailPage() {
   const { data: reliabilityScore } = useVehicleReliabilityScore(id);
   const [tireCriticalCount, setTireCriticalCount] = useState(0);
   const [activeTab, setActiveTab] = useState('maintenance');
+  const [showQRModal, setShowQRModal] = useState(false);
 
-  // Calculer la consommation moyenne
   const consumptionByType = fuelRecords?.reduce((acc: Record<string, number[]>, record: any) => {
     if (record.consumption_l_per_100km && record.fuel_type) {
       if (!acc[record.fuel_type]) acc[record.fuel_type] = [];
@@ -154,28 +202,10 @@ export default function VehicleDetailPage() {
     ? consumptionByType.diesel.reduce((a: number, b: number) => a + b, 0) / consumptionByType.diesel.length
     : null;
 
-  // Calculer les alertes actives (maintenances en cours)
   const activeMaintenances = maintenances?.filter(
     (m: any) => m.status === 'scheduled' || m.status === 'in_progress' || m.status === 'pending'
   ) || [];
   const alertCount = activeMaintenances.length;
-  const urgentAlertCount = activeMaintenances.filter(
-    (m: any) => m.priority === 'critical' || m.priority === 'high'
-  ).length;
-
-  // Prochain entretien estimé (à remplacer par une vraie logique si disponible)
-  const nextMaintenanceKm = vehicle?.mileage ? Math.max(0, 15000 - (vehicle.mileage % 15000)) : null;
-
-  const handleKPIClick = (tabId: string) => {
-    const tabMap: Record<string, string> = {
-      maintenance: 'maintenance',
-      fuel: 'maintenance',
-      inspections: 'inspections',
-      alerts: 'maintenance',
-    };
-    setActiveTab(tabMap[tabId] || 'maintenance');
-    tabsRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
 
   if (vehicleLoading) {
     return <VehicleDetailSkeleton />;
@@ -195,14 +225,11 @@ export default function VehicleDetailPage() {
 
   const status = statusConfig[vehicle.status as keyof typeof statusConfig] || statusConfig.INACTIF;
 
-  // Calcul des jours pour le CT
-  const daysUntilCT = vehicle.technical_control_expiry
-    ? differenceInDays(parseISO(vehicle.technical_control_expiry), new Date())
-    : null;
-
   return (
     <div className="space-y-6">
-      {/* ZONE 1 — EN-TÊTE VÉHICULE */}
+      {/* ═══════════════════════════════════════════════════════════════
+          ZONE 1 — EN-TÊTE VÉHICULE
+          ═══════════════════════════════════════════════════════════════ */}
       <div className="detail-header">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
@@ -219,14 +246,10 @@ export default function VehicleDetailPage() {
               {vehicle.registration_number?.toUpperCase()}
             </h1>
             
-            <Badge 
-              className={cn('border', status.color)}
-              variant="outline"
-            >
+            <Badge className={cn('border', status.color)} variant="outline">
               {status.label}
             </Badge>
             
-            {/* Score de fiabilité inline */}
             {reliabilityScore && (
               <Badge 
                 className="border shrink-0"
@@ -237,7 +260,7 @@ export default function VehicleDetailPage() {
                 }}
               >
                 <ShieldCheck className="h-3 w-3 mr-1" />
-                {reliabilityScore.score}/100 · {reliabilityScore.grade}
+                {reliabilityScore.score}/100
               </Badge>
             )}
           </div>
@@ -258,42 +281,45 @@ export default function VehicleDetailPage() {
             <Link href={`/vehicles/${id}/edit`}>
               <Edit className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Modifier</span>
-              <span className="sm:hidden">Edit</span>
             </Link>
           </Button>
         </div>
       </div>
 
-      {/* ZONE 2 — CARTES KPI */}
-      <VehicleKPIBar
-        nextMaintenanceKm={nextMaintenanceKm}
-        consumption={dieselConsumption}
-        fuelType={fuelLabels[vehicle.fuel_type as any] || vehicle.fuel_type}
-        technicalControlExpiry={vehicle.technical_control_expiry}
-        technicalControlDate={vehicle.technical_control_date}
-        alertCount={alertCount}
-        urgentAlertCount={urgentAlertCount}
-        onCardClick={handleKPIClick}
-      />
+      {/* ═══════════════════════════════════════════════════════════════
+          ZONE 2 — ALERTE CRITIQUE (pleine largeur)
+          ═══════════════════════════════════════════════════════════════ */}
+      <CriticalAlertBanner vehicleId={id} vehicleMileage={vehicle.mileage ?? 0} />
 
-      {/* ZONE 3 — CONTENU PRINCIPAL (2 colonnes) */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Colonne gauche 60% */}
-        <div className="lg:col-span-3 space-y-6">
-          {/* Informations véhicule */}
-          <Card className="detail-card">
-            <CardHeader className="detail-card-header">
+      {/* ═══════════════════════════════════════════════════════════════
+          ZONE 3 — ÉCHÉANCES + INFOS TECHNIQUES (côte à côte)
+          ═══════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Échéances réglementaires - Compact (1/4) */}
+        <div className="lg:col-span-1">
+          <RegulatoryTimelineCompact vehicle={vehicle} />
+        </div>
+        
+        {/* Informations techniques (3/4) */}
+        <div className="lg:col-span-3">
+          <Card className="detail-card h-full">
+            <CardHeader className="detail-card-header pb-3">
               <CardTitle className="detail-card-title">
                 <FileText className="h-5 w-5" />
-                Informations véhicule
+                Informations techniques
               </CardTitle>
             </CardHeader>
             <CardContent className="detail-card-content">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4">
                 <InfoItem label="Marque" value={vehicle.brand} />
                 <InfoItem label="Modèle" value={vehicle.model} />
                 <InfoItem label="Année" value={String(vehicle.year || '—')} />
-                <InfoItem label="Type" value={typeLabels[vehicle.type as any] || vehicle.type} />
+                <InfoItem 
+                  label="Type" 
+                  value={detailedTypeLabels[vehicle.detailed_type as any] 
+                    || typeLabels[vehicle.type as any] 
+                    || vehicle.type} 
+                />
                 <InfoItem label="Carburant" value={fuelLabels[vehicle.fuel_type as any] || vehicle.fuel_type} />
                 <InfoItem label="Couleur" value={vehicle.color || '—'} />
                 <InfoItem 
@@ -309,103 +335,110 @@ export default function VehicleDetailPage() {
                   value={vehicle.registration_number?.toUpperCase() || '—'}
                 />
                 <InfoItem label="VIN" value={vehicle.vin || '—'} />
+                <InfoItem 
+                  label="Conducteur" 
+                  value={vehicle.drivers ? `${vehicle.drivers.first_name} ${vehicle.drivers.last_name}` : 'Non assigné'}
+                />
+                <InfoItem 
+                  label="Activité" 
+                  value={vehicle.type?.includes('FRIGO') ? 'Frigorifique' : 'Marchandises'}
+                />
               </div>
             </CardContent>
           </Card>
-
-          {/* Conducteur attitré */}
-          <DriverAssignment vehicleId={vehicle.id} />
-
-          {/* QR Code */}
-          <VehicleQRCode 
-            vehicleId={vehicle.id}
-            registrationNumber={vehicle.registration_number}
-            brand={vehicle.brand}
-            model={vehicle.model}
-          />
-        </div>
-
-        {/* Colonne droite 40% */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Maintenances préventives par règles kilométriques */}
-          <UpcomingMaintenance vehicleId={vehicle.id} />
-
-          {/* Maintenance Prédictive IA */}
-          <PredictionCard vehicleId={vehicle.id} />
-
-          {/* Score de fiabilité */}
-          <ReliabilityScoreDisplay vehicleId={vehicle.id} />
-
-          {/* Échéances réglementaires */}
-          <ComplianceCard vehicle={vehicle} />
         </div>
       </div>
 
-      {/* ZONE 4 — ONGLETS */}
-      <div ref={tabsRef} className="overflow-x-auto -mx-2 px-2 mt-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full min-w-max">
-          <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-slate-800/50 p-1 text-slate-400">
+      {/* ═══════════════════════════════════════════════════════════════
+          ZONE 4 — MAINTENANCES PRÉVENTIVES (pleine largeur)
+          ═══════════════════════════════════════════════════════════════ */}
+      <MaintenancePredictionsPanel vehicleId={id} />
+
+      {/* ═══════════════════════════════════════════════════════════════
+          ZONE 5 — BARRE WIDGETS : Score | Conducteur | QR Code
+          ═══════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Score de fiabilité (gauche) */}
+        <ReliabilityScoreWidget vehicleId={id} />
+        
+        {/* Conducteur (centre) */}
+        <DriverAssignment vehicleId={vehicle.id} />
+        
+        {/* QR Code (droite) */}
+        <QRCodeWidget 
+          vehicleId={vehicle.id}
+          registrationNumber={vehicle.registration_number}
+          brand={vehicle.brand}
+          model={vehicle.model}
+          onExpand={() => setShowQRModal(true)}
+        />
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          ZONE 6 — ACTIVITÉ DE TRANSPORT (si non assignée)
+          ═══════════════════════════════════════════════════════════════ */}
+      <VehicleActivitySection vehicleId={vehicle.id} />
+
+      {/* ═══════════════════════════════════════════════════════════════
+          ZONE 7 — ALERTE PRÉDICTIVE IA (pleine largeur)
+          ═══════════════════════════════════════════════════════════════ */}
+      <PredictionCard vehicleId={id} />
+
+      {/* ═══════════════════════════════════════════════════════════════
+          ZONE 8 — ONGLETS HISTORIQUE (pleine largeur)
+          ═══════════════════════════════════════════════════════════════ */}
+      <div ref={tabsRef} className="mt-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="flex h-11 items-center justify-start gap-1 rounded-xl bg-slate-900/50 p-1.5 border border-slate-800 w-full">
             <TabsTrigger 
               value="maintenance" 
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-400 transition-all hover:text-slate-200 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-500/30 flex-1 justify-center"
             >
               <Wrench className="h-4 w-4" />
-              <span className="hidden sm:inline">Maintenance</span>
-              <span className="sm:hidden">Maint.</span>
+              <span className="hidden sm:inline">Historique maintenance</span>
+              <span className="sm:hidden">Historique</span>
               {alertCount > 0 && (
-                <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1 text-xs">
+                <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500/20 text-red-400 text-xs px-1.5 border border-red-500/30">
                   {alertCount}
-                </Badge>
+                </span>
               )}
             </TabsTrigger>
             
             <TabsTrigger 
               value="inspections"
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-400 transition-all hover:text-slate-200 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-500/30 flex-1 justify-center"
             >
               <ClipboardCheck className="h-4 w-4" />
-              <span className="hidden sm:inline">Contrôles</span>
-              <span className="sm:hidden">Ctrl.</span>
+              <span>Contrôles</span>
             </TabsTrigger>
             
             <TabsTrigger 
               value="documents"
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-400 transition-all hover:text-slate-200 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-500/30 flex-1 justify-center"
             >
               <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">Documents</span>
-              <span className="sm:hidden">Docs</span>
+              <span className="sm:inline">Docs</span>
             </TabsTrigger>
             
             <TabsTrigger 
               value="tco"
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-400 transition-all hover:text-slate-200 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-500/30 flex-1 justify-center"
             >
               <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Coûts & TCO</span>
-              <span className="sm:hidden">TCO</span>
-            </TabsTrigger>
-            
-            <TabsTrigger 
-              value="prediction"
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
-            >
-              <Brain className="h-4 w-4" />
-              <span className="hidden sm:inline">IA Prédiction</span>
-              <span className="sm:hidden">IA</span>
+              <span>Coûts</span>
             </TabsTrigger>
             
             <TabsTrigger 
               value="tires"
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-400 transition-all hover:text-slate-200 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400 data-[state=active]:border data-[state=active]:border-cyan-500/30 flex-1 justify-center"
             >
               <Disc className="h-4 w-4" />
-              <span className="hidden sm:inline">Pneumatiques</span>
-              <span className="sm:hidden">Pneus</span>
+              <span>Pneus</span>
               {tireCriticalCount > 0 && (
-                <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1 text-xs">
+                <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500/20 text-red-400 text-xs px-1.5 border border-red-500/30">
                   {tireCriticalCount}
-                </Badge>
+                </span>
               )}
             </TabsTrigger>
           </TabsList>
@@ -413,14 +446,13 @@ export default function VehicleDetailPage() {
           <TabsContent value="maintenance" className="mt-6">
             <Card className="detail-card">
               <CardHeader className="detail-card-header">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                   <div>
                     <CardTitle className="text-white">Historique des maintenances</CardTitle>
                     <CardDescription className="text-slate-400">
                       Toutes les interventions et réparations du véhicule
                     </CardDescription>
                   </div>
-                  {/* Toggle Liste / Timeline */}
                   <MaintenanceViewToggle 
                     vehicleId={id}
                     vehicleCurrentKm={vehicle?.mileage ?? 0}
@@ -473,10 +505,6 @@ export default function VehicleDetailPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="prediction" className="mt-6">
-            <PredictionCard vehicleId={id} />
-          </TabsContent>
-
           <TabsContent value="tires" className="mt-6">
             <VehicleTiresTab
               vehicleId={id}
@@ -487,6 +515,40 @@ export default function VehicleDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          ZONE 9 — ÉQUIPEMENT RÉGLEMENTAIRE (si applicable)
+          ═══════════════════════════════════════════════════════════════ */}
+      <VehicleEquipmentSection vehicleId={vehicle.id} />
+
+      {/* Modal QR Code */}
+      <Dialog open={showQRModal} onOpenChange={setShowQRModal}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5 text-cyan-400" />
+              QR Code — {vehicle.registration_number?.toUpperCase()}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Scannez ce code pour accéder rapidement à la fiche véhicule
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center py-4">
+            <div className="bg-white rounded-xl p-4">
+              <VehicleQRCode 
+                vehicleId={vehicle.id}
+                registrationNumber={vehicle.registration_number}
+                brand={vehicle.brand}
+                model={vehicle.model}
+              />
+            </div>
+          </div>
+          <div className="text-center text-sm text-slate-400">
+            <p>{vehicle.brand} {vehicle.model}</p>
+            <p className="text-xs mt-1">{vehicle.mileage?.toLocaleString('fr-FR')} km</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -505,18 +567,15 @@ function InfoItem({ label, value, icon }: { label: string; value: string; icon?:
   );
 }
 
-function ReliabilityScoreDisplay({ vehicleId }: { vehicleId: string }) {
+// Widget Score de fiabilité (compact pour la barre)
+function ReliabilityScoreWidget({ vehicleId }: { vehicleId: string }) {
   const { data: score, isLoading } = useVehicleReliabilityScore(vehicleId);
 
   if (isLoading) {
     return (
       <Card className="detail-card">
         <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-slate-700 rounded w-1/3" />
-            <div className="h-8 bg-slate-700 rounded w-1/2" />
-            <div className="h-20 bg-slate-700 rounded" />
-          </div>
+          <Skeleton className="h-20 w-full" />
         </CardContent>
       </Card>
     );
@@ -524,166 +583,106 @@ function ReliabilityScoreDisplay({ vehicleId }: { vehicleId: string }) {
 
   if (!score) return null;
 
-  const ScoreBar = ({ label, value, weight }: { label: string; value: number; weight: string }) => {
-    const color =
-      value >= 85 ? 'bg-emerald-500' :
-      value >= 70 ? 'bg-green-500' :
-      value >= 55 ? 'bg-yellow-500' :
-      value >= 40 ? 'bg-orange-500' : 'bg-red-500';
-
-    return (
-      <div className="space-y-1">
-        <div className="flex justify-between items-center text-sm">
-          <span className="text-slate-300">{label}</span>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500">{weight}</span>
-            <span className="font-semibold text-white w-8 text-right">{value}</span>
-          </div>
-        </div>
-        <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-          <div className={cn('h-full rounded-full transition-all duration-700', color)} style={{ width: `${value}%` }} />
-        </div>
-      </div>
-    );
-  };
-
   return (
     <Card className="detail-card">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2 text-white">
-            <ShieldCheck className="h-5 w-5 text-cyan-400" />
-            Score de fiabilité
-          </CardTitle>
-          <div
-            className="px-2 py-0.5 rounded text-xs font-bold text-white"
-            style={{ backgroundColor: score.color }}
-          >
-            {score.grade}
-          </div>
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-cyan-400" />
+          <CardTitle className="text-base text-white">Score de fiabilité</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-3 mb-4">
+      <CardContent>
+        <div className="flex items-center gap-4">
           <div 
-            className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg"
+            className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl"
             style={{ backgroundColor: score.color }}
           >
             {score.score}
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-2xl font-bold text-white">{score.score}/100</p>
-            <p className="text-sm" style={{ color: score.color }}>{score.label}</p>
+            <p className="text-sm" style={{ color: score.color }}>{score.grade} · {score.label}</p>
           </div>
         </div>
-
-        <ScoreBar label="Inspection" value={score.breakdown.inspection} weight="30%" />
-        <ScoreBar label="Maintenance" value={score.breakdown.maintenance} weight="35%" />
-        <ScoreBar label="Carburant" value={score.breakdown.fuel} weight="20%" />
-        <ScoreBar label="Conformité" value={score.breakdown.compliance} weight="15%" />
-
-        <p className="mt-4 text-xs text-slate-500 pt-3 border-t border-slate-700">
-          — Stable · Calculé le {(score.lastCalculated instanceof Date ? score.lastCalculated : new Date(score.lastCalculated)).toLocaleDateString('fr-FR')} à{' '}
-          {(score.lastCalculated instanceof Date ? score.lastCalculated : new Date(score.lastCalculated)).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-        </p>
+        <div className="mt-4 space-y-2">
+          <ScoreBar label="Inspection" value={score.breakdown.inspection} color="#3b82f6" />
+          <ScoreBar label="Maintenance" value={score.breakdown.maintenance} color="#22c55e" />
+          <ScoreBar label="Conformité" value={score.breakdown.compliance} color="#f59e0b" />
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-function ComplianceCard({ vehicle }: { vehicle: any }) {
-  const vehicleType = vehicle.type;
-  const typeLabels: Record<string, { label: string; emoji: string; ctPeriod: string }> = {
-    VOITURE: { label: 'Voiture', emoji: '🚗', ctPeriod: '2 ans' },
-    FOURGON: { label: 'Fourgon', emoji: '🚐', ctPeriod: '1 an' },
-    POIDS_LOURD: { label: 'Poids Lourd', emoji: '🚛', ctPeriod: '1 an' },
-    POIDS_LOURD_FRIGO: { label: 'PL Frigorifique', emoji: '🚛❄️', ctPeriod: '1 an' },
-  };
-  const typeConfig = typeLabels[vehicleType] || { label: vehicleType, emoji: '🚗', ctPeriod: '2 ans' };
+function ScoreBar({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-slate-400 w-20">{label}</span>
+      <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+        <div 
+          className="h-full rounded-full" 
+          style={{ width: `${value}%`, backgroundColor: color }}
+        />
+      </div>
+      <span className="text-xs text-slate-300 w-8 text-right">{value}</span>
+    </div>
+  );
+}
 
-  const daysUntilCT = vehicle.technical_control_expiry
-    ? differenceInDays(parseISO(vehicle.technical_control_expiry), new Date())
-    : null;
-
-  const isExpired = daysUntilCT !== null && daysUntilCT < 0;
-  const isUrgent = daysUntilCT !== null && daysUntilCT >= 0 && daysUntilCT < 30;
-
+// Widget QR Code
+function QRCodeWidget({ 
+  vehicleId, 
+  registrationNumber, 
+  brand, 
+  model,
+  onExpand 
+}: { 
+  vehicleId: string; 
+  registrationNumber: string; 
+  brand?: string; 
+  model?: string;
+  onExpand: () => void;
+}) {
   return (
     <Card className="detail-card">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2 text-white">
-            <Clock className="h-5 w-5 text-cyan-400" />
-            Échéances réglementaires
-          </CardTitle>
-          <span className="text-sm text-slate-400">
-            {typeConfig.emoji} {typeConfig.label}
-          </span>
+          <div className="flex items-center gap-2">
+            <QrCode className="h-5 w-5 text-cyan-400" />
+            <CardTitle className="text-base text-white">QR Code</CardTitle>
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onExpand}>
+            <Maximize2 className="h-4 w-4 text-slate-400" />
+          </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {vehicle.technical_control_expiry ? (
-          <div className={cn(
-            'p-4 rounded-lg border',
-            isExpired ? 'bg-red-950/20 border-red-700/30' :
-            isUrgent ? 'bg-amber-950/20 border-amber-700/30' :
-            'bg-emerald-950/20 border-emerald-700/30'
-          )}>
-            <div className="flex items-start gap-3">
-              <div className={cn(
-                'p-2 rounded-full shrink-0',
-                isExpired ? 'bg-red-500/20 text-red-400' :
-                isUrgent ? 'bg-amber-500/20 text-amber-400' :
-                'bg-emerald-500/20 text-emerald-400'
-              )}>
-                {isExpired ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-white">Contrôle Technique</p>
-                <p className={cn(
-                  'text-lg font-bold',
-                  isExpired ? 'text-red-400' :
-                  isUrgent ? 'text-amber-400' :
-                  'text-emerald-400'
-                )}>
-                  {new Date(vehicle.technical_control_expiry).toLocaleDateString('fr-FR', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })}
-                </p>
-                <p className={cn('text-sm mt-1',
-                  isExpired ? 'text-red-400' :
-                  isUrgent ? 'text-amber-400' :
-                  'text-slate-400'
-                )}>
-                  {isExpired 
-                    ? `Expiré depuis ${Math.abs(daysUntilCT!)} jours`
-                    : `Valide encore ${daysUntilCT} jours`
-                  }
-                </p>
-                {vehicle.technical_control_date && (
-                  <p className="text-xs text-slate-500 mt-1">
-                    Dernier : {new Date(vehicle.technical_control_date).toLocaleDateString('fr-FR')}
-                  </p>
-                )}
-              </div>
-            </div>
+      <CardContent>
+        <div className="flex items-center gap-4">
+          <div className="w-20 h-20 bg-white rounded-lg p-1.5 shrink-0">
+            <VehicleQRCode 
+              vehicleId={vehicleId}
+              registrationNumber={registrationNumber}
+              brand={brand}
+              model={model}
+              compact
+            />
           </div>
-        ) : (
-          <div className="p-4 rounded-lg border border-slate-700 bg-slate-800/50">
-            <div className="flex items-center gap-3">
-              <Info className="h-5 w-5 text-slate-400" />
-              <p className="text-slate-400">Aucune échéance configurée</p>
-            </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-slate-300">
+              Scan pour accès rapide
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Inspection · Carburant · Carnet
+            </p>
+            <Button 
+              variant="link" 
+              size="sm" 
+              className="px-0 text-cyan-400 h-auto py-1"
+              onClick={onExpand}
+            >
+              Agrandir
+            </Button>
           </div>
-        )}
-
-        <div className="pt-3 border-t border-slate-700">
-          <p className="text-xs text-slate-500">
-            <Info className="h-3 w-3 inline mr-1" />
-            Périodicités {typeConfig.label} : CT {typeConfig.ctPeriod}
-          </p>
         </div>
       </CardContent>
     </Card>
@@ -701,26 +700,285 @@ function VehicleDetailSkeleton() {
         </div>
       </div>
       
-      {/* KPI Skeleton */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map(i => (
-          <Skeleton key={i} className="h-24" />
-        ))}
+      <Skeleton className="h-24" />
+      
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <Skeleton className="h-48" />
+        <Skeleton className="h-48 lg:col-span-3" />
       </div>
       
-      {/* Content Skeleton */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3 space-y-6">
-          <Skeleton className="h-[300px]" />
-          <Skeleton className="h-[200px]" />
-          <Skeleton className="h-[400px]" />
-        </div>
-        <div className="lg:col-span-2 space-y-6">
-          <Skeleton className="h-[350px]" />
-          <Skeleton className="h-[300px]" />
-          <Skeleton className="h-[200px]" />
-        </div>
+      <Skeleton className="h-[400px]" />
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Skeleton className="h-48" />
+        <Skeleton className="h-48" />
+        <Skeleton className="h-48" />
       </div>
+      
+      <Skeleton className="h-32" />
+      <Skeleton className="h-64" />
     </div>
+  );
+}
+
+// Map des icônes pour les activités
+const VEHICLE_ACTIVITY_ICONS: Record<TransportActivity, React.ElementType> = {
+  MARCHANDISES_GENERALES: Package,
+  FRIGORIFIQUE: Snowflake,
+  ADR_COLIS: AlertTriangle,
+  ADR_CITERNE: AlertOctagon,
+  CONVOI_EXCEPTIONNEL: Truck,
+  BENNE_TRAVAUX_PUBLICS: Construction,
+  ANIMAUX_VIVANTS: Heart,
+};
+
+const VEHICLE_ACTIVITIES_CONFIG: Record<TransportActivity, { 
+  label: string; 
+  color: string; 
+  bgColor: string;
+  description: string;
+}> = {
+  MARCHANDISES_GENERALES: {
+    label: 'Marchandises Générales',
+    color: '#6b7280',
+    bgColor: 'rgba(107, 114, 128, 0.2)',
+    description: 'Transport standard',
+  },
+  FRIGORIFIQUE: {
+    label: 'Frigorifique',
+    color: '#3b82f6',
+    bgColor: 'rgba(59, 130, 246, 0.2)',
+    description: 'Température dirigée',
+  },
+  ADR_COLIS: {
+    label: 'ADR Colis',
+    color: '#f97316',
+    bgColor: 'rgba(249, 115, 22, 0.2)',
+    description: 'Matières dangereuses en colis',
+  },
+  ADR_CITERNE: {
+    label: 'ADR Citerne',
+    color: '#ef4444',
+    bgColor: 'rgba(239, 68, 68, 0.2)',
+    description: 'Matières dangereuses vrac',
+  },
+  CONVOI_EXCEPTIONNEL: {
+    label: 'Convoi Exceptionnel',
+    color: '#a855f7',
+    bgColor: 'rgba(168, 85, 247, 0.2)',
+    description: 'Hors gabarit',
+  },
+  BENNE_TRAVAUX_PUBLICS: {
+    label: 'Benne TP',
+    color: '#eab308',
+    bgColor: 'rgba(234, 179, 8, 0.2)',
+    description: 'Matériaux construction',
+  },
+  ANIMAUX_VIVANTS: {
+    label: 'Animaux Vivants',
+    color: '#22c55e',
+    bgColor: 'rgba(34, 197, 94, 0.2)',
+    description: 'Transport animalier',
+  },
+};
+
+function VehicleEquipmentSection({ vehicleId }: { vehicleId: string }) {
+  const [equipment, setEquipment] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { data: currentActivity } = useVehicleCurrentActivity(vehicleId);
+
+  useEffect(() => {
+    async function fetchEquipment() {
+      if (!currentActivity?.activity) {
+        setEquipment([]);
+        setLoading(false);
+        return;
+      }
+
+      const supabase = getSupabaseClient();
+      const { data: rules } = await supabase
+        .from('compliance_rules')
+        .select('equipment_list, requires_equipment')
+        .eq('activity', currentActivity.activity)
+        .not('equipment_list', 'is', null);
+
+      const allEquipment = rules
+        ?.filter(r => r.requires_equipment && r.equipment_list)
+        .flatMap(r => r.equipment_list || []) || [];
+      
+      setEquipment(Array.from(new Set(allEquipment)));
+      setLoading(false);
+    }
+
+    fetchEquipment();
+  }, [currentActivity?.activity]);
+
+  if (loading || equipment.length === 0) return null;
+
+  return (
+    <Card className="detail-card border-orange-500/20">
+      <CardHeader className="detail-card-header pb-3">
+        <CardTitle className="detail-card-title text-lg text-orange-400">
+          <Package className="h-5 w-5" />
+          Équipement réglementaire obligatoire
+        </CardTitle>
+        <CardDescription className="text-slate-400">
+          Vérifiez la présence de cet équipement lors de chaque départ
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="detail-card-content">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {equipment.map((item, index) => (
+            <div 
+              key={index} 
+              className="flex items-start gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700 hover:border-orange-500/30 transition-colors"
+            >
+              <Checkbox id={`equip-${vehicleId}-${index}`} className="mt-0.5 border-slate-600 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500" />
+              <Label 
+                htmlFor={`equip-${vehicleId}-${index}`} 
+                className="text-sm text-slate-300 cursor-pointer flex-1 leading-relaxed"
+              >
+                {item}
+              </Label>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-orange-400/70 mt-4 flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3" />
+          Absence d&apos;un équipement = sanction possible en contrôle routier
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function VehicleActivitySection({ vehicleId }: { vehicleId: string }) {
+  const { data: currentActivity, isLoading } = useVehicleCurrentActivity(vehicleId);
+  const { mutate: assignActivity, isPending: isAssigning } = useAssignVehicleActivity();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<TransportActivity | ''>('');
+
+  if (isLoading) {
+    return (
+      <Card className="detail-card">
+        <CardHeader className="detail-card-header">
+          <CardTitle className="detail-card-title">
+            <Truck className="h-5 w-5" />
+            Activité de transport
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="detail-card-content">
+          <Skeleton className="h-20 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const activityConfig = currentActivity ? 
+    VEHICLE_ACTIVITIES_CONFIG[currentActivity.activity] : 
+    null;
+  const ActivityIcon = currentActivity ? 
+    VEHICLE_ACTIVITY_ICONS[currentActivity.activity] : 
+    null;
+
+  const handleAssign = () => {
+    if (!selectedActivity) return;
+    
+    assignActivity({ 
+      vehicleId, 
+      activity: selectedActivity,
+      notes: 'Assignation depuis la fiche véhicule'
+    });
+    setIsDialogOpen(false);
+    setSelectedActivity('');
+  };
+
+  // Si une activité est déjà assignée, ne pas afficher cette section
+  if (currentActivity) return null;
+
+  return (
+    <Card className="detail-card border-dashed border-slate-600">
+      <CardHeader className="detail-card-header pb-3">
+        <CardTitle className="detail-card-title text-lg">
+          <Truck className="h-5 w-5" />
+          Activité de transport
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="detail-card-content">
+        <div className="text-center py-4">
+          <p className="text-slate-400 mb-4">
+            Aucune activité assignée à ce véhicule
+          </p>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="detail-btn-primary">
+                <Plus className="h-4 w-4 mr-2" />
+                Assigner une activité
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-slate-900 border-slate-700 text-white">
+              <DialogHeader>
+                <DialogTitle>Assigner une activité</DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  Définissez le type de transport pour ce véhicule. 
+                  Les échéances réglementaires seront calculées en conséquence.
+                </DialogDescription>
+              </DialogHeader>
+              <Select 
+                value={selectedActivity} 
+                onValueChange={(value) => setSelectedActivity(value as TransportActivity)}
+              >
+                <SelectTrigger className="bg-slate-800 border-slate-700">
+                  <SelectValue placeholder="Choisir une activité..." />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-700">
+                  {Object.entries(VEHICLE_ACTIVITIES_CONFIG).map(([key, config]) => {
+                    const Icon = VEHICLE_ACTIVITY_ICONS[key as TransportActivity];
+                    return (
+                      <SelectItem 
+                        key={key} 
+                        value={key}
+                        className="text-white hover:bg-slate-700"
+                      >
+                        <div className="flex items-center gap-2">
+                          {Icon && <Icon className="h-4 w-4" style={{ color: config.color }} />}
+                          <div className="flex flex-col">
+                            <span>{config.label}</span>
+                            <span className="text-xs text-slate-400">{config.description}</span>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <DialogFooter className="gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsDialogOpen(false)}
+                  className="border-slate-600"
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={handleAssign}
+                  disabled={!selectedActivity || isAssigning}
+                  className="detail-btn-primary"
+                >
+                  {isAssigning ? (
+                    <>
+                      <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Assignation...
+                    </>
+                  ) : (
+                    'Confirmer'
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

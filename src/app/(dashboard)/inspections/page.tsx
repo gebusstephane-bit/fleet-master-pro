@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useUserContext } from '@/components/providers/user-provider';
 import { getSupabaseClient } from '@/lib/supabase/client';
-import { getInspectionsSafe } from '@/actions/inspections-safe';
+import { getInspectionsSafe } from '@/actions/inspections';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface Inspection {

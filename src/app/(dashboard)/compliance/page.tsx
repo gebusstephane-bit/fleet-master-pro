@@ -15,8 +15,13 @@ import {
   Download,
   Calendar,
   ChevronRight,
+  Package,
+  XCircle,
+  Info,
+  Snowflake,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -29,6 +34,7 @@ import {
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import { cn } from '@/lib/utils';
 import { useCompliance } from '@/hooks/use-compliance';
+import { useCompanyActivities } from '@/hooks/use-company-activities';
 import { useUserContext } from '@/components/providers/user-provider';
 import {
   getDocumentStatus,
@@ -44,7 +50,8 @@ type FilterType = 'all' | 'critical' | 'expired' | 'valid';
 
 interface VehicleWithScore extends VehicleComplianceData {
   score: number;
-  documents: Array<{ name: string; status: DocumentStatusResult }>;
+  documents: Array<{ name: string; code: string; status: DocumentStatusResult }>;
+  activityType?: string | null;
 }
 
 interface DriverWithScore extends DriverComplianceData {
@@ -53,15 +60,29 @@ interface DriverWithScore extends DriverComplianceData {
   documents: Array<{ name: string; status: DocumentStatusResult }>;
 }
 
-// ============================================
-// CONFIGURATION DES DOCUMENTS
-// ============================================
-const vehicleDocuments = [
-  { key: 'technical_control_expiry' as const, fallback: 'technical_control_date' as const, label: 'Contrôle Technique' },
-  { key: 'tachy_control_expiry' as const, fallback: 'tachy_control_date' as const, label: 'Tachygraphe' },
-  { key: 'atp_expiry' as const, fallback: 'atp_date' as const, label: 'ATP (Frigo)' },
-  { key: 'insurance_expiry' as const, fallback: null, label: 'Assurance' },
-];
+import {
+  ACTIVITY_DOCUMENTS,
+  getDocumentsForActivities,
+  type DocumentConfig,
+  type TransportActivity
+} from '@/lib/compliance-activities-config';
+import { USER_ROLE } from '@/constants/enums';
+
+// Équipements par type de document
+const DOCUMENT_EQUIPMENT: Record<string, string[]> = {
+  'ADR_EQUIPEMENT': [
+    'Valise ADR complète',
+    'Panneaux orange (2)',
+    'Gilets jaunes',
+    'Cônes de signalisation',
+    'Lampes torches',
+  ],
+  'ETALONNAGE': [
+    'Sondes de température',
+    'Enregistreur',
+    'Groupe frigorifique',
+  ],
+};
 
 // Configuration DREAL simplifiée : uniquement les documents obligatoires
 // CQC (FCO) = fusion de fcos_expiry et cqc_expiry (la date la plus restrictive)
@@ -95,6 +116,63 @@ function DocumentStatusBadge({ status }: { status: DocumentStatusResult }) {
       {status.status === 'missing' && <span className="h-3 w-3">—</span>}
       {status.label}
     </span>
+  );
+}
+
+/**
+ * Badge de document avec tooltip pour l'équipement
+ */
+function DocumentStatusWithEquipment({ 
+  status, 
+  documentCode 
+}: { 
+  status: DocumentStatusResult; 
+  documentCode?: string;
+}) {
+  const equipment = documentCode ? DOCUMENT_EQUIPMENT[documentCode] : null;
+  const hasEquipment = equipment && equipment.length > 0;
+
+  const badge = (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border',
+        status.bgColor,
+        status.textColor,
+        status.borderColor
+      )}
+    >
+      {status.status === 'expired' && <AlertCircle className="h-3 w-3" />}
+      {status.status === 'warning' && <AlertTriangle className="h-3 w-3" />}
+      {status.status === 'valid' && <CheckCircle className="h-3 w-3" />}
+      {status.status === 'missing' && <span className="h-3 w-3">—</span>}
+      {status.label}
+      {hasEquipment && (
+        <Package className="h-3 w-3 ml-1 text-slate-400" />
+      )}
+    </span>
+  );
+
+  if (!hasEquipment) return badge;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {badge}
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs">
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-slate-300">Équipement requis:</p>
+          <ul className="text-xs space-y-0.5">
+            {equipment.map((item, i) => (
+              <li key={i} className="flex items-center gap-1.5 text-slate-400">
+                <span className="w-1 h-1 rounded-full bg-cyan-400" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -186,6 +264,9 @@ function VehiclesTable({
   vehicles: VehicleWithScore[];
   onRowClick?: (vehicle: VehicleWithScore) => void;
 }) {
+  // Les headers sont déterminés par le premier véhicule (tous ont les mêmes documents)
+  const headers = vehicles.length > 0 ? vehicles[0].documents : [];
+  
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
@@ -194,16 +275,16 @@ function VehiclesTable({
             <th className="text-left py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider">
               Véhicule
             </th>
-            {vehicleDocuments.map((doc) => (
+            {headers.map((doc, idx) => (
               <th
-                key={doc.key}
+                key={idx}
                 className="text-left py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider whitespace-nowrap"
               >
-                {doc.label}
+                {doc.name}
               </th>
             ))}
             <th className="text-left py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wider w-32">
-              Statut Global
+              Score
             </th>
           </tr>
         </thead>
@@ -229,7 +310,7 @@ function VehiclesTable({
               </td>
               {vehicle.documents.map((doc, idx) => (
                 <td key={idx} className="py-3 px-4">
-                  <DocumentStatusBadge status={doc.status} />
+                  <DocumentStatusWithEquipment status={doc.status} documentCode={doc.code} />
                 </td>
               ))}
               <td className="py-3 px-4">
@@ -288,7 +369,7 @@ function VehiclesMobileCards({
             {vehicle.documents.map((doc, idx) => (
               <div key={idx} className="flex flex-col gap-1">
                 <span className="text-xs text-slate-500">{doc.name}</span>
-                <DocumentStatusBadge status={doc.status} />
+                <DocumentStatusWithEquipment status={doc.status} documentCode={doc.code} />
               </div>
             ))}
           </div>
@@ -423,8 +504,41 @@ export default function CompliancePage() {
   const router = useRouter();
   const { user } = useUserContext();
   const { data, isLoading, error } = useCompliance();
+  const { data: companyActivities, isLoading: companyActivitiesLoading } = useCompanyActivities();
   const [filter, setFilter] = useState<FilterType>('all');
   const [isExporting, setIsExporting] = useState(false);
+
+  // Déterminer les documents à afficher selon l'activité de l'entreprise
+  const activeDocuments = useMemo(() => {
+    if (!companyActivities || companyActivities.length === 0) {
+      // Par défaut: marchandises générales
+      return ACTIVITY_DOCUMENTS.MARCHANDISES_GENERALES;
+    }
+
+    // Si l'entreprise a une activité principale, on l'utilise
+    const primaryActivity = companyActivities.find(a => a.is_primary)?.activity;
+    
+    // Si plusieurs activités, on merge les documents (sans doublons)
+    const allDocs: DocumentConfig[] = [];
+    const addedCodes = new Set<string>();
+
+    // Priorité à l'activité principale
+    const activitiesToShow = primaryActivity 
+      ? [primaryActivity, ...companyActivities.filter(a => a.activity !== primaryActivity).map(a => a.activity)]
+      : companyActivities.map(a => a.activity);
+
+    for (const activity of activitiesToShow as TransportActivity[]) {
+      const docs = ACTIVITY_DOCUMENTS[activity] || ACTIVITY_DOCUMENTS.MARCHANDISES_GENERALES;
+      for (const doc of docs) {
+        if (!addedCodes.has(doc.code)) {
+          allDocs.push(doc);
+          addedCodes.add(doc.code);
+        }
+      }
+    }
+
+    return allDocs;
+  }, [companyActivities]);
 
   // ─── Export PDF handler ───────────────────────────────────────────────────
   const handleExportPDF = useCallback(async () => {
@@ -456,7 +570,7 @@ export default function CompliancePage() {
 
   // Vérifier l'accès (Admin, Directeur, Agent de parc uniquement)
   useEffect(() => {
-    const allowedRoles = ['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'];
+    const allowedRoles: string[] = [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC];
     if (user?.role && !allowedRoles.includes(user.role)) {
       router.push('/unauthorized');
     }
@@ -472,15 +586,33 @@ export default function CompliancePage() {
     });
   }, []);
 
+  // Déterminer les colonnes à afficher (basées sur l'activité de l'entreprise)
+  // Note: On garde les mêmes colonnes pour tous les véhicules pour éviter les décalages
+  const tableColumns = useMemo(() => {
+    // Vérifier si au moins un véhicule a besoin du tachygraphe
+    const hasPL = data?.vehicles.some(v => 
+      ['POIDS_LOURD', 'POIDS_LOURD_FRIGO', 'TRACTEUR_ROUTIER'].includes(v.type || '')
+    );
+    
+    // Si pas de PL, on filtre le tachygraphe pour tout le tableau
+    if (!hasPL) {
+      return activeDocuments.filter(doc => doc.code !== 'TACHY');
+    }
+    
+    return activeDocuments;
+  }, [activeDocuments, data?.vehicles]);
+
   // Préparer les données des véhicules avec scores
   const vehiclesWithScores: VehicleWithScore[] = useMemo(() => {
     if (!data?.vehicles) return [];
 
     return data.vehicles.map((vehicle) => {
-      const documents = vehicleDocuments.map((doc) => {
+      // Pour chaque colonne du tableau, récupérer la valeur du véhicule
+      const documents = tableColumns.map((doc) => {
         const date = (vehicle[doc.key] as string | null) || (doc.fallback ? (vehicle[doc.fallback] as string | null) : null);
         return {
           name: doc.label,
+          code: doc.code,
           status: getDocumentStatus(date),
         };
       });
@@ -495,7 +627,7 @@ export default function CompliancePage() {
         score: scoreData.score,
       };
     });
-  }, [data?.vehicles]);
+  }, [data?.vehicles, tableColumns]);
 
   // Préparer les données des conducteurs avec statut DREAL
   const driversWithScores: DriverWithScore[] = useMemo(() => {
@@ -752,6 +884,28 @@ export default function CompliancePage() {
             </Button>
           </div>
         </motion.div>
+
+        {/* Bannière si aucune activité configurée */}
+        {!companyActivitiesLoading && companyActivities?.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Alert variant="destructive" className="bg-amber-500/10 border-amber-500/30 text-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-400" />
+              <AlertTitle className="text-amber-400">Configuration incomplète</AlertTitle>
+              <AlertDescription className="flex flex-col gap-2 mt-1">
+                <p>Votre entreprise n&apos;a pas encore défini ses activités de transport.</p>
+                <p className="text-sm text-amber-300/70">
+                  Configurez vos activités pour obtenir un suivi des échéances réglementaires précis (ADR, Frigo, etc.).
+                </p>
+                <Button asChild variant="outline" size="sm" className="w-fit mt-2 border-amber-500/50 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200">
+                  <Link href="/settings/company">Configurer mes activités</Link>
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
 
         {/* KPI Cards */}
         <motion.div

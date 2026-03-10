@@ -60,10 +60,18 @@ export const DRIVER_STATUS_LABELS: Record<string, string> = {
 };
 
 export const MAINTENANCE_STATUS_LABELS: Record<string, string> = {
+  // Generic statuses
   PENDING: 'En attente',
   IN_PROGRESS: 'En cours',
   COMPLETED: 'Terminé',
   CANCELLED: 'Annulé',
+  // Workflow statuses (maintenance_records DB values)
+  DEMANDE_CREEE: 'Demande créée',
+  VALIDEE_DIRECTEUR: 'Validée directeur',
+  RDV_PRIS: 'RDV pris',
+  EN_COURS: 'En cours',
+  TERMINEE: 'Terminée',
+  REFUSEE: 'Refusée',
 };
 
 export const VEHICLE_TYPE_LABELS: Record<string, string> = {

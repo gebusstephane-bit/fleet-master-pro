@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PLANS } from '@/lib/plans';
+import { logger } from '@/lib/logger';
 
 interface RegisterRequest {
   userId: string;
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (companyError) {
-      console.error('Error creating company:', companyError);
+      logger.error('Error creating company:', companyError);
       return NextResponse.json(
         { error: 'Erreur lors de la création de l\'entreprise' },
         { status: 500 }
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (userError) {
-      console.error('Error creating user:', userError);
+      logger.error('Error creating user:', userError);
       // Rollback
       await supabaseAdmin.from('companies').delete().eq('id', company.id);
       return NextResponse.json(
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Register API error:', error);
+    logger.error('Register API error:', error);
     return NextResponse.json(
       { error: 'Erreur interne du serveur: ' + error.message },
       { status: 500 }

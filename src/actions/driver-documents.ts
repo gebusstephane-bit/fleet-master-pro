@@ -11,6 +11,7 @@ import { z } from 'zod';
 
 import { authActionClient, idSchema } from '@/lib/safe-action';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import { DOCUMENT_TYPES, SIDES } from '@/lib/driver-documents-config';
 
 // ─── Schémas ──────────────────────────────────────────────────────────────────
@@ -128,7 +129,7 @@ export const deleteDriverDocument = authActionClient
       .remove([parsedInput.storage_path]);
 
     if (storageError) {
-      console.error('[DELETE_DRIVER_DOC] Storage error:', storageError.message);
+      logger.error('[DELETE_DRIVER_DOC] Storage error:', storageError.message);
     }
 
     // Supprimer la ligne de métadonnées

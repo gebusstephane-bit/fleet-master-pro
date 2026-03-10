@@ -9,6 +9,7 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { VEHICLE_STATUS, USER_ROLE } from '@/constants/enums';
 import { requireManagerOrAbove } from '@/lib/auth-guards';
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
@@ -26,6 +27,8 @@ export interface CreateVehicleData {
   vin?: string;
   year?: number;
   color?: string;
+  // Type détaillé (pour les activités spécifiques)
+  detailed_type?: string | null;
   // Assurance
   insurance_company?: string | null;
   insurance_policy_number?: string | null;
@@ -37,6 +40,11 @@ export interface CreateVehicleData {
   tachy_control_expiry?: string | null;
   atp_date?: string | null;
   atp_expiry?: string | null;
+  // ADR (transport de marchandises dangereuses)
+  adr_certificate_date?: string | null;
+  adr_certificate_expiry?: string | null;
+  adr_equipment_check_date?: string | null;
+  adr_equipment_expiry?: string | null;
 }
 
 export interface ActionResult<T = unknown> {
@@ -46,9 +54,10 @@ export interface ActionResult<T = unknown> {
 }
 
 /**
- * Crée un nouveau véhicule
- * RLS : L'INSERT est autorisé si company_id = get_current_user_company_id()
- * Vérifie également la limite de véhicules selon le plan d'abonnement
+ * Crée un nouveau véhicule pour la société connectée.
+ * Vérifie la limite de véhicules selon le plan d'abonnement avant création.
+ * @param data - Données du véhicule (immatriculation, marque, modèle, etc.)
+ * @returns Le véhicule créé ou une erreur typée avec détails sur la limite atteinte
  */
 export async function createVehicle(data: CreateVehicleData): Promise<ActionResult> {
   try {
@@ -74,7 +83,7 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
     }
     
     // 3. Vérifier les permissions (métier)
-    if (!['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'].includes(profile.role)) {
+    if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC] as string[]).includes(profile.role))) {
       return { success: false, error: 'Permissions insuffisantes' };
     }
     
@@ -120,25 +129,31 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
     // 4. Normalisation du statut pour la contrainte CHECK de la DB
     // La DB attend : 'ACTIF', 'INACTIF', 'EN_MAINTENANCE', 'ARCHIVE'
     const statusMapping: Record<string, 'ACTIF' | 'INACTIF' | 'EN_MAINTENANCE' | 'ARCHIVE'> = {
-      'Actif': 'ACTIF',
-      'actif': 'ACTIF',
-      'ACTIF': 'ACTIF',
-      'Inactif': 'INACTIF',
-      'inactif': 'INACTIF',
-      'INACTIF': 'INACTIF',
-      'En maintenance': 'EN_MAINTENANCE',
-      'En Maintenance': 'EN_MAINTENANCE',
-      'en maintenance': 'EN_MAINTENANCE',
-      'Archivé': 'ARCHIVE',
-      'Archive': 'ARCHIVE',
-      'archive': 'ARCHIVE',
-      'ARCHIVE': 'ARCHIVE'
+      'Actif': VEHICLE_STATUS.ACTIF,
+      'actif': VEHICLE_STATUS.ACTIF,
+      'ACTIF': VEHICLE_STATUS.ACTIF,
+      'Inactif': VEHICLE_STATUS.INACTIF,
+      'inactif': VEHICLE_STATUS.INACTIF,
+      'INACTIF': VEHICLE_STATUS.INACTIF,
+      'En maintenance': VEHICLE_STATUS.EN_MAINTENANCE,
+      'En Maintenance': VEHICLE_STATUS.EN_MAINTENANCE,
+      'en maintenance': VEHICLE_STATUS.EN_MAINTENANCE,
+      'Archivé': VEHICLE_STATUS.ARCHIVE,
+      'Archive': VEHICLE_STATUS.ARCHIVE,
+      'archive': VEHICLE_STATUS.ARCHIVE,
+      'ARCHIVE': VEHICLE_STATUS.ARCHIVE,
     };
-    const normalizedStatus = (data.status && statusMapping[data.status]) || 'ACTIF';
+    const normalizedStatus = (data.status && statusMapping[data.status]) || VEHICLE_STATUS.ACTIF;
     
     // 5. Créer le véhicule (RLS vérifie company_id automatiquement)
-    // Typage strict avec le type Insert de Supabase
-    type VehicleInsert = Database['public']['Tables']['vehicles']['Insert'];
+    // Typage avec les champs ADR (migration peut ne pas être dans les types Supabase)
+    type VehicleInsert = Database['public']['Tables']['vehicles']['Insert'] & {
+      detailed_type?: string | null;
+      adr_certificate_date?: string | null;
+      adr_certificate_expiry?: string | null;
+      adr_equipment_check_date?: string | null;
+      adr_equipment_expiry?: string | null;
+    };
     
     const insertData: VehicleInsert = {
       id: vehicleId,
@@ -155,6 +170,8 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
       vin: data.vin || null,
       year: data.year || new Date().getFullYear(),
       color: data.color || null,
+      // Type détaillé (pour les activités spécifiques)
+      detailed_type: data.detailed_type ?? null,
       // Assurance
       insurance_company: data.insurance_company ?? null,
       insurance_policy_number: data.insurance_policy_number ?? null,
@@ -166,6 +183,11 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
       tachy_control_expiry: data.tachy_control_expiry ?? null,
       atp_date: data.atp_date ?? null,
       atp_expiry: data.atp_expiry ?? null,
+      // ADR (transport de marchandises dangereuses)
+      adr_certificate_date: data.adr_certificate_date ?? null,
+      adr_certificate_expiry: data.adr_certificate_expiry ?? null,
+      adr_equipment_check_date: data.adr_equipment_check_date ?? null,
+      adr_equipment_expiry: data.adr_equipment_expiry ?? null,
     };
     
     const { data: vehicle, error: vehicleError } = await supabase
@@ -199,8 +221,11 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
 }
 
 /**
- * Met à jour un véhicule
- * RLS : L'UPDATE est autorisé si le véhicule appartient à la company du user
+ * Met à jour un véhicule existant.
+ * Normalise le statut pour la contrainte CHECK de la base de données.
+ * @param id - ID du véhicule à mettre à jour
+ * @param data - Données partielles du véhicule (champs à modifier)
+ * @returns Le véhicule mis à jour ou une erreur typée
  */
 export async function updateVehicle(id: string, data: Partial<CreateVehicleData>): Promise<ActionResult> {
   try {
@@ -235,23 +260,27 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
       'tachy_control_expiry',
       'atp_date',
       'atp_expiry',
+      'adr_certificate_date',
+      'adr_certificate_expiry',
+      'adr_equipment_check_date',
+      'adr_equipment_expiry',
     ] as const;
 
     // Normalisation du statut pour la contrainte CHECK de la DB (même mapping que create)
     const statusMapping: Record<string, 'ACTIF' | 'INACTIF' | 'EN_MAINTENANCE' | 'ARCHIVE'> = {
-      'Actif': 'ACTIF',
-      'actif': 'ACTIF',
-      'ACTIF': 'ACTIF',
-      'Inactif': 'INACTIF',
-      'inactif': 'INACTIF',
-      'INACTIF': 'INACTIF',
-      'En maintenance': 'EN_MAINTENANCE',
-      'En Maintenance': 'EN_MAINTENANCE',
-      'en maintenance': 'EN_MAINTENANCE',
-      'Archivé': 'ARCHIVE',
-      'Archive': 'ARCHIVE',
-      'archive': 'ARCHIVE',
-      'ARCHIVE': 'ARCHIVE'
+      'Actif': VEHICLE_STATUS.ACTIF,
+      'actif': VEHICLE_STATUS.ACTIF,
+      'ACTIF': VEHICLE_STATUS.ACTIF,
+      'Inactif': VEHICLE_STATUS.INACTIF,
+      'inactif': VEHICLE_STATUS.INACTIF,
+      'INACTIF': VEHICLE_STATUS.INACTIF,
+      'En maintenance': VEHICLE_STATUS.EN_MAINTENANCE,
+      'En Maintenance': VEHICLE_STATUS.EN_MAINTENANCE,
+      'en maintenance': VEHICLE_STATUS.EN_MAINTENANCE,
+      'Archivé': VEHICLE_STATUS.ARCHIVE,
+      'Archive': VEHICLE_STATUS.ARCHIVE,
+      'archive': VEHICLE_STATUS.ARCHIVE,
+      'ARCHIVE': VEHICLE_STATUS.ARCHIVE,
     };
     
     const updateData: Record<string, unknown> = {
@@ -261,7 +290,7 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
     
     // Normaliser le statut si présent
     if (data.status) {
-      updateData.status = statusMapping[data.status] || 'ACTIF';
+      updateData.status = statusMapping[data.status] || VEHICLE_STATUS.ACTIF;
     }
 
     for (const field of VEHICLE_DATE_FIELDS) {
@@ -294,9 +323,11 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
 }
 
 /**
- * Supprime un véhicule
- * RLS : Le DELETE est autorisé si le véhicule appartient à la company du user
- * ET si le user a le rôle approprié (vérifié métier)
+ * Supprime (archive) un véhicule de manière sécurisée.
+ * Effectue un soft delete en changeant le statut à ARCHIVE.
+ * Vérifie que l'utilisateur a les permissions admin ou directeur.
+ * @param id - ID du véhicule à supprimer
+ * @returns Succès ou erreur typée
  */
 export async function deleteVehicle(id: string): Promise<ActionResult> {
   try {
@@ -327,10 +358,10 @@ export async function deleteVehicle(id: string): Promise<ActionResult> {
       return { success: false, error: 'Profil non trouvé' };
     }
     
-    if (!['ADMIN', 'DIRECTEUR'].includes(profile.role)) {
+    if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(profile.role))) {
       return { success: false, error: 'Permissions insuffisantes' };
     }
-    
+
     // 3. Vérifier que le véhicule existe et est accessible (RLS)
     const { data: vehicle, error: vehicleError } = await supabase
       .from('vehicles')
@@ -350,7 +381,7 @@ export async function deleteVehicle(id: string): Promise<ActionResult> {
     const { error } = await supabase
       .from('vehicles')
       .update({ 
-        status: 'ARCHIVE' as VehicleUpdate['status'],
+        status: VEHICLE_STATUS.ARCHIVE as VehicleUpdate['status'],
         updated_at: new Date().toISOString() 
       })
       .eq('id', id)

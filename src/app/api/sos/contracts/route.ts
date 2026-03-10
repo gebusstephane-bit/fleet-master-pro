@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ contracts: contracts || [] });
 
   } catch (error: any) {
-    console.error('[SOS Contracts] GET error:', error);
+    logger.error('[SOS Contracts] GET error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ contract: data });
 
   } catch (error: any) {
-    console.error('[SOS Contracts] POST error:', error);
+    logger.error('[SOS Contracts] POST error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

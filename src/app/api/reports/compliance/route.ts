@@ -102,6 +102,31 @@ export async function GET(request: NextRequest) {
       // On continue avec des valeurs par défaut
     }
 
+    // ─── Récupérer les activités de l'entreprise pour adapter les colonnes ─────
+    const { data: companyActivities } = await adminClient
+      .from('company_activities')
+      .select('activity, is_primary')
+      .eq('company_id', companyId);
+
+    const activities = companyActivities?.map(a => a.activity) || [];
+    const primaryActivityCode = companyActivities?.find((a: { activity: string; is_primary: boolean }) => a.is_primary)?.activity
+      ?? activities[0]
+      ?? null;
+
+    // Traduction du code activité en libellé lisible pour la page 1 du PDF
+    const ACTIVITY_LABELS: Record<string, string> = {
+      MARCHANDISES_GENERALES: 'Transport routier de marchandises',
+      FRIGORIFIQUE: 'Transport frigorifique (ATP)',
+      ADR_COLIS: 'Transport ADR - Matieres dangereuses en colis',
+      ADR_CITERNE: 'Transport ADR - Matieres dangereuses en citerne',
+      CONVOI_EXCEPTIONNEL: 'Transport exceptionnel',
+      BENNE_TRAVAUX_PUBLICS: 'Transport benne - Travaux publics',
+      ANIMAUX_VIVANTS: 'Transport d animaux vivants',
+    };
+    const primaryActivityLabel = primaryActivityCode
+      ? (ACTIVITY_LABELS[primaryActivityCode] ?? primaryActivityCode)
+      : null;
+
     // ─── Récupérer les véhicules ──────────────────────────────────────────────
     let vehicles: CompliancePDFData['vehicles'] = [];
     if (type === 'full' || type === 'vehicles') {
@@ -115,7 +140,9 @@ export async function GET(request: NextRequest) {
           technical_control_expiry,
           tachy_control_expiry,
           atp_expiry,
-          insurance_expiry
+          insurance_expiry,
+          adr_certificate_expiry,
+          adr_equipment_expiry
         `)
         .eq('company_id', companyId)
         .order('registration_number', { ascending: true });
@@ -123,7 +150,20 @@ export async function GET(request: NextRequest) {
       if (vehiclesError) {
         logger.error('[API Compliance Report] Erreur véhicules', { error: vehiclesError.message });
       } else {
-        vehicles = (vehiclesData || []).map(v => ({
+        // Cast pour contourner le typage Supabase qui ne connaît pas les nouvelles colonnes
+        const rawVehicles = vehiclesData as unknown as Array<{
+          id: string;
+          registration_number: string;
+          brand: string | null;
+          model: string | null;
+          technical_control_expiry: string | null;
+          tachy_control_expiry: string | null;
+          atp_expiry: string | null;
+          insurance_expiry: string | null;
+          adr_certificate_expiry: string | null;
+          adr_equipment_expiry: string | null;
+        }>;
+        vehicles = (rawVehicles || []).map(v => ({
           id: v.id,
           immatriculation: v.registration_number,
           marque: v.brand || '',
@@ -132,6 +172,8 @@ export async function GET(request: NextRequest) {
           tachy_control_expiry: v.tachy_control_expiry,
           atp_expiry: v.atp_expiry,
           insurance_expiry: v.insurance_expiry,
+          adr_certificate_expiry: v.adr_certificate_expiry,
+          adr_equipment_expiry: v.adr_equipment_expiry,
         }));
       }
     }
@@ -149,7 +191,6 @@ export async function GET(request: NextRequest) {
           license_expiry,
           driver_card_expiry,
           fcos_expiry,
-          cqc_expiry,
           cqc_expiry_date,
           medical_certificate_expiry,
           adr_certificate_expiry
@@ -168,7 +209,7 @@ export async function GET(request: NextRequest) {
           license_expiry: d.license_expiry,
           driver_card_expiry: d.driver_card_expiry,
           fcos_expiry: d.fcos_expiry,
-          cqc_expiry: d.cqc_expiry,
+          cqc_expiry: d.cqc_expiry_date,
           cqc_expiry_date: d.cqc_expiry_date || null,
           medical_certificate_expiry: d.medical_certificate_expiry,
           adr_certificate_expiry: d.adr_certificate_expiry,
@@ -184,11 +225,14 @@ export async function GET(request: NextRequest) {
         address: company?.address,
         city: company?.city,
         postal_code: company?.postal_code,
+        activity: primaryActivityLabel,
       },
       vehicles,
       drivers,
       generatedAt: new Date(),
       period,
+      activities: activities.length > 0 ? activities : undefined,
+      primaryActivity: primaryActivityCode ?? undefined,
     };
 
     const pdfBuffer = await generateCompliancePDF(pdfData);

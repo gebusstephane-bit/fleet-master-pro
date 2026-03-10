@@ -236,14 +236,19 @@ export const entityTypeConfig: Record<
 
 /**
  * Formatte une date en format "Il y a X" ou date complète
+ * Format standardisé: DD/MM/YYYY HH:mm
  */
 export function formatActivityDate(dateString: string): {
   relative: string;
   full: string;
+  formatted: string;
   tooltip: string;
 } {
   const date = new Date(dateString);
   const now = new Date();
+
+  // Format standardisé principal: DD/MM/YYYY HH:mm
+  const formatted = format(date, "dd/MM/yyyy HH:mm", { locale: fr });
 
   // Moins de 24h : format relatif
   const diffMs = now.getTime() - date.getTime();
@@ -269,6 +274,7 @@ export function formatActivityDate(dateString: string): {
   return {
     relative,
     full: format(date, "dd MMMM yyyy 'à' HH:mm", { locale: fr }),
+    formatted,
     tooltip: format(date, "dd/MM/yyyy HH:mm:ss", { locale: fr }),
   };
 }

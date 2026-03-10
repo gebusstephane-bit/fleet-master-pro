@@ -23,6 +23,7 @@ import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { monthlyReportTemplate, monthlyReportText } from '@/lib/email/templates/monthly-report';
 import type { MonthlyFleetReport } from '@/lib/email/templates/monthly-report';
+import { VEHICLE_STATUS, USER_ROLE } from '@/constants/enums';
 
 // ============================================================
 // CONFIGURATION
@@ -32,8 +33,8 @@ const CRON_SECRET = process.env.CRON_SECRET;
 
 // Rôles qui reçoivent le rapport
 const RECIPIENT_ROLES_MAP: Record<string, ('ADMIN' | 'DIRECTEUR')[]> = {
-  'ADMIN': ['ADMIN'],
-  'ADMIN_AND_DIRECTORS': ['ADMIN', 'DIRECTEUR'],
+  'ADMIN': [USER_ROLE.ADMIN],
+  'ADMIN_AND_DIRECTORS': [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR],
 };
 
 // ============================================================
@@ -119,7 +120,7 @@ async function collectReportData(
     if (vehiclesError) throw vehiclesError;
 
     const totalVehicles = vehicles?.length || 0;
-    const activeVehicles = vehicles?.filter(v => v.status === 'ACTIF').length || 0;
+    const activeVehicles = vehicles?.filter(v => v.status === VEHICLE_STATUS.ACTIF).length || 0;
     const totalKm = vehicles?.reduce((sum, v) => sum + (v.mileage || 0), 0) || 0;
 
     // 2. Documents (conformité)
@@ -239,7 +240,7 @@ async function collectReportData(
 
     // 5. Inspections
     const { data: inspections, error: inspectionsError } = await supabase
-      .from('inspections')
+      .from('vehicle_inspections')
       .select('*')
       .eq('company_id', company.id)
       .gte('created_at', startDate + 'T00:00:00')
@@ -251,14 +252,14 @@ async function collectReportData(
 
     // DEBUG: Vérifier TOUTES les inspections de l'entreprise
     const { data: allInspections } = await supabase
-      .from('inspections')
+      .from('vehicle_inspections')
       .select('id, created_at, status, company_id')
       .eq('company_id', company.id)
       .limit(5);
 
     // DEBUG: Requête sans filtre de date pour voir si ça marche
     const { data: allInspectionsNoDate } = await supabase
-      .from('inspections')
+      .from('vehicle_inspections')
       .select('*')
       .eq('company_id', company.id);
 

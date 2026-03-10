@@ -11,12 +11,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { PLAN_LIMITS } from '@/lib/plans';
+import { PLAN_LIMITS, PLAN_PRICES } from '@/lib/plans';
+import type { PlanType } from '@/lib/plans';
 import { logger } from '@/lib/logger';
+import { sendEmail } from '@/lib/email/client';
+import { trialEndingEmailTemplate, trialEndingEmailText } from '@/lib/email/templates/trial-ending';
 
-// Configuration
-const ESSENTIAL_VEHICLE_LIMIT = 1; // Limite après expiration de l'essai
-const ESSENTIAL_USER_LIMIT = 1;
+// Limites issues de la source de vérité unique (plans.ts)
+const ESSENTIAL_VEHICLE_LIMIT = PLAN_LIMITS.ESSENTIAL.vehicleLimit; // 5
+const ESSENTIAL_USER_LIMIT = PLAN_LIMITS.ESSENTIAL.userLimit;       // 10
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -27,7 +30,7 @@ export async function GET(request: NextRequest) {
     const isVercelCron = vercelCronSecret === process.env.CRON_SECRET;
 
     if (!isVercelCron && process.env.NODE_ENV === 'production') {
-      console.warn('[check-trials] Tentative d\'accès non autorisée');
+      logger.warn('[check-trials] Tentative d\'accès non autorisée');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -38,6 +41,92 @@ export async function GET(request: NextRequest) {
     const now = new Date().toISOString();
 
     logger.info(`[check-trials] Début vérification à ${new Date().toISOString()}`);
+
+    // 0. RAPPELS J-3 : essais expirant dans 3 jours (flux gratuit sans Stripe)
+    const in3Days = new Date();
+    in3Days.setDate(in3Days.getDate() + 3);
+    const in4Days = new Date();
+    in4Days.setDate(in4Days.getDate() + 4);
+
+    const { data: upcomingTrials } = await supabase
+      .from('subscriptions')
+      .select('id, company_id, plan, trial_ends_at')
+      .eq('status', 'TRIALING')
+      .is('stripe_customer_id', null) // flux gratuit uniquement (pas de Stripe)
+      .gte('trial_ends_at', in3Days.toISOString())
+      .lt('trial_ends_at', in4Days.toISOString());
+
+    if (upcomingTrials && upcomingTrials.length > 0) {
+      logger.info(`[check-trials] ${upcomingTrials.length} rappel(s) J-3 à envoyer`);
+
+      for (const trial of upcomingTrials) {
+        try {
+          // Anti-doublon : vérifier si un rappel a déjà été logué
+          const { data: existingReminder } = await supabase
+            .from('activity_logs')
+            .select('id')
+            .eq('company_id', trial.company_id)
+            .eq('action_type', 'trial_reminder_sent')
+            .maybeSingle();
+
+          if (existingReminder) {
+            logger.debug(`[check-trials] Rappel déjà envoyé pour company ${trial.company_id}`);
+            continue;
+          }
+
+          // Récupérer admin + company
+          const [{ data: company }, { data: admin }] = await Promise.all([
+            supabase.from('companies').select('name, email').eq('id', trial.company_id).single(),
+            supabase.from('profiles').select('email, first_name').eq('company_id', trial.company_id).eq('role', 'ADMIN').order('created_at', { ascending: true }).limit(1).single(),
+          ]);
+
+          const recipientEmail = admin?.email || company?.email;
+          if (!recipientEmail || !company?.name) continue;
+
+          const plan = (trial.plan as PlanType) || 'PRO';
+          const planPrice = PLAN_PRICES[plan]?.monthly ?? 49;
+          const planName = plan.charAt(0) + plan.slice(1).toLowerCase();
+          const trialEndsAt = new Date(trial.trial_ends_at!);
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fleetmaster.pro';
+          const billingUrl = `${appUrl}/dashboard/settings/billing`;
+
+          await sendEmail({
+            to: recipientEmail,
+            subject: `Votre essai FleetMaster Pro se termine dans 3 jours`,
+            html: trialEndingEmailTemplate({
+              firstName: admin?.first_name ?? undefined,
+              companyName: company.name,
+              trialEndsAt,
+              planName,
+              planPrice,
+              billingUrl,
+            }),
+            text: trialEndingEmailText({
+              companyName: company.name,
+              firstName: admin?.first_name ?? undefined,
+              trialEndsAt,
+              planName,
+              planPrice,
+              billingUrl,
+            }),
+          });
+
+          // Logger pour anti-doublon
+          await supabase.from('activity_logs').insert({
+            company_id: trial.company_id,
+            action_type: 'trial_reminder_sent',
+            entity_type: 'subscription',
+            entity_id: trial.id,
+            description: 'Rappel fin de trial envoyé (J-3)',
+            metadata: { trial_ends_at: trial.trial_ends_at, plan },
+          });
+
+          logger.info(`[check-trials] Rappel J-3 envoyé à ${recipientEmail} (company: ${trial.company_id})`);
+        } catch (reminderError: any) {
+          logger.error(`[check-trials] Erreur rappel company ${trial.company_id}:`, reminderError);
+        }
+      }
+    }
 
     // 1. RÉCUPÉRER LES ESSAIS EXPIRÉS
     const { data: expiredTrials, error: fetchError } = await supabase
@@ -121,7 +210,7 @@ export async function GET(request: NextRequest) {
           action_type: 'trial_expired_downgrade',
           entity_type: 'subscription',
           entity_id: trial.id,
-          description: `Essai expiré - Downgrade vers ESSENTIAL (1 véhicule)`,
+          description: `Essai expiré - Downgrade vers ESSENTIAL (${ESSENTIAL_VEHICLE_LIMIT} véhicule(s))`,
           metadata: {
             previous_plan: trial.plan,
             new_plan: 'ESSENTIAL',
@@ -160,6 +249,7 @@ export async function GET(request: NextRequest) {
       success: true,
       message: `Processed ${expiredTrials.length} expired trials`,
       processed: results.length,
+      reminders_sent: upcomingTrials?.length ?? 0,
       errors: errors.length > 0 ? errors : undefined,
       duration,
       timestamp: now,

@@ -328,13 +328,20 @@ export interface Database {
           atp_expiry: string | null;
           atp_date: string | null;
           purchase_date: string | null;
-          driver_id: string | null;
           fuel_consumption_avg: number | null;
+          dates_auto_calculated: boolean | null;
+          maintenance_started_at: string | null;
+          maintenance_ended_at: string | null;
+          compatible_activities: string[] | null;
+          detailed_type: string | null;
+          deleted_at: string | null;
           current_latitude: number | null;
           current_longitude: number | null;
           current_speed: number | null;
           last_position_update: string | null;
           assigned_driver_id: string | null;
+          // Alias temporaire pour compatibilité
+          driver_id?: string | null;
           qr_code_url: string | null;
           qr_code_data: string | null;
           created_at: string;
@@ -369,13 +376,19 @@ export interface Database {
           atp_expiry?: string | null;
           atp_date?: string | null;
           purchase_date?: string | null;
-          driver_id?: string | null;
           fuel_consumption_avg?: number | null;
+          dates_auto_calculated?: boolean | null;
+          maintenance_started_at?: string | null;
+          maintenance_ended_at?: string | null;
+          compatible_activities?: string[] | null;
+          detailed_type?: string | null;
+          deleted_at?: string | null;
           current_latitude?: number | null;
           current_longitude?: number | null;
           current_speed?: number | null;
           last_position_update?: string | null;
           assigned_driver_id?: string | null;
+          driver_id?: string | null;
           qr_code_url?: string | null;
           qr_code_data?: string | null;
           created_at?: string;
@@ -410,13 +423,19 @@ export interface Database {
           atp_expiry?: string | null;
           atp_date?: string | null;
           purchase_date?: string | null;
-          driver_id?: string | null;
           fuel_consumption_avg?: number | null;
+          dates_auto_calculated?: boolean | null;
+          maintenance_started_at?: string | null;
+          maintenance_ended_at?: string | null;
+          compatible_activities?: string[] | null;
+          detailed_type?: string | null;
+          deleted_at?: string | null;
           current_latitude?: number | null;
           current_longitude?: number | null;
           current_speed?: number | null;
           last_position_update?: string | null;
           assigned_driver_id?: string | null;
+          driver_id?: string | null;
           qr_code_url?: string | null;
           qr_code_data?: string | null;
           created_at?: string;
@@ -426,13 +445,6 @@ export interface Database {
           {
             foreignKeyName: "vehicles_assigned_driver_id_fkey";
             columns: ["assigned_driver_id"];
-            isOneToOne: false;
-            referencedRelation: "drivers";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "vehicles_driver_id_fkey";
-            columns: ["driver_id"];
             isOneToOne: false;
             referencedRelation: "drivers";
             referencedColumns: ["id"];
@@ -464,7 +476,9 @@ export interface Database {
           fimo_date: string | null;
           fcos_expiry: string | null;
           qi_date: string | null;
-          cqc_expiry: string | null;
+          cqc_expiry_date: string | null;
+          // Alias temporaire pour compatibilité
+          cqc_expiry?: string | null;
           cqc_category: string | null;
           cqc_card_number: string | null;
           driver_card_number: string | null;
@@ -507,6 +521,7 @@ export interface Database {
           fimo_date?: string | null;
           fcos_expiry?: string | null;
           qi_date?: string | null;
+          cqc_expiry_date?: string | null;
           cqc_expiry?: string | null;
           cqc_category?: string | null;
           cqc_card_number?: string | null;
@@ -550,6 +565,7 @@ export interface Database {
           fimo_date?: string | null;
           fcos_expiry?: string | null;
           qi_date?: string | null;
+          cqc_expiry_date?: string | null;
           cqc_expiry?: string | null;
           cqc_category?: string | null;
           cqc_card_number?: string | null;
@@ -2109,8 +2125,10 @@ export interface Database {
           user_id: string | null;
           subject: string;
           description: string;
-          status: 'open' | 'in_progress' | 'resolved' | 'closed';
+          category: 'bug' | 'billing' | 'feature' | 'training' | 'other';
+          status: 'open' | 'in_progress' | 'waiting_client' | 'resolved' | 'closed';
           priority: 'low' | 'medium' | 'high' | 'critical';
+          assigned_to: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -2120,8 +2138,10 @@ export interface Database {
           user_id?: string | null;
           subject: string;
           description: string;
-          status?: 'open' | 'in_progress' | 'resolved' | 'closed';
+          category?: 'bug' | 'billing' | 'feature' | 'training' | 'other';
+          status?: 'open' | 'in_progress' | 'waiting_client' | 'resolved' | 'closed';
           priority?: 'low' | 'medium' | 'high' | 'critical';
+          assigned_to?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -2131,10 +2151,68 @@ export interface Database {
           user_id?: string | null;
           subject?: string;
           description?: string;
-          status?: 'open' | 'in_progress' | 'resolved' | 'closed';
+          category?: 'bug' | 'billing' | 'feature' | 'training' | 'other';
+          status?: 'open' | 'in_progress' | 'waiting_client' | 'resolved' | 'closed';
           priority?: 'low' | 'medium' | 'high' | 'critical';
+          assigned_to?: string | null;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'support_tickets_assigned_to_fkey';
+            columns: ['assigned_to'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'support_tickets_company_id_fkey';
+            columns: ['company_id'];
+            isOneToOne: false;
+            referencedRelation: 'companies';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'support_tickets_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+
+      // ============================================
+      // SUPPORT MESSAGES
+      // ============================================
+      support_messages: {
+        Row: {
+          id: string;
+          ticket_id: string;
+          author_id: string | null;
+          author_type: 'client' | 'admin' | 'system';
+          content: string;
+          is_internal: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          ticket_id: string;
+          author_id?: string | null;
+          author_type?: 'client' | 'admin' | 'system';
+          content: string;
+          is_internal?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          ticket_id?: string;
+          author_id?: string | null;
+          author_type?: 'client' | 'admin' | 'system';
+          content?: string;
+          is_internal?: boolean;
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -2781,6 +2859,202 @@ export interface Database {
         };
         Relationships: [];
       };
+
+      // ============================================
+      // COMPANY ACTIVITIES (Transport activities multi-activités)
+      // ============================================
+      company_activities: {
+        Row: {
+          id: string;
+          company_id: string;
+          activity: 
+            | 'MARCHANDISES_GENERALES'
+            | 'FRIGORIFIQUE'
+            | 'ADR_COLIS'
+            | 'ADR_CITERNE'
+            | 'CONVOI_EXCEPTIONNEL'
+            | 'BENNE_TRAVAUX_PUBLICS'
+            | 'ANIMAUX_VIVANTS';
+          is_primary: boolean;
+          settings: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          activity: 
+            | 'MARCHANDISES_GENERALES'
+            | 'FRIGORIFIQUE'
+            | 'ADR_COLIS'
+            | 'ADR_CITERNE'
+            | 'CONVOI_EXCEPTIONNEL'
+            | 'BENNE_TRAVAUX_PUBLICS'
+            | 'ANIMAUX_VIVANTS';
+          is_primary?: boolean;
+          settings?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          activity?: 
+            | 'MARCHANDISES_GENERALES'
+            | 'FRIGORIFIQUE'
+            | 'ADR_COLIS'
+            | 'ADR_CITERNE'
+            | 'CONVOI_EXCEPTIONNEL'
+            | 'BENNE_TRAVAUX_PUBLICS'
+            | 'ANIMAUX_VIVANTS';
+          is_primary?: boolean;
+          settings?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'company_activities_company_id_fkey';
+            columns: ['company_id'];
+            isOneToOne: false;
+            referencedRelation: 'companies';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+
+      // ============================================
+      // COMPLIANCE RULES (Règles de conformité réglementaire)
+      // ============================================
+      compliance_rules: {
+        Row: {
+          id: string;
+          activity: 
+            | 'MARCHANDISES_GENERALES'
+            | 'FRIGORIFIQUE'
+            | 'ADR_COLIS'
+            | 'ADR_CITERNE'
+            | 'CONVOI_EXCEPTIONNEL'
+            | 'BENNE_TRAVAUX_PUBLICS'
+            | 'ANIMAUX_VIVANTS';
+          document_code: string;
+          document_name: string;
+          frequency_months: number;
+          is_mandatory: boolean;
+          requires_equipment: boolean;
+          equipment_list: string[] | null;
+          applicable_vehicle_types: string[] | null;
+          reminder_days: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          activity: 
+            | 'MARCHANDISES_GENERALES'
+            | 'FRIGORIFIQUE'
+            | 'ADR_COLIS'
+            | 'ADR_CITERNE'
+            | 'CONVOI_EXCEPTIONNEL'
+            | 'BENNE_TRAVAUX_PUBLICS'
+            | 'ANIMAUX_VIVANTS';
+          document_code: string;
+          document_name: string;
+          frequency_months: number;
+          is_mandatory?: boolean;
+          requires_equipment?: boolean;
+          equipment_list?: string[] | null;
+          applicable_vehicle_types?: string[] | null;
+          reminder_days?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          activity?: 
+            | 'MARCHANDISES_GENERALES'
+            | 'FRIGORIFIQUE'
+            | 'ADR_COLIS'
+            | 'ADR_CITERNE'
+            | 'CONVOI_EXCEPTIONNEL'
+            | 'BENNE_TRAVAUX_PUBLICS'
+            | 'ANIMAUX_VIVANTS';
+          document_code?: string;
+          document_name?: string;
+          frequency_months?: number;
+          is_mandatory?: boolean;
+          requires_equipment?: boolean;
+          equipment_list?: string[] | null;
+          applicable_vehicle_types?: string[] | null;
+          reminder_days?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+
+      // ============================================
+      // VEHICLE ACTIVITY ASSIGNMENTS (Historique des activités par véhicule)
+      // ============================================
+      vehicle_activity_assignments: {
+        Row: {
+          id: string;
+          vehicle_id: string;
+          activity: 
+            | 'MARCHANDISES_GENERALES'
+            | 'FRIGORIFIQUE'
+            | 'ADR_COLIS'
+            | 'ADR_CITERNE'
+            | 'CONVOI_EXCEPTIONNEL'
+            | 'BENNE_TRAVAUX_PUBLICS'
+            | 'ANIMAUX_VIVANTS';
+          assigned_by: string | null;
+          start_date: string;
+          end_date: string | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          vehicle_id: string;
+          activity: 
+            | 'MARCHANDISES_GENERALES'
+            | 'FRIGORIFIQUE'
+            | 'ADR_COLIS'
+            | 'ADR_CITERNE'
+            | 'CONVOI_EXCEPTIONNEL'
+            | 'BENNE_TRAVAUX_PUBLICS'
+            | 'ANIMAUX_VIVANTS';
+          assigned_by?: string | null;
+          start_date?: string;
+          end_date?: string | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          vehicle_id?: string;
+          activity?: 
+            | 'MARCHANDISES_GENERALES'
+            | 'FRIGORIFIQUE'
+            | 'ADR_COLIS'
+            | 'ADR_CITERNE'
+            | 'CONVOI_EXCEPTIONNEL'
+            | 'BENNE_TRAVAUX_PUBLICS'
+            | 'ANIMAUX_VIVANTS';
+          assigned_by?: string | null;
+          start_date?: string;
+          end_date?: string | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'vehicle_activity_assignments_vehicle_id_fkey';
+            columns: ['vehicle_id'];
+            isOneToOne: false;
+            referencedRelation: 'vehicles';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
     };
 
     Views: {
@@ -2887,6 +3161,41 @@ export interface Database {
           vehicle_registration: string | null;
         };
         Relationships: [];
+      };
+      vehicle_current_activity: {
+        Row: {
+          vehicle_id: string;
+          registration_number: string;
+          vehicle_type: string;
+          company_id: string;
+          current_activity: 
+            | 'MARCHANDISES_GENERALES'
+            | 'FRIGORIFIQUE'
+            | 'ADR_COLIS'
+            | 'ADR_CITERNE'
+            | 'CONVOI_EXCEPTIONNEL'
+            | 'BENNE_TRAVAUX_PUBLICS'
+            | 'ANIMAUX_VIVANTS' | null;
+          activity_start_date: string | null;
+          activity_notes: string | null;
+          inferred_activities: 
+            | ('MARCHANDISES_GENERALES'
+            | 'FRIGORIFIQUE'
+            | 'ADR_COLIS'
+            | 'ADR_CITERNE'
+            | 'CONVOI_EXCEPTIONNEL'
+            | 'BENNE_TRAVAUX_PUBLICS'
+            | 'ANIMAUX_VIVANTS')[] | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'vehicle_current_activity_vehicle_id_fkey';
+            columns: ['vehicle_id'];
+            isOneToOne: false;
+            referencedRelation: 'vehicles';
+            referencedColumns: ['id'];
+          }
+        ];
       };
     };
 

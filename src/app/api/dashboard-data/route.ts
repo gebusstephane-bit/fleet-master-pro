@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { addDays, startOfMonth } from 'date-fns';
 import { logger } from '@/lib/logger';
 import type { Database } from '@/types/supabase';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 export const dynamic = 'force-dynamic';
 
@@ -123,9 +124,9 @@ export async function GET() {
 
     const vehicleStats = {
       total: vehicles?.length || 0,
-      active: vehicles?.filter(v => v.status === 'ACTIF').length || 0,
-      maintenance: vehicles?.filter(v => v.status === 'EN_MAINTENANCE').length || 0,
-      inactive: vehicles?.filter(v => v.status === 'INACTIF' || v.status === 'ARCHIVE').length || 0,
+      active: vehicles?.filter(v => v.status === VEHICLE_STATUS.ACTIF).length || 0,
+      maintenance: vehicles?.filter(v => v.status === VEHICLE_STATUS.EN_MAINTENANCE).length || 0,
+      inactive: vehicles?.filter(v => v.status === VEHICLE_STATUS.INACTIF || v.status === VEHICLE_STATUS.ARCHIVE).length || 0,
     };
 
     // 3. KPIs Chauffeurs
@@ -172,7 +173,7 @@ export async function GET() {
 
     // 5. KPIs Inspections
     const { data: allInspections } = await adminClient
-      .from('inspections')
+      .from('vehicle_inspections')
       .select('id, status, completed_at')
       .eq('company_id', companyId);
 

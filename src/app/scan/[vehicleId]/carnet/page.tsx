@@ -12,6 +12,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { CarnetDigital } from '@/components/scan/carnet-digital';
+import { VEHICLE_STATUS, USER_ROLE } from '@/constants/enums';
 
 interface CarnetPageProps {
   params: Promise<{
@@ -57,7 +58,7 @@ export default async function CarnetPage({
   }
 
   // Vérifier le rôle (ADMIN, DIRECTEUR, AGENT_DE_PARC uniquement)
-  const allowedRoles = ['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'];
+  const allowedRoles: string[] = [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC];
   if (!allowedRoles.includes(profile.role)) {
     redirect('/unauthorized?reason=insufficient_role');
   }
@@ -68,7 +69,7 @@ export default async function CarnetPage({
     .select('id, registration_number, brand, model, type, qr_code_data, status, company_id, mileage, insurance_expiry, technical_control_expiry')
     .eq('id', vehicleId)
     .eq('qr_code_data', token)
-    .eq('status', 'ACTIF')
+    .eq('status', VEHICLE_STATUS.ACTIF)
     .single();
 
   if (vehicleError || !vehicle) {

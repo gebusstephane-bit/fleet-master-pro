@@ -116,45 +116,38 @@ export const getAllFuelRecords = authActionClient
     
     logger.debug('[FUEL] Recherche records pour company_id:', ctx.user.company_id);
     
-    // Essayer d'abord sans jointure pour voir si c'est la jointure qui pose problème
-    const { data: rawData, error: rawError } = await supabase
+    // Requête simple sans jointure pour éviter les problèmes de vue/RLS
+    const { data: records, error } = await supabase
       .from('fuel_records')
       .select('*')
       .eq('company_id', ctx.user.company_id)
-      .order('created_at', { ascending: false })
-      .limit(100);
-    
-    if (rawError) {
-      logger.error('[FUEL] Erreur requête simple:', rawError);
-    } else {
-      logger.debug(`[FUEL] Requête simple: ${rawData?.length || 0} records`);
-    }
-    
-    // Maintenant avec les jointures
-    const { data, error } = await supabase
-      .from('fuel_records')
-      .select(`
-        *,
-        vehicles!inner(registration_number, brand, model),
-        drivers(first_name, last_name)
-      `)
-      .eq('company_id', ctx.user.company_id)
-      .order('created_at', { ascending: false })
+      .order('date', { ascending: false })
       .limit(100);
     
     if (error) {
-      logger.error('[FUEL] Erreur getAllFuelRecords:', error);
-      // Fallback sur la requête simple si la jointure échoue
-      return { success: true, data: rawData || [] };
+      logger.error('[FUEL] Erreur:', error);
+      throw new Error(`Erreur: ${error.message}`);
     }
     
-    logger.debug(`[FUEL] Récupéré ${data?.length || 0} records avec jointures`);
+    logger.debug(`[FUEL] Récupéré ${records?.length || 0} records`);
     
-    // Formater les données pour correspondre au type FuelRecord
-    const formattedData = (data || []).map((record) => ({
+    // Récupérer les infos véhicules séparément pour faire la jointure manuellement
+    const vehicleIds = Array.from(new Set((records || []).map(r => r.vehicle_id).filter(Boolean)));
+    let vehiclesMap = new Map();
+    
+    if (vehicleIds.length > 0) {
+      const { data: vehicles } = await supabase
+        .from('vehicles')
+        .select('id, registration_number, brand, model')
+        .in('id', vehicleIds);
+      
+      vehiclesMap = new Map(vehicles?.map(v => [v.id, v]) || []);
+    }
+    
+    // Joindre manuellement
+    const formattedData = (records || []).map((record: any) => ({
       ...record,
-      vehicles: record.vehicles || null,
-      drivers: record.drivers || null,
+      vehicles: vehiclesMap.get(record.vehicle_id) || null,
     }));
     
     return { success: true, data: formattedData };
@@ -207,42 +200,97 @@ export const getFuelStats = authActionClient
     
     // Vérifier que l'utilisateur a une company_id
     if (!ctx.user.company_id) {
-      return { success: true, data: [] };
+      return { 
+        success: true, 
+        data: {
+          averageConsumption: null,
+          totalCost: 0,
+          totalRecords: 0,
+          vehicleStats: [],
+          monthOverMonthChange: { liters: 0, cost: 0, consumption: 0 }
+        }
+      };
     }
     
-    // Filtrer les véhicules par company_id
+    // Récupérer tous les records du mois en cours
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    
+    const { data: records } = await supabase
+      .from('fuel_records')
+      .select('quantity_liters, price_total, consumption_l_per_100km, vehicle_id')
+      .eq('company_id', ctx.user.company_id)
+      .gte('date', startOfMonth);
+    
+    if (!records || records.length === 0) {
+      return { 
+        success: true, 
+        data: {
+          averageConsumption: null,
+          totalCost: 0,
+          totalRecords: 0,
+          vehicleStats: [],
+          monthOverMonthChange: { liters: 0, cost: 0, consumption: 0 }
+        }
+      };
+    }
+    
+    // Calculer les stats globales
+    const totalRecords = records.length;
+    const totalCost = records.reduce((sum, r) => sum + (r.price_total || 0), 0);
+    const recordsWithConsumption = records.filter(r => r.consumption_l_per_100km);
+    const averageConsumption = recordsWithConsumption.length > 0
+      ? recordsWithConsumption.reduce((sum, r) => sum + (r.consumption_l_per_100km || 0), 0) / recordsWithConsumption.length
+      : null;
+    
+    // Récupérer les infos véhicules pour les stats
+    const vehicleIds = Array.from(new Set(records.map(r => r.vehicle_id).filter(Boolean)));
     const { data: vehicles } = await supabase
       .from('vehicles')
-      .select('id, registration_number, brand, model, fuel_type')
-      .eq('company_id', ctx.user.company_id);
+      .select('id, registration_number, brand, model')
+      .in('id', vehicleIds);
     
-    const stats = [];
+    const vehicleInfoMap = new Map(vehicles?.map(v => [v.id, v]) || []);
     
-    for (const vehicle of vehicles || []) {
-      const { data: records } = await supabase
-        .from('fuel_records')
-        .select('quantity_liters, price_total, consumption_l_per_100km')
-        .eq('vehicle_id', vehicle.id)
-        .eq('company_id', ctx.user.company_id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      
-      if (records && records.length > 0) {
-        const totalLiters = records.reduce((sum, r) => sum + (r.quantity_liters || 0), 0);
-        const totalCost = records.reduce((sum, r) => sum + (r.price_total || 0), 0);
-        const avgConsumption = records
-          .filter(r => r.consumption_l_per_100km)
-          .reduce((sum, r, _, arr) => sum + (r.consumption_l_per_100km || 0) / arr.length, 0);
-        
-        stats.push({
-          vehicle,
-          fillCount: records.length,
-          totalLiters,
-          totalCost,
-          avgConsumption: avgConsumption ? Math.round(avgConsumption * 10) / 10 : null,
+    // Stats par véhicule
+    const vehicleMap = new Map();
+    for (const record of records) {
+      const vid = record.vehicle_id;
+      if (!vehicleMap.has(vid)) {
+        const vInfo = vehicleInfoMap.get(vid);
+        vehicleMap.set(vid, {
+          registration_number: vInfo?.registration_number || '',
+          brand: vInfo?.brand || '',
+          model: vInfo?.model || '',
+          records: []
         });
       }
+      vehicleMap.get(vid).records.push(record);
     }
     
-    return { success: true, data: stats };
+    const vehicleStats: any[] = [];
+    vehicleMap.forEach((vData) => {
+      const vRecords = vData.records.filter((r: any) => r.consumption_l_per_100km);
+      if (vRecords.length > 0) {
+        const avg = vRecords.reduce((sum: number, r: any) => sum + (r.consumption_l_per_100km || 0), 0) / vRecords.length;
+        vehicleStats.push({
+          registration_number: vData.registration_number,
+          brand: vData.brand,
+          model: vData.model,
+          averageConsumption: Math.round(avg * 10) / 10,
+          fillCount: vData.records.length
+        });
+      }
+    });
+    
+    return { 
+      success: true, 
+      data: {
+        averageConsumption: averageConsumption ? Math.round(averageConsumption * 10) / 10 : null,
+        totalCost,
+        totalRecords,
+        vehicleStats,
+        monthOverMonthChange: { liters: 0, cost: 0, consumption: 0 } // Simplifié pour l'instant
+      }
+    };
   });

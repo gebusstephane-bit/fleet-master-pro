@@ -40,32 +40,32 @@ interface VehicleMaintenanceTimelineProps {
 const statusConfig = {
   DEMANDE_CREEE: { 
     label: 'Demande créée', 
-    color: 'bg-blue-100 text-blue-700 border-blue-200',
+    color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
     icon: Clock
   },
   VALIDEE_DIRECTEUR: { 
     label: 'Validée', 
-    color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
     icon: CheckCircle2
   },
   RDV_PRIS: { 
     label: 'RDV pris', 
-    color: 'bg-purple-100 text-purple-700 border-purple-200',
+    color: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
     icon: Calendar
   },
   EN_COURS: { 
     label: 'En cours', 
-    color: 'bg-amber-100 text-amber-700 border-amber-200',
+    color: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
     icon: Wrench
   },
   TERMINEE: { 
     label: 'Terminée', 
-    color: 'bg-green-100 text-green-700 border-green-200',
+    color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
     icon: CheckCircle2
   },
   REFUSEE: { 
     label: 'Refusée', 
-    color: 'bg-red-100 text-red-700 border-red-200',
+    color: 'bg-red-500/20 text-red-400 border-red-500/30',
     icon: AlertCircle
   },
 };
@@ -78,10 +78,10 @@ const typeLabels: Record<string, string> = {
 };
 
 const priorityColors = {
-  LOW: 'text-gray-400',
-  NORMAL: 'text-blue-500',
-  HIGH: 'text-orange-500',
-  CRITICAL: 'text-red-500',
+  LOW: 'text-slate-400',
+  NORMAL: 'text-cyan-400',
+  HIGH: 'text-amber-400',
+  CRITICAL: 'text-red-400',
 };
 
 export function VehicleMaintenanceTimeline({ maintenances, vehicleId }: VehicleMaintenanceTimelineProps) {
@@ -113,12 +113,12 @@ export function VehicleMaintenanceTimeline({ maintenances, vehicleId }: VehicleM
       {/* Header avec bouton nouvelle demande */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Historique des interventions</h3>
+          <h3 className="text-lg font-semibold text-white">Historique des interventions</h3>
           <p className="text-sm text-slate-400">
             {maintenances.length} intervention{maintenances.length > 1 ? 's' : ''} au total
           </p>
         </div>
-        <Button asChild size="sm">
+        <Button asChild size="sm" className="bg-cyan-600 hover:bg-cyan-500 text-white border-0">
           <Link href={`/maintenance/new?vehicleId=${vehicleId}`}>
             <Plus className="h-4 w-4 mr-1" />
             Nouvelle demande
@@ -153,10 +153,10 @@ export function VehicleMaintenanceTimeline({ maintenances, vehicleId }: VehicleM
       )}
 
       {maintenances.length === 0 && (
-        <div className="text-center py-12 bg-slate-50 rounded-lg">
-          <Wrench className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+        <div className="text-center py-12 rounded-2xl bg-slate-900/30 border border-slate-800">
+          <Wrench className="h-12 w-12 mx-auto mb-4 text-slate-600" />
           <p className="text-slate-400">Aucune maintenance enregistrée</p>
-          <Button asChild className="mt-4" variant="outline">
+          <Button asChild className="mt-4 bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700" variant="outline">
             <Link href={`/maintenance/new?vehicleId=${vehicleId}`}>
               <Plus className="h-4 w-4 mr-1" />
               Créer une demande
@@ -189,13 +189,13 @@ function MaintenanceCard({ maintenance }: { maintenance: Maintenance }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="font-medium text-slate-900">
+              <p className="font-medium text-slate-200">
                 {typeLabels[maintenance.type] || maintenance.type}
                 {maintenance.priority === 'CRITICAL' && (
                   <span className="ml-2 text-red-500">⚠️ Critique</span>
                 )}
               </p>
-              <p className="text-sm text-slate-600 mt-1 line-clamp-2">
+              <p className="text-sm text-slate-400 mt-1 line-clamp-2">
                 {maintenance.description}
               </p>
             </div>
@@ -236,7 +236,7 @@ function MaintenanceCard({ maintenance }: { maintenance: Maintenance }) {
         </div>
         
         {/* Flèche */}
-        <ArrowRight className="h-4 w-4 text-slate-300 self-center" />
+        <ArrowRight className="h-4 w-4 text-slate-500 self-center" />
       </div>
     </Link>
   );

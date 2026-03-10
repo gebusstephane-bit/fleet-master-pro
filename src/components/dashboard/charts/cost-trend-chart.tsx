@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { GlassCard } from "@/components/ui/glass-card";
-import { MonthlyCostData } from "@/actions/dashboard-analytics";
+import { MonthlyCostData } from "@/actions/dashboard";
 import { formatCurrency } from "@/lib/analytics/formatters";
 import { TrendingUp, TrendingDown } from "lucide-react";
 

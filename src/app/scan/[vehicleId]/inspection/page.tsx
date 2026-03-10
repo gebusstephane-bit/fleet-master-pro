@@ -11,6 +11,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { PublicInspectionForm } from '@/components/scan/public-inspection-form';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 interface InspectionPageProps {
   params: Promise<{
@@ -41,7 +42,7 @@ export default async function PublicInspectionPage({
     .select('id, registration_number, brand, model, type, qr_code_data, status, mileage')
     .eq('id', vehicleId)
     .eq('qr_code_data', token)
-    .eq('status', 'ACTIF')
+    .eq('status', VEHICLE_STATUS.ACTIF)
     .single();
 
   if (error || !vehicle) {

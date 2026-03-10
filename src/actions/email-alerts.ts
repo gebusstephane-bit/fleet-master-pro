@@ -5,7 +5,9 @@ import {
   maintenanceAlertTemplate, 
   maintenanceAlertText
 } from '@/lib/email/templates/maintenance-alert';
+import { VEHICLE_STATUS } from '@/constants/enums';
 import { authActionClient } from '@/lib/safe-action';
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 
 interface MaintenanceAlertData {
@@ -43,7 +45,7 @@ export const sendMaintenanceAlerts = authActionClient
       .from('vehicles')
       .select('id, registration_number, brand, model, mileage, next_service_due, next_service_mileage')
       .eq('company_id', ctx.user.company_id)
-      .eq('status', 'ACTIF');
+      .eq('status', VEHICLE_STATUS.ACTIF);
     
     const alerts: MaintenanceAlertData[] = [];
     const today = new Date();
@@ -99,7 +101,7 @@ export const sendMaintenanceAlerts = authActionClient
         });
         sentCount++;
       } catch (error) {
-        console.error('Erreur envoi email:', error);
+        logger.error('Erreur envoi email:', error);
       }
     }
     

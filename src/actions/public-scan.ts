@@ -13,6 +13,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { USER_ROLE } from '@/constants/enums';
 import { scanPublicActionClient } from '@/lib/safe-action';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
@@ -101,7 +102,7 @@ async function validateVehicleAccess(
   
   const verifyResult = data as unknown as { valid: boolean } | null;
   if (error || !verifyResult || !verifyResult.valid) {
-    console.warn('[PUBLIC_SCAN] Token invalide ou véhicule non trouvé:', vehicleId);
+    logger.warn('[PUBLIC_SCAN] Token invalide ou véhicule non trouvé:', vehicleId);
     return null;
   }
   
@@ -202,7 +203,7 @@ export const createPublicFuelRecord = scanPublicActionClient
       });
     
     if (error) {
-      console.error('[PUBLIC_SCAN] Erreur création plein:', error);
+      logger.error('[PUBLIC_SCAN] Erreur création plein:', error);
       throw new Error('Erreur lors de l\'enregistrement du plein');
     }
     
@@ -276,7 +277,7 @@ export const createPublicInspection = scanPublicActionClient
       });
     
     if (error) {
-      console.error('[PUBLIC_SCAN] Erreur création inspection:', error);
+      logger.error('[PUBLIC_SCAN] Erreur création inspection:', error);
       throw new Error('Erreur lors de l\'enregistrement du contrôle');
     }
     
@@ -395,7 +396,7 @@ export const getVehicleCarnetInfo = scanPublicActionClient
     }
     
     // Vérifier le rôle (ADMIN, DIRECTEUR, AGENT_DE_PARC uniquement)
-    const allowedRoles = ['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'];
+    const allowedRoles: string[] = [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC];
     if (!allowedRoles.includes(profile.role)) {
       throw new Error('INSUFFICIENT_ROLE');
     }

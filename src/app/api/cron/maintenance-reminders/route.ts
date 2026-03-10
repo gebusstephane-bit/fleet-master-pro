@@ -24,6 +24,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
+import { VEHICLE_STATUS, USER_ROLE } from '@/constants/enums';
 
 // ============================================================
 // CONFIG
@@ -33,7 +34,7 @@ const CRON_SECRET = process.env.CRON_SECRET;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://fleetmaster.pro';
 
 // Rôles qui reçoivent les rappels maintenance
-const RECIPIENT_ROLES = ['DIRECTEUR', 'AGENT_DE_PARC', 'EXPLOITANT'] as const;
+const RECIPIENT_ROLES = [USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC, USER_ROLE.EXPLOITANT] as const;
 
 // ============================================================
 // UTILITAIRES
@@ -245,7 +246,7 @@ export async function GET(request: NextRequest) {
       const vehicle = vehicleMap.get(record.vehicle_id);
 
       // Véhicule inexistant ou inactif/retraité → skip
-      if (!vehicle || vehicle.status === 'INACTIF' || vehicle.status === 'ARCHIVE') {
+      if (!vehicle || vehicle.status === VEHICLE_STATUS.INACTIF || vehicle.status === VEHICLE_STATUS.ARCHIVE) {
         stats.skipped_inactive_vehicle++;
         continue;
       }

@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
+import { USER_ROLE } from '@/constants/enums';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { logger } from '@/lib/logger';
 
@@ -76,7 +77,7 @@ export function LoginForm() {
 
       // Déterminer la redirection selon le rôle
       let finalRedirect = redirect;
-      if (userRole === 'CHAUFFEUR') {
+      if (userRole === USER_ROLE.CHAUFFEUR) {
         finalRedirect = '/driver-app';
       } else if (redirect === '/login' || redirect === '/') {
         finalRedirect = '/dashboard';

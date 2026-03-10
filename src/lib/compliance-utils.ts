@@ -3,6 +3,8 @@
  * Calcul des statuts d'expiration des documents
  */
 
+import { USER_ROLE } from '@/constants/enums';
+
 export type DocumentStatus = 'valid' | 'warning' | 'expired' | 'missing';
 
 export interface DocumentStatusResult {
@@ -271,6 +273,6 @@ export function formatDate(date: string | Date | null | undefined): string {
  * Accès : Admin, Directeur, Agent de parc
  */
 export function hasComplianceAccess(role?: string): boolean {
-  const allowedRoles = ['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'];
+  const allowedRoles: string[] = [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC];
   return allowedRoles.includes(role || '');
 }

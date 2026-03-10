@@ -34,6 +34,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 // ============================================================
 // CONFIG
@@ -88,35 +89,36 @@ function calculateReturnDate(
 // ============================================================
 
 export async function GET(request: NextRequest) {
-  // ── Authentification ──────────────────────────────────────
-  const secret =
-    request.headers.get('x-cron-secret') ||
-    request.nextUrl.searchParams.get('secret');
+  try {
+    // ── Authentification ──────────────────────────────────────
+    const secret =
+      request.headers.get('x-cron-secret') ||
+      request.nextUrl.searchParams.get('secret');
 
-  if (!CRON_SECRET || secret !== CRON_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+    if (!CRON_SECRET || secret !== CRON_SECRET) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  const supabase = createAdminClient();
-  const todayStr = getTodayDateStr();
+    const supabase = createAdminClient();
+    const todayStr = getTodayDateStr();
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  const stats = {
-    // Étape A
-    vehicles_to_maintenance: 0,
-    vehicles_set_maintenance: 0,
-    // Étape B
-    vehicles_checked_return: 0,
-    vehicles_set_active: 0,
-    // Étape C
-    vehicles_completed_today: 0,
-    // Erreurs
-    errors: 0,
-  };
+    const stats = {
+      // Étape A
+      vehicles_to_maintenance: 0,
+      vehicles_set_maintenance: 0,
+      // Étape B
+      vehicles_checked_return: 0,
+      vehicles_set_active: 0,
+      // Étape C
+      vehicles_completed_today: 0,
+      // Erreurs
+      errors: 0,
+    };
 
-  logger.info(`Cron maintenance-status: processing date = ${todayStr}`);
+    logger.info(`Cron maintenance-status: processing date = ${todayStr}`);
 
   // ============================================================
   // ÉTAPE A — Passage en maintenance
@@ -159,7 +161,7 @@ export async function GET(request: NextRequest) {
         .from('vehicles')
         .select('id, company_id, registration_number')
         .in('id', vehicleIds)
-        .eq('status', 'ACTIF');
+        .eq('status', VEHICLE_STATUS.ACTIF);
 
       if (vehicleErr) {
         logger.error('Étape A: erreur lecture vehicles', { error: vehicleErr instanceof Error ? vehicleErr.message : String(vehicleErr) });
@@ -172,7 +174,7 @@ export async function GET(request: NextRequest) {
             const { error: updateErr } = await supabase
               .from('vehicles')
               .update({
-                status: 'EN_MAINTENANCE',
+                status: VEHICLE_STATUS.EN_MAINTENANCE,
                 maintenance_started_at: now,
               })
               .eq('id', vehicle.id);
@@ -188,8 +190,8 @@ export async function GET(request: NextRequest) {
               .insert({
                 vehicle_id: vehicle.id,
                 company_id: vehicle.company_id,
-                old_status: 'ACTIF',
-                new_status: 'EN_MAINTENANCE',
+                old_status: VEHICLE_STATUS.ACTIF,
+                new_status: VEHICLE_STATUS.EN_MAINTENANCE,
                 reason: `RDV maintenance programmé pour le ${todayStr}`,
                 maintenance_record_id: linkedRecord?.id ?? null,
                 changed_by: 'cron',
@@ -220,7 +222,7 @@ export async function GET(request: NextRequest) {
     const { data: maintenanceVehicles, error: mvErr } = await supabase
       .from('vehicles')
       .select('id, company_id, registration_number')
-      .eq('status', 'EN_MAINTENANCE');
+      .eq('status', VEHICLE_STATUS.EN_MAINTENANCE);
 
     if (mvErr) {
       logger.error('Étape B: erreur lecture vehicles en maintenance', { error: mvErr instanceof Error ? mvErr.message : String(mvErr) });
@@ -272,7 +274,7 @@ export async function GET(request: NextRequest) {
             const { error: updateErr } = await supabase
               .from('vehicles')
               .update({
-                status: 'ACTIF',
+                status: VEHICLE_STATUS.ACTIF,
                 maintenance_ended_at: now,
               })
               .eq('id', vehicle.id);
@@ -286,8 +288,8 @@ export async function GET(request: NextRequest) {
               .insert({
                 vehicle_id: vehicle.id,
                 company_id: vehicle.company_id,
-                old_status: 'EN_MAINTENANCE',
-                new_status: 'ACTIF',
+                old_status: VEHICLE_STATUS.EN_MAINTENANCE,
+                new_status: VEHICLE_STATUS.ACTIF,
                 reason: `Durée estimée écoulée — ${effectiveDays}j depuis rdv_date ${record.rdv_date}`,
                 maintenance_record_id: record.id,
                 changed_by: 'cron',
@@ -342,7 +344,7 @@ export async function GET(request: NextRequest) {
             .from('vehicles')
             .select('id, company_id, registration_number, status')
             .eq('id', record.vehicle_id)
-            .eq('status', 'ACTIF')  // Seulement si encore ACTIF
+            .eq('status', VEHICLE_STATUS.ACTIF)  // Seulement si encore ACTIF
             .single();
 
           if (vehicle) {
@@ -363,8 +365,8 @@ export async function GET(request: NextRequest) {
               .insert({
                 vehicle_id: vehicle.id,
                 company_id: vehicle.company_id,
-                old_status: 'ACTIF',
-                new_status: 'ACTIF',
+                old_status: VEHICLE_STATUS.ACTIF,
+                new_status: VEHICLE_STATUS.ACTIF,
                 reason: `Maintenance terminée le ${todayStr} (véhicule resté ACTIF - traitement tardif)`,
                 maintenance_record_id: record.id,
                 changed_by: 'cron',
@@ -390,26 +392,30 @@ export async function GET(request: NextRequest) {
   // RÉPONSE
   // ============================================================
 
-  logger.info('Cron maintenance-status completed', stats);
+    logger.info('Cron maintenance-status completed', stats);
 
-  return NextResponse.json({
-    success: true,
-    timestamp: new Date().toISOString(),
-    date_processed: todayStr,
-    step_a: {
-      vehicles_found: stats.vehicles_to_maintenance,
-      set_to_maintenance: stats.vehicles_set_maintenance,
-    },
-    step_b: {
-      vehicles_checked: stats.vehicles_checked_return,
-      returned_to_active: stats.vehicles_set_active,
-    },
-    step_c: {
-      description: 'Maintenances terminées aujourd\'hui — synchronisation',
-      completed_today: stats.vehicles_completed_today,
-    },
-    errors: stats.errors,
-  });
+    return NextResponse.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      date_processed: todayStr,
+      step_a: {
+        vehicles_found: stats.vehicles_to_maintenance,
+        set_to_maintenance: stats.vehicles_set_maintenance,
+      },
+      step_b: {
+        vehicles_checked: stats.vehicles_checked_return,
+        returned_to_active: stats.vehicles_set_active,
+      },
+      step_c: {
+        description: 'Maintenances terminées aujourd\'hui — synchronisation',
+        completed_today: stats.vehicles_completed_today,
+      },
+      errors: stats.errors,
+    });
+  } catch (error) {
+    logger.error('[cron/maintenance-status] Erreur non gérée:', error);
+    return new Response('Internal Server Error', { status: 500 });
+  }
 }
 
 export const dynamic = 'force-dynamic';

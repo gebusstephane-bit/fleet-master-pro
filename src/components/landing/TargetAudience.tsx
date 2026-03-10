@@ -10,42 +10,33 @@ const profiles = [
     range: "1–5 véhicules",
     title: "Transporteur indépendant",
     description:
-      "Fini les tableurs Excel et les Post-it. CT, assurances, tachygraphe, permis — toutes vos échéances centralisées. Recevez les alertes avant que ça expire et arrivez serein aux contrôles routiers.",
-    iconBg: "bg-cyan-500/10 border-cyan-500/20",
-    iconColor: "text-cyan-400",
-    border: "border-cyan-500/15",
-    badge: "ESSENTIEL",
-    badgeColor: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-    gradientFrom: "#06b6d4",
-    gradientTo: "#3b82f6",
+      "Fini les tableurs Excel et les Post-it. CT, assurances, tachygraphe, permis — toutes vos échéances centralisées. Recevez les alertes avant que ça expire.",
+    plan: "Essentiel",
+    gradient: "from-[#00d4ff]/20 to-blue-500/10",
+    borderColor: "border-[#00d4ff]/30",
+    planColor: "text-[#00d4ff]",
   },
   {
     icon: BarChart3,
     range: "5–50 véhicules",
     title: "Gestionnaire de parc",
     description:
-      "Pilotez votre flotte avec des indicateurs clairs. Score de fiabilité par véhicule, maintenance prédictive, suivi TCO au km. Anticipez les pannes, réduisez les immobilisations et maîtrisez vos coûts.",
-    iconBg: "bg-blue-500/10 border-blue-500/20",
-    iconColor: "text-blue-400",
-    border: "border-blue-500/15",
-    badge: "PRO",
-    badgeColor: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    gradientFrom: "#3b82f6",
-    gradientTo: "#8b5cf6",
+      "Pilotez votre flotte avec des indicateurs clairs. Score de fiabilité par véhicule, maintenance prédictive, suivi TCO au km. Anticipez les pannes.",
+    plan: "Pro",
+    gradient: "from-blue-500/20 to-violet-500/10",
+    borderColor: "border-blue-500/30",
+    planColor: "text-blue-400",
   },
   {
     icon: Building2,
     range: "50+ véhicules",
     title: "Direction logistique",
     description:
-      "API publique pour connecter votre ERP ou TMS. Rapports PDF automatisés. Assistant IA réglementaire. Support prioritaire. Vision consolidée sur l'ensemble de votre parc multi-sites.",
-    iconBg: "bg-violet-500/10 border-violet-500/20",
-    iconColor: "text-violet-400",
-    border: "border-violet-500/15",
-    badge: "UNLIMITED",
-    badgeColor: "bg-violet-500/10 text-violet-400 border-violet-500/20",
-    gradientFrom: "#8b5cf6",
-    gradientTo: "#6366f1",
+      "API publique pour connecter votre ERP ou TMS. Rapports PDF automatisés. Assistant IA réglementaire. Support prioritaire. Vision consolidée multi-sites.",
+    plan: "Unlimited",
+    gradient: "from-violet-500/20 to-purple-500/10",
+    borderColor: "border-violet-500/30",
+    planColor: "text-violet-400",
   },
 ];
 
@@ -54,36 +45,35 @@ export function TargetAudience() {
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section ref={ref} className="py-24 bg-[#09090b] relative overflow-hidden">
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: `radial-gradient(ellipse at 50% 100%, rgba(59,130,246,0.04) 0%, transparent 60%)`,
-        }}
-      />
-
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section ref={ref} className="py-24 relative overflow-hidden">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/5 to-transparent pointer-events-none" />
+      
+      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <span className="inline-block text-sm font-semibold text-cyan-400 uppercase tracking-wider mb-4">
+          <span className="inline-flex items-center gap-2 glass-cosmic px-4 py-2 rounded-full text-xs font-medium uppercase tracking-[0.15em] text-[#00d4ff] mb-6">
             Pour qui
           </span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white">
-            Fait pour les{" "}
-            <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              professionnels du transport
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6">
+            <span className="text-cosmic-display">
+              Fait pour les
             </span>
+            <br />
+            <span className="text-cosmic-gradient">professionnels du transport</span>
           </h2>
-          <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
+          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
             VUL, PL, SPL, frigorifique, remorque — FleetMaster s'adapte à votre
             parc, quelle que soit sa taille.
           </p>
         </motion.div>
 
+        {/* Profiles */}
         <div className="grid md:grid-cols-3 gap-6">
           {profiles.map((profile, index) => (
             <motion.div
@@ -95,43 +85,38 @@ export function TargetAudience() {
                 delay: index * 0.12,
                 ease: [0.22, 1, 0.36, 1],
               }}
-              whileHover={{ y: -4 }}
-              className={`group rounded-2xl border ${profile.border} bg-[#0f172a]/70 p-8 flex flex-col transition-all duration-300`}
+              className={`card-cosmic group ${profile.borderColor} border`}
             >
-              {/* Icône + badge plan */}
-              <div className="flex items-center justify-between mb-6">
-                <div
-                  className={`w-12 h-12 rounded-xl border ${profile.iconBg} flex items-center justify-center`}
-                >
-                  <profile.icon className={`h-6 w-6 ${profile.iconColor}`} />
+              {/* Gradient background */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${profile.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-[inherit]`} />
+              
+              <div className="relative">
+                {/* Icon + Plan */}
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-[#00d4ff]/30 group-hover:shadow-[0_0_20px_rgba(0,212,255,0.2)] transition-all duration-300">
+                    <profile.icon className="h-6 w-6 text-[#00d4ff]" />
+                  </div>
+                  <span className={`text-xs font-bold uppercase tracking-[0.1em] px-3 py-1 rounded-full glass-cosmic ${profile.planColor} border border-current opacity-70`}>
+                    {profile.plan}
+                  </span>
                 </div>
-                <span
-                  className={`text-xs font-bold px-3 py-1 rounded-full border ${profile.badgeColor}`}
-                >
-                  {profile.badge}
-                </span>
+
+                {/* Range */}
+                <p className="text-sm text-slate-500 mb-1">{profile.range}</p>
+
+                {/* Title */}
+                <h3 className="text-xl font-bold text-white mb-4">
+                  {profile.title}
+                </h3>
+
+                {/* Description */}
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  {profile.description}
+                </p>
+
+                {/* Hover line */}
+                <div className={`mt-6 h-px bg-gradient-to-r ${profile.gradient.replace('/20', '').replace('/10', '')} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
               </div>
-
-              {/* Fourchette véhicules */}
-              <p className="text-sm text-slate-500 mb-1">{profile.range}</p>
-
-              {/* Titre */}
-              <h3 className="text-xl font-bold text-white mb-4">
-                {profile.title}
-              </h3>
-
-              {/* Description */}
-              <p className="text-slate-400 text-sm leading-relaxed flex-1">
-                {profile.description}
-              </p>
-
-              {/* Ligne de couleur au survol */}
-              <div
-                className="mt-6 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full"
-                style={{
-                  background: `linear-gradient(90deg, ${profile.gradientFrom}, ${profile.gradientTo})`,
-                }}
-              />
             </motion.div>
           ))}
         </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import Anthropic from '@anthropic-ai/sdk';
 import { planHasFeature } from '@/lib/plans';
 
@@ -229,7 +230,7 @@ export async function POST(request: NextRequest) {
 
         controller.close();
       } catch (err) {
-        console.error('[AI Assistant] Erreur streaming:', err);
+        logger.error('[AI Assistant] Erreur streaming:', err);
         controller.error(err);
       }
     },

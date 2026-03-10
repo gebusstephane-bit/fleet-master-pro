@@ -17,6 +17,7 @@ interface VehicleQRCodeProps {
   model?: string;
   qrCodeData?: string | null;
   size?: number;
+  compact?: boolean;
 }
 
 export function VehicleQRCode({ 
@@ -25,7 +26,8 @@ export function VehicleQRCode({
   brand, 
   model,
   qrCodeData: initialQrCodeData,
-  size = 200 
+  size = 200,
+  compact = false
 }: VehicleQRCodeProps) {
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [qrCodeData, setQrCodeData] = useState<string | null>(initialQrCodeData || null);
@@ -234,6 +236,13 @@ export function VehicleQRCode({
   };
 
   if (loading) {
+    if (compact) {
+      return (
+        <div className="flex items-center justify-center w-full h-full">
+          <div className="w-6 h-6 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
     return (
       <Card>
         <CardContent className="p-6">
@@ -242,6 +251,26 @@ export function VehicleQRCode({
           </div>
         </CardContent>
       </Card>
+    );
+  }
+
+  // Mode compact: QR code seul sans Card ni actions
+  if (compact) {
+    if (!vehicleUrl) {
+      return (
+        <div className="flex items-center justify-center w-full h-full text-slate-500 text-xs">
+          N/A
+        </div>
+      );
+    }
+    return (
+      <QRCodeSVG
+        id={`qr-${vehicleId}`}
+        value={qrData}
+        size={80}
+        level="M"
+        includeMargin={false}
+      />
     );
   }
 
@@ -266,7 +295,7 @@ export function VehicleQRCode({
         
         {/* QR Code */}
         {vehicleUrl ? (
-          <div className="flex justify-center p-4 bg-white rounded-lg border">
+          <div className="flex justify-center p-4 bg-slate-100 rounded-xl border border-slate-700">
             <QRCodeSVG
               id={`qr-${vehicleId}`}
               value={qrData}

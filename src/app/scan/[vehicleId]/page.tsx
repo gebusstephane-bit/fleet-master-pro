@@ -11,6 +11,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ThreeCardsChoice } from '@/components/scan/three-cards-choice';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 interface ScanPageProps {
   params: Promise<{
@@ -38,7 +39,7 @@ export default async function ScanPage({ params, searchParams }: ScanPageProps) 
     .select('id, registration_number, brand, model, type, qr_code_data, status')
     .eq('id', vehicleId)
     .eq('qr_code_data', token)
-    .eq('status', 'ACTIF')
+    .eq('status', VEHICLE_STATUS.ACTIF)
     .single();
 
   if (error || !vehicle) {

@@ -283,11 +283,12 @@ function getColumns(type: ExportType): ColDef[] {
     return [
       { header: 'Prénom', getValue: (d) => d.first_name ?? '', bold: true },
       { header: 'Nom', getValue: (d) => d.last_name ?? '', bold: true },
-      { header: 'Email', getValue: (d) => d.email ?? '' },
-      { header: 'Téléphone', getValue: (d) => d.phone ?? '' },
       { header: 'N° Permis', getValue: (d) => d.license_number ?? '', highlight: true },
       { header: 'Type', getValue: (d) => d.license_type ?? '', align: 'center' },
-      { header: 'Expiration', getValue: (d) => formatDateFR(d.license_expiry), align: 'center' },
+      { header: 'Exp. permis', getValue: (d) => formatDateFR(d.license_expiry), align: 'center' },
+      { header: 'FCO', getValue: (d) => formatDateFR(d.fcos_expiry), align: 'center' },
+      { header: 'FIMO', getValue: (d) => formatDateFR(d.fimo_expiry), align: 'center' },
+      { header: 'CQC', getValue: (d) => formatDateFR(d.cqc_expiry_date ?? d.cqc_expiry), align: 'center' },
       { header: 'Statut', getValue: (d) => DRIVER_STATUS_LABELS[d.status] ?? d.status ?? '' },
       { header: 'Score', getValue: (d) => d.safety_score != null ? String(d.safety_score) : '', align: 'center' },
     ];

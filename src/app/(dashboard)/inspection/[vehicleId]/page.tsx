@@ -19,7 +19,7 @@ import {
   Car, Circle, CircleCheck, CircleAlert, CircleX
 } from 'lucide-react';
 import { useVehicle } from '@/hooks/use-vehicles';
-import { createInspectionSafe } from '@/actions/inspections-safe';
+import { createInspectionSafe } from '@/actions/inspections';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PhotoUploadSection } from '@/components/inspection/photo-upload';
 

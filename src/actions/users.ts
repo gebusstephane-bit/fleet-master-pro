@@ -11,7 +11,9 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+import { USER_ROLE } from '@/constants/enums';
 import { requireManagerOrAbove } from '@/lib/auth-guards';
+import { logger } from '@/lib/logger';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 // Schémas de validation
@@ -74,13 +76,13 @@ export async function getUsers(companyId?: string) {
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('getUsers error:', error);
+      logger.error('getUsers error:', error);
       return { error: error.message, data: null };
     }
     
     return { data, error: null };
   } catch (error) {
-    console.error('getUsers exception:', error);
+    logger.error('getUsers exception:', error);
     const message = error instanceof Error ? error.message : 'Erreur inconnue';
     return { error: message, data: null };
   }
@@ -218,17 +220,17 @@ export async function createUser(data: CreateUserData, creatorId: string) {
     }
     
     // Seul ADMIN ou DIRECTEUR peut créer des utilisateurs
-    if (!['ADMIN', 'DIRECTEUR'].includes(creator.role)) {
+    if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(creator.role))) {
       return { error: 'Permissions insuffisantes pour créer un utilisateur', data: null };
     }
-    
+
     // Seul ADMIN peut créer d'autres ADMIN
-    if (data.role === 'ADMIN' && creator.role !== 'ADMIN') {
+    if (data.role === USER_ROLE.ADMIN && creator.role !== USER_ROLE.ADMIN) {
       return { error: 'Seul un administrateur peut créer un autre administrateur', data: null };
     }
-    
+
     // DIRECTEUR ne peut pas créer d'autres DIRECTEUR
-    if (data.role === 'DIRECTEUR' && creator.role === 'DIRECTEUR') {
+    if (data.role === USER_ROLE.DIRECTEUR && creator.role === USER_ROLE.DIRECTEUR) {
       return { error: 'Un directeur ne peut pas créer un autre directeur', data: null };
     }
     
@@ -361,17 +363,17 @@ export async function updateUser(data: UpdateUserData, updaterId: string) {
     }
     
     // Permissions
-    if (!['ADMIN', 'DIRECTEUR'].includes(updater.role)) {
+    if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(updater.role))) {
       return { error: 'Permissions insuffisantes', data: null };
     }
-    
+
     // Seul ADMIN peut modifier un ADMIN
-    if (target.role === 'ADMIN' && updater.role !== 'ADMIN') {
+    if (target.role === USER_ROLE.ADMIN && updater.role !== USER_ROLE.ADMIN) {
       return { error: 'Seul un administrateur peut modifier un administrateur', data: null };
     }
-    
+
     // Seul ADMIN peut changer le rôle
-    if (data.role && updater.role !== 'ADMIN') {
+    if (data.role && updater.role !== USER_ROLE.ADMIN) {
       return { error: 'Seul un administrateur peut changer le rôle', data: null };
     }
     
@@ -441,12 +443,12 @@ export async function deleteUser(userId: string, actorId: string) {
     }
     
     // Permissions
-    if (!['ADMIN', 'DIRECTEUR'].includes(actor.role)) {
+    if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(actor.role))) {
       return { error: 'Permissions insuffisantes', data: null };
     }
-    
+
     // Seul ADMIN peut supprimer un ADMIN
-    if (target.role === 'ADMIN' && actor.role !== 'ADMIN') {
+    if (target.role === USER_ROLE.ADMIN && actor.role !== USER_ROLE.ADMIN) {
       return { error: 'Seul un administrateur peut supprimer un administrateur', data: null };
     }
     
@@ -499,10 +501,10 @@ export async function toggleUserStatus(userId: string, isActive: boolean, actorI
       return { error: 'Acteur non trouvé', data: null };
     }
     
-    if (!['ADMIN', 'DIRECTEUR'].includes(actor.role)) {
+    if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(actor.role))) {
       return { error: 'Permissions insuffisantes', data: null };
     }
-    
+
     // Mettre à jour le profil (RLS)
     const { data, error } = await supabase
       .from('profiles')

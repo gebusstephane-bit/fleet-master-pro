@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
       .from('vehicles')
       .select('*')
       .eq('company_id', profile.company_id)
-      .eq('status', 'ACTIF')
+      .eq('status', VEHICLE_STATUS.ACTIF)
       .order('registration_number');
 
     // Debug: log toutes les colonnes du premier véhicule pour voir la structure
@@ -105,7 +106,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('SOS vehicles API error:', error);
+    logger.error('SOS vehicles API error:', error);
     return NextResponse.json(
       { error: 'Erreur interne du serveur' },
       { status: 500 }

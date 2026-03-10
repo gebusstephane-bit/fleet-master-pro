@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserWithCompany, createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import { addDays, isBefore, parseISO } from 'date-fns';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 export interface UnifiedCalendarEvent {
   id: string;
@@ -35,9 +37,9 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // 1. Événements maintenance depuis agenda_with_details
+    // 1. Événements maintenance depuis maintenance_agenda
     let query = (supabase as any)
-      .from('agenda_with_details')
+      .from('maintenance_agenda')
       .select('*')
       .eq('company_id', user.company_id);
 
@@ -51,7 +53,7 @@ export async function GET(request: NextRequest) {
       .from('vehicles')
       .select('id, registration_number, brand, model, type, technical_control_expiry, technical_control_date, tachy_control_expiry, tachy_control_date, atp_expiry, atp_date')
       .eq('company_id', user.company_id)
-      .eq('status', 'ACTIF');
+      .eq('status', VEHICLE_STATUS.ACTIF);
 
     // 3. maintenance_records avec rdv_date renseigné (non couverts par maintenance_agenda)
     const { data: rdvRecords } = await supabase
@@ -166,7 +168,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ events });
   } catch (error) {
-    console.error('Erreur API calendar/events:', error);
+    logger.error('Erreur API calendar/events:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }

@@ -175,7 +175,7 @@ export default function DriverDetailPage() {
 
             {/* CQC */}
             {d.cqc_card_number ? (
-              <CQCCard number={d.cqc_card_number} expiryDate={d.cqc_expiry} category={d.cqc_category} />
+              <CQCCard number={d.cqc_card_number} expiryDate={d.cqc_expiry_date || d.cqc_expiry} category={d.cqc_category} />
             ) : (
               <div className="rounded-xl p-4 bg-amber-950/40 border border-amber-700/50">
                 <div className="flex items-start gap-3">

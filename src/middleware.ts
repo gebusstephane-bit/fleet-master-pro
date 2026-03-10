@@ -19,6 +19,7 @@ import {
 } from "@/lib/security/rate-limiter";
 import { isRedisConfigured } from "@/lib/security/rate-limiter-redis";
 import { timingSafeEqual, scryptSync } from "crypto";
+import { USER_ROLE } from "@/constants/enums";
 
 // Routes publiques (pas de vérification)
 const publicRoutes = [
@@ -48,6 +49,8 @@ const publicApiRoutes = [
   "/api/stripe/checkout-success",
   // "/api/admin/reset-user-password" - SUPPRIMÉ: protégé par secret dans le middleware
   "/api/cron",
+  // Route de cleanup E2E — accessible sans auth (la route elle-même bloque en production)
+  "/api/e2e",
 ];
 
 // Routes autorisées pendant un paiement en attente
@@ -59,21 +62,27 @@ const pendingPaymentAllowedRoutes = [
 ];
 
 /**
- * Vérifie si une route est une API route publique
+ * Vérifie si une route est une API route publique (auth, stripe webhooks, etc.)
+ * @param pathname - Le chemin de la requête
+ * @returns true si la route est une API publique
  */
 function isPublicApiRoute(pathname: string): boolean {
   return publicApiRoutes.some((route) => pathname.startsWith(route));
 }
 
 /**
- * Vérifie si une route est une route de scan QR Code (publique)
+ * Vérifie si une route est une route de scan QR Code publique
+ * @param pathname - Le chemin de la requête
+ * @returns true si la route commence par /scan/
  */
 function isScanPublicRoute(pathname: string): boolean {
   return scanPublicRoutes.some((route) => pathname.startsWith(route));
 }
 
 /**
- * Extrait l'IP réelle du client
+ * Extrait l'IP réelle du client depuis les headers X-Forwarded-For ou X-Real-IP
+ * @param request - La requête Next.js
+ * @returns L'adresse IP du client ou "unknown"
  */
 function getClientIP(request: NextRequest): string {
   const forwardedFor = request.headers.get("x-forwarded-for");
@@ -90,7 +99,8 @@ function getClientIP(request: NextRequest): string {
 }
 
 /**
- * Vérifie le secret admin de manière constant-time (protection timing attack)
+ * Vérifie le secret admin de manière constant-time (protection timing attack).
+ * Utilise timingSafeEqual pour éviter les attaques par analyse de temps.
  * @param providedSecret - Le secret fourni dans le header
  * @param expectedSecret - Le secret attendu (depuis env)
  * @returns boolean - true si le secret est valide
@@ -121,8 +131,12 @@ function verifyAdminSecret(
 }
 
 /**
- * Applique le rate limiting aux routes API
- * Retourne une réponse 429 si la limite est dépassée, null sinon
+ * Applique le rate limiting aux routes API selon le type de route.
+ * Routes spéciales : checkout, auth, sos (limites différentes).
+ * Retourne une réponse 429 si la limite est dépassée, null sinon.
+ * @param request - La requête Next.js
+ * @param pathname - Le chemin de la route
+ * @returns Réponse 429 ou null si OK
  */
 async function applyRateLimit(
   request: NextRequest,
@@ -212,8 +226,12 @@ async function applyRateLimit(
 }
 
 /**
- * Vérifie l'autorisation pour les routes admin
- * Retourne une réponse 401 si non autorisé, null si OK
+ * Vérifie l'autorisation pour les routes admin via secret.
+ * Routes protégées : reset-user-password, create-superadmin.
+ * Retourne une réponse 401/403 si non autorisé, null si OK.
+ * @param request - La requête Next.js
+ * @param pathname - Le chemin de la route admin
+ * @returns Réponse d'erreur ou null si autorisé
  */
 async function checkAdminAuthorization(
   request: NextRequest,
@@ -291,6 +309,13 @@ async function checkAdminAuthorization(
   );
 }
 
+/**
+ * Middleware Next.js principal - Gère l'authentification, les abonnements et la sécurité.
+ * Flux : 1) Protection admin, 2) Superadmin, 3) Routes publiques, 4) Rate limiting,
+ * 5) Authentification, 6) Rôles (chauffeurs), 7) Statut abonnement, 8) Onboarding.
+ * @param request - La requête Next.js entrante
+ * @returns NextResponse (continuation, redirection ou erreur)
+ */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -498,7 +523,7 @@ export async function middleware(request: NextRequest) {
   // ============================================
   
   const userRole = profile?.role;
-  const isChauffeur = userRole === 'CHAUFFEUR';
+  const isChauffeur = userRole === USER_ROLE.CHAUFFEUR;
   
   // Si c'est un chauffeur : restrictions d'accès
   if (isChauffeur) {

@@ -67,8 +67,12 @@ export type CreateDriverInput = z.infer<typeof createDriverSchema>;
 export type UpdateDriverInput = Partial<CreateDriverInput> & { id: string };
 
 /**
- * Créer un chauffeur
- * RLS : Vérifie que l'email n'existe pas déjà dans la company
+ * Crée un nouveau chauffeur pour la société connectée.
+ * Vérifie l'unicité de l'email dans la société avant création.
+ * Synchronise les champs CQC (cqc_expiry et cqc_expiry_date) pour rétrocompatibilité.
+ * @param parsedInput - Données validées du schéma createDriverSchema
+ * @param ctx - Contexte d'authentification avec user.company_id
+ * @returns Le chauffeur créé avec succès
  */
 export const createDriver = authActionClient
   .schema(createDriverSchema)
@@ -108,8 +112,12 @@ export const createDriver = authActionClient
   });
 
 /**
- * Mettre à jour un chauffeur
- * RLS : Filtre automatiquement par company_id
+ * Met à jour un chauffeur existant.
+ * Recalcule is_active en fonction du statut (active ou on_leave = actif).
+ * Synchronise les champs CQC pour rétrocompatibilité.
+ * @param parsedInput - Données partielles incluant l'ID du chauffeur
+ * @param ctx - Contexte d'authentification
+ * @returns Le chauffeur mis à jour
  */
 export const updateDriver = authActionClient
   .schema(createDriverSchema.partial().extend({ id: z.string().uuid() }))
@@ -154,8 +162,11 @@ export const updateDriver = authActionClient
   });
 
 /**
- * Supprimer un chauffeur
- * RLS : Vérifie l'appartenance à la company
+ * Supprime définitivement un chauffeur de la base de données.
+ * Vérifie que l'utilisateur a les permissions MANAGER ou supérieures.
+ * @param parsedInput - Objet contenant l'ID du chauffeur à supprimer
+ * @param ctx - Contexte d'authentification
+ * @returns Confirmation de suppression
  */
 export const deleteDriver = authActionClient
   .schema(idSchema)
@@ -194,8 +205,10 @@ export const deleteDriver = authActionClient
   });
 
 /**
- * Récupérer tous les chauffeurs
- * RLS : Filtre automatiquement par company_id
+ * Récupère tous les chauffeurs de la société avec leurs véhicules assignés.
+ * Effectue une jointure manuelle avec les véhicules (RLS filtre les deux tables).
+ * @param ctx - Contexte d'authentification avec company_id
+ * @returns Liste des chauffeurs enrichie avec le véhicule assigné
  */
 export const getDrivers = authActionClient
   .action(async ({ ctx }) => {
@@ -213,11 +226,11 @@ export const getDrivers = authActionClient
     // Récupérer les véhicules séparément (RLS filtre aussi)
     const { data: vehicles } = await supabase
       .from('vehicles')
-      .select('id, registration_number, brand, model, driver_id');
+      .select('id, registration_number, brand, model, assigned_driver_id');
     
     // Fusionner les données
     const driversWithVehicles = (data || []).map(driver => {
-      const vehicle = vehicles?.find(v => v.driver_id === driver.id);
+      const vehicle = vehicles?.find(v => v.assigned_driver_id === driver.id);
       return { ...driver, vehicles: vehicle || null };
     });
     
@@ -225,8 +238,11 @@ export const getDrivers = authActionClient
   });
 
 /**
- * Récupérer un chauffeur par ID
- * RLS : Filtre par company_id automatiquement
+ * Récupère un chauffeur spécifique par son ID.
+ * Inclut le véhicule qui lui est assigné si existe.
+ * @param parsedInput - Objet contenant l'ID du chauffeur
+ * @param ctx - Contexte d'authentification
+ * @returns Le chauffeur avec son véhicule assigné
  */
 export const getDriverById = authActionClient
   .schema(idSchema)

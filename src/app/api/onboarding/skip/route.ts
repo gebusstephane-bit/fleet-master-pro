@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
       .eq("id", companyId);
 
     if (error) {
-      console.error("Error skipping onboarding:", error);
+      logger.error("Error skipping onboarding:", error);
       return NextResponse.json(
         { error: "Erreur" },
         { status: 500 }
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, skipped: true });
   } catch (error) {
-    console.error("Error in skip onboarding:", error);
+    logger.error("Error in skip onboarding:", error);
     return NextResponse.json(
       { error: "Erreur serveur" },
       { status: 500 }

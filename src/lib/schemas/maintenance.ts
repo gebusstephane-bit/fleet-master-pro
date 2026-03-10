@@ -51,7 +51,7 @@ export const maintenanceSchema = z.object({
   partsCost: z.number().min(0).default(0),
   notes: z.string().optional(),
   status: z.enum(['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS', 'TERMINEE', 'REFUSEE']).default('DEMANDE_CREEE'),
-  priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).default('NORMAL'),
+  priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'CRITICAL']).default('NORMAL'),
 });
 
 export const maintenanceAlertSchema = z.object({
@@ -153,7 +153,14 @@ export function calculateNextService(
   serviceDate: string,
   config?: { intervalKm?: number; intervalMonths?: number; intervalYears?: number }
 ) {
-  const typeConfig = maintenanceTypeConfig[type] as any;
+  const typeConfig = maintenanceTypeConfig[type] as {
+    label: string;
+    icon: string;
+    color: string;
+    defaultIntervalKm?: number;
+    defaultIntervalMonths?: number;
+    defaultIntervalYears?: number;
+  };
   
   const nextMileage = typeConfig?.defaultIntervalKm 
     ? currentMileage + (config?.intervalKm || typeConfig.defaultIntervalKm)
@@ -165,10 +172,10 @@ export function calculateNextService(
   
   if (config?.intervalMonths || typeConfig?.defaultIntervalMonths) {
     const months = config?.intervalMonths || typeConfig.defaultIntervalMonths;
-    nextDate = new Date(baseDate.getTime() + months * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    nextDate = new Date(baseDate.getTime() + months! * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   } else if (config?.intervalYears || typeConfig?.defaultIntervalYears) {
     const years = config?.intervalYears || typeConfig.defaultIntervalYears;
-    nextDate = new Date(baseDate.setFullYear(baseDate.getFullYear() + years)).toISOString().split('T')[0];
+    nextDate = new Date(baseDate.setFullYear(baseDate.getFullYear() + years!)).toISOString().split('T')[0];
   }
     
   return { nextMileage, nextDate };

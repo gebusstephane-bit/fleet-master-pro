@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/types/supabase';
 
@@ -280,7 +281,7 @@ export async function GET(
       },
     });
   } catch (err) {
-    console.error('[PDF incident]', err);
+    logger.error('[PDF incident]', err);
     return NextResponse.json({ error: 'Erreur génération PDF' }, { status: 500 });
   }
 }

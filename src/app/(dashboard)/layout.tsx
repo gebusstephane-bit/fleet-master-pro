@@ -11,6 +11,7 @@ import { ClientLayout } from "./ClientLayout";
 import { getUserWithCompany } from "@/lib/supabase/server";
 import { RegulatoryAssistant } from "@/components/ai/RegulatoryAssistant";
 import { TrialBanner } from "@/components/billing/TrialBanner";
+import { SupportWidget } from "@/components/support/SupportWidget";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -54,6 +55,7 @@ export default async function DashboardLayout({
           {children}
         </MainContent>
         <RegulatoryAssistant plan={(user as any)?.companies?.subscription_plan || 'essential'} />
+        <SupportWidget />
       </div>
     </ClientLayout>
   );

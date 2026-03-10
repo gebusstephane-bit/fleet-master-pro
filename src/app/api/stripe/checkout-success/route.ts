@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     const email = session.customer_details?.email || session.customer?.email;
 
     if (!email) {
-      console.error('Pas d\'email dans la session Stripe');
+      logger.error('Pas d\'email dans la session Stripe');
       return NextResponse.redirect(new URL('/register?error=no_email', request.url));
     }
 
@@ -294,7 +294,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
     
   } catch (error) {
-    console.error('Erreur checkout-success:', error);
+    logger.error('Erreur checkout-success:', error);
     return NextResponse.redirect(new URL('/register?error=server_error', request.url));
   }
 }

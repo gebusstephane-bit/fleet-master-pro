@@ -57,6 +57,14 @@ const RULE_KEYWORDS: Record<string, string[]> = {
   pneumatique:   ['pneu', 'pneumatique', 'gomme', 'roue'],
   reglementaire: ['controle technique', 'contrôle technique', 'tachygraphe', 'tachy', 'atp'],
   autre:         [],
+  // Nouvelles catégories pour remorques spécifiques (2026-03-08)
+  roulement:     ['moyeu', 'roulement', 'joint spi', 'graissage train'],
+  geometrie:     ['alignement', 'parallélisme', 'geometrie', 'géométrie'],
+  bequilles:     ['béquille', 'bequille', 'vérin', 'verin', 'pied', 'support'],
+  securite:      ['ebs', 'abs', 'diagnostic', 'iso 7638'],
+  structure:     ['soudure', 'fissure', 'corrosion', 'longeron'],
+  divers:        ['extincteur', 'sangle', 'arrimage', 'barre', 'rail'],
+  conteneur:     ['twistlock', 'verrou tournant', 'coin conteneur'],
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -73,7 +81,7 @@ export async function predictMaintenanceForVehicle(
   // NOTE: Récupération des dates réglementaires pour fallback (CT, Tachygraphe)
   const { data: vehicle, error: vErr } = await supabase
     .from('vehicles')
-    .select('id, registration_number, brand, model, type, fuel_type, mileage, purchase_date, created_at, technical_control_date, tachy_control_date, atp_date')
+    .select('id, registration_number, brand, model, type, detailed_type, fuel_type, mileage, purchase_date, created_at, technical_control_date, tachy_control_date, atp_date')
     .eq('id', vehicleId)
     .single()
 
@@ -83,13 +91,22 @@ export async function predictMaintenanceForVehicle(
 
   // 2. Règles applicables (système + règles perso de la company)
   // Filtre : type véhicule dans applicable_vehicle_types (ou null = tous)
+  // Rétrocompatibilité : Si detailed_type existe et diffère de type, on l'ajoute au filtre
+  // pour matcher les règles spécifiques (ex: REMORQUE_TAUTLINER en plus de REMORQUE)
+  const orConditions = [
+    `applicable_vehicle_types.cs.{"${vehicle.type}"}`,
+    `applicable_vehicle_types.is.null`
+  ]
+  
+  if (vehicle.detailed_type && vehicle.detailed_type !== vehicle.type) {
+    orConditions.push(`applicable_vehicle_types.cs.{"${vehicle.detailed_type}"}`)
+  }
+  
   const { data: rules, error: rErr } = await supabase
     .from('maintenance_rules')
     .select('*')
     .eq('is_active', true)
-    .or(
-      `applicable_vehicle_types.cs.{"${vehicle.type}"},applicable_vehicle_types.is.null`
-    )
+    .or(orConditions.join(','))
 
   if (rErr || !rules?.length) return []
 

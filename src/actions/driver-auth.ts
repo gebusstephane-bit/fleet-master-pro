@@ -15,6 +15,7 @@ import { revalidatePath } from 'next/cache';
 import { authActionClient } from '@/lib/safe-action';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { USER_ROLE } from '@/constants/enums';
 
 // ============================================================================
 // SCHÉMAS DE VALIDATION
@@ -67,7 +68,7 @@ async function verifyAdminOrDirector(userId: string, companyId: string): Promise
   }
   
   // Vérifier le rôle et le company_id
-  const allowedRoles = ['ADMIN', 'DIRECTEUR'];
+  const allowedRoles: string[] = [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR];
   const hasRole = allowedRoles.includes(profile.role);
   const hasCompany = profile.company_id === companyId;
   
@@ -121,7 +122,7 @@ export const createDriverAccount = authActionClient
       const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
       
       if (listError) {
-        console.error('[createDriverAccount] Erreur listUsers:', listError);
+        logger.error('[createDriverAccount] Erreur listUsers:', listError);
         throw new Error('Erreur lors de la vérification de l\'email');
       }
       
@@ -141,11 +142,11 @@ export const createDriverAccount = authActionClient
         user_metadata: {
           first_name: firstName,
           last_name: lastName,
-          role: 'CHAUFFEUR',
+          role: USER_ROLE.CHAUFFEUR,
           company_id: companyId,
         },
         app_metadata: {
-          role: 'CHAUFFEUR',
+          role: USER_ROLE.CHAUFFEUR,
           company_id: companyId,
         },
       });
@@ -167,7 +168,7 @@ export const createDriverAccount = authActionClient
           first_name: firstName,
           last_name: lastName,
           company_id: companyId,
-          role: 'CHAUFFEUR',
+          role: USER_ROLE.CHAUFFEUR,
           is_active: true,
           created_by: ctx.user.id,
         });
@@ -423,7 +424,7 @@ export const reactivateDriverAccount = authActionClient
       };
       
     } catch (error) {
-      console.error('[reactivateDriverAccount] Erreur:', error);
+      logger.error('[reactivateDriverAccount] Erreur:', error);
       throw error;
     }
   });

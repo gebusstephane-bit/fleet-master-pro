@@ -165,11 +165,11 @@ export async function getMaintenancesWithVehicles(
       )
     `)
     .eq('vehicles.company_id', companyId)
-    .order('service_date', { ascending: false })
+    .order('requested_at', { ascending: false })
     .limit(pageSize);
   
   if (cursor) {
-    query = query.lt('service_date', cursor);
+    query = query.lt('requested_at', cursor);
   }
   
   if (status) {
@@ -183,7 +183,7 @@ export async function getMaintenancesWithVehicles(
   }
   
   const nextCursor = data && data.length === pageSize
-    ? data[data.length - 1].service_date
+    ? data[data.length - 1].requested_at
     : null;
   
   return {

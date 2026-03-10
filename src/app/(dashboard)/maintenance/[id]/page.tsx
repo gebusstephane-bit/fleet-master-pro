@@ -12,8 +12,7 @@ import {
   ArrowLeft, Calendar, MapPin, Phone, User, 
   Clock, Euro, FileText, Wrench, CheckCircle2, AlertTriangle 
 } from 'lucide-react';
-import { updateMaintenanceStatus } from '@/actions/maintenance';
-import { getMaintenanceById } from '@/actions/maintenance-workflow';
+import { updateMaintenanceStatus, getMaintenanceById } from '@/actions/maintenance-workflow';
 import { MaintenanceStatusBadge } from '@/components/maintenance/maintenance-status-badge';
 import { MaintenanceTypeBadge } from '@/components/maintenance/maintenance-type-badge';
 import { MaintenanceTimeline } from '@/components/maintenance/maintenance-timeline';
@@ -22,6 +21,7 @@ import { CompleteMaintenanceDialog } from '@/components/maintenance/complete-mai
 import { useUser } from '@/hooks/use-user';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { USER_ROLE } from '@/constants/enums';
 import { getSupabaseClient } from '@/lib/supabase/client';
 
 interface LinkedIncident {
@@ -89,7 +89,7 @@ export default function MaintenanceDetailPage() {
   const { data: user, isLoading: userLoading } = useUser();
 
   // Rôles autorisés à voir les boutons de transition
-  const isManagerOrAbove = ['ADMIN', 'MANAGER', 'DIRECTEUR'].includes(user?.role || '');
+  const isManagerOrAbove = [USER_ROLE.ADMIN, 'MANAGER', USER_ROLE.DIRECTEUR].includes(user?.role || '');
 
   const loadMaintenance = async () => {
     setLoading(true);

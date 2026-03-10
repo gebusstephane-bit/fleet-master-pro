@@ -26,6 +26,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
+import { VEHICLE_STATUS, USER_ROLE } from '@/constants/enums';
 
 // ============================================================
 // CONFIGURATION
@@ -257,7 +258,7 @@ export async function GET(request: NextRequest) {
       .select(
         'id, company_id, registration_number, brand, model, technical_control_expiry, tachy_control_expiry, atp_expiry'
       )
-      .eq('status', 'ACTIF');
+      .eq('status', VEHICLE_STATUS.ACTIF);
 
     if (vehiclesError || !vehicles) {
       logger.error('Cron: échec récupération véhicules', { error: vehiclesError instanceof Error ? vehiclesError.message : String(vehiclesError) });
@@ -278,7 +279,7 @@ export async function GET(request: NextRequest) {
         .from('profiles')
         .select('email')
         .eq('company_id', companyId)
-        .in('role', ['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'])
+        .in('role', [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC])
         .not('email', 'is', null);
 
       const emails = (profiles || [])

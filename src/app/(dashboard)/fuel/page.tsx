@@ -18,6 +18,7 @@ import { FuelMobileCards } from '@/components/fuel/fuel-mobile-cards';
 import { FuelExportButtons } from '@/components/fuel/fuel-export-buttons';
 import { FuelAnomaliesPanel } from '@/components/fuel/fuel-anomalies-panel';
 import { FuelRecord, FuelFilters } from '@/types/fuel';
+import { USER_ROLE } from '@/constants/enums';
 import { toast } from 'sonner';
 
 export default function FuelPage() {
@@ -112,7 +113,7 @@ export default function FuelPage() {
   };
 
   // Permissions
-  const canCreate = user?.role === 'ADMIN' || user?.role === 'AGENT_DE_PARC';
+  const canCreate = user?.role === USER_ROLE.ADMIN || user?.role === USER_ROLE.AGENT_DE_PARC;
   const userRole = user?.role;
 
   // Véhicules pour filtres

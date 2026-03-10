@@ -39,6 +39,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, type EmailOptions } from '@/lib/email';
 import { logger } from '@/lib/logger';
+import { USER_ROLE } from '@/constants/enums';
 
 // ============================================================
 // CONFIGURATION
@@ -574,7 +575,7 @@ export async function GET(request: NextRequest) {
         .from('profiles')
         .select('id, email')
         .eq('company_id', companyId)
-        .in('role', ['ADMIN', 'DIRECTEUR'])
+        .in('role', [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR])
         .not('email', 'is', null);
 
       const managers = (profiles || []).filter(

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { withApiAuth, apiSuccess, apiError } from '@/lib/api-auth';
 import { z } from 'zod';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 const querySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
       'id, registration_number, technical_control_expiry, tachy_control_expiry, atp_expiry, insurance_expiry'
     )
     .eq('company_id', auth.companyId)
-    .neq('status', 'ARCHIVE');
+    .neq('status', VEHICLE_STATUS.ARCHIVE);
 
   const vehicleDocs = [
     { key: 'technical_control_expiry', label: 'CT expiré' },
@@ -102,7 +103,7 @@ export async function GET(request: NextRequest) {
   const { data: drivers } = await supabase
     .from('drivers')
     .select(
-      'id, first_name, last_name, license_expiry, medical_certificate_expiry, fimo_expiry, cqc_expiry, driver_card_expiry'
+      'id, first_name, last_name, license_expiry, medical_certificate_expiry, fimo_expiry, cqc_expiry_date, driver_card_expiry'
     )
     .eq('company_id', auth.companyId)
     .eq('is_active', true);
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest) {
     { key: 'license_expiry', label: 'Permis de conduire expiré' },
     { key: 'medical_certificate_expiry', label: 'Certificat médical expiré' },
     { key: 'fimo_expiry', label: 'FIMO expirée' },
-    { key: 'cqc_expiry', label: 'CQC expiré' },
+    { key: 'cqc_expiry_date', label: 'CQC expiré' },
     { key: 'driver_card_expiry', label: 'Carte conducteur expirée' },
   ] as const;
 

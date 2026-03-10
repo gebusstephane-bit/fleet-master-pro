@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import { generatePDF, ExportType } from '@/lib/export/pdf-generator';
 import { fileDateStamp } from '@/lib/export/formatters';
 
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (err) {
-    console.error('[export/pdf] Error:', err);
+    logger.error('[export/pdf] Error:', err);
     return new NextResponse('Erreur interne lors de la génération du PDF', { status: 500 });
   }
 }
@@ -111,7 +112,7 @@ async function fetchData(supabase: any, type: ExportType, company_id: string): P
         .from('maintenance_records')
         .select('*, vehicles(brand, model, registration_number)')
         .eq('company_id', company_id)
-        .order('scheduled_date', { ascending: false });
+        .order('requested_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
     }

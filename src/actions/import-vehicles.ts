@@ -13,6 +13,7 @@ import { logger } from '@/lib/logger';
 import { PLANS } from '@/lib/plans';
 import { createClient } from '@/lib/supabase/server';
 import { VehicleImportRowSchema } from '@/lib/import-validators';
+import { VEHICLE_STATUS, USER_ROLE } from '@/constants/enums';
 
 export interface VehicleImportRow {
   immatriculation: string;
@@ -77,7 +78,7 @@ export async function importVehiclesBatch(
       };
     }
 
-    if (!['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'].includes(profile.role)) {
+    if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC] as string[]).includes(profile.role))) {
       return {
         success: 0,
         errors: [{ row: 0, field: 'role', message: 'Permissions insuffisantes' }],
@@ -160,7 +161,7 @@ export async function importVehiclesBatch(
           mileage,
           vin: vinValue,
           color: 'Non précisé',
-          status: 'ACTIF',
+          status: VEHICLE_STATUS.ACTIF,
           qr_code_data: `fleetmaster://vehicle/${vehicleId}`,
           purchase_date: row.date_mise_en_service?.trim() || null,
           technical_control_date: row.date_controle_technique?.trim() || null,

@@ -94,8 +94,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly:      true,
-        // @ts-ignore
-        applicationServerKey: urlB64ToUint8Array(vapidPublicKey) as any,
+        // @ts-ignore — applicationServerKey accepte Uint8Array mais les types DOM sont incorrects
+        applicationServerKey: urlB64ToUint8Array(vapidPublicKey),
       });
 
       // 4. Envoyer au serveur

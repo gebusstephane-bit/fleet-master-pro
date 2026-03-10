@@ -7,10 +7,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { PLAN_LIMITS } from '@/lib/plans';
+import { PLAN_LIMITS, type PlanType } from '@/lib/plans';
 import { checkSensitiveRateLimit, getRateLimitHeaders } from '@/lib/security/rate-limiter';
 import { withCSRFProtection } from '@/lib/security/csrf';
 import { logger } from '@/lib/logger';
+import { sendEmail } from '@/lib/email/client';
+import { welcomeEmailTemplate, welcomeEmailText } from '@/lib/email/templates/welcome';
 
 interface RegisterTrialRequest {
   companyName: string;
@@ -34,16 +36,21 @@ async function handler(request: NextRequest) {
   
   try {
     const body: RegisterTrialRequest = await request.json();
-    const { 
-      companyName, 
-      siret, 
-      firstName, 
-      lastName, 
-      email, 
-      phone, 
+    const {
+      companyName,
+      siret,
+      firstName,
+      lastName,
+      email,
+      phone,
       password,
       plan = 'pro'
     } = body;
+
+    // Résolution du plan : normaliser en uppercase, fallback PRO si invalide
+    const VALID_PLANS: PlanType[] = ['ESSENTIAL', 'PRO', 'UNLIMITED'];
+    const normalizedPlan = plan.toUpperCase() as PlanType;
+    const trialPlan: PlanType = VALID_PLANS.includes(normalizedPlan) ? normalizedPlan : DEFAULT_TRIAL_PLAN;
 
     // Validation
     if (!companyName || !email || !password || !firstName || !lastName) {
@@ -99,16 +106,21 @@ async function handler(request: NextRequest) {
         first_name: firstName,
         last_name: lastName,
         company_name: companyName,
-        plan: DEFAULT_TRIAL_PLAN,
+        plan: trialPlan,
         trial_ends_at: trialEndsAt.toISOString(),
       },
     });
 
     if (authError || !authData.user) {
-      console.error('Error creating user:', authError);
+      logger.error('Error creating user:', authError);
+      // Supabase Auth retourne ce message quand l'email est déjà enregistré
+      const isEmailTaken =
+        authError?.message?.toLowerCase().includes('already registered') ||
+        authError?.message?.toLowerCase().includes('already been registered') ||
+        authError?.code === '23505';
       return NextResponse.json(
-        { error: 'Erreur lors de la création du compte' },
-        { status: 500 }
+        { error: isEmailTaken ? 'Un compte existe déjà avec cet email' : 'Erreur lors de la création du compte' },
+        { status: isEmailTaken ? 409 : 500 }
       );
     }
 
@@ -126,10 +138,10 @@ async function handler(request: NextRequest) {
         country: 'France',
         phone: phone || null,
         email,
-        subscription_plan: DEFAULT_TRIAL_PLAN.toLowerCase(),
+        subscription_plan: trialPlan.toLowerCase(),
         subscription_status: 'trialing',
-        max_vehicles: PLAN_LIMITS[DEFAULT_TRIAL_PLAN].vehicleLimit,
-        max_drivers: PLAN_LIMITS[DEFAULT_TRIAL_PLAN].userLimit,
+        max_vehicles: PLAN_LIMITS[trialPlan].vehicleLimit,
+        max_drivers: PLAN_LIMITS[trialPlan].userLimit,
         onboarding_completed: false,
       })
       .select()
@@ -138,10 +150,12 @@ async function handler(request: NextRequest) {
     if (companyError) {
       // Rollback : supprimer l'utilisateur
       await supabase.auth.admin.deleteUser(userId);
-      console.error('Error creating company:', companyError);
+      logger.error('Error creating company:', companyError);
+      // Code 23505 = unique_violation (contrainte SIRET)
+      const isSiretTaken = (companyError as any).code === '23505';
       return NextResponse.json(
-        { error: 'Erreur lors de la création de l\'entreprise' },
-        { status: 500 }
+        { error: isSiretTaken ? 'Un compte avec ce SIRET existe déjà' : 'Erreur lors de la création de l\'entreprise' },
+        { status: isSiretTaken ? 409 : 500 }
       );
     }
 
@@ -159,7 +173,7 @@ async function handler(request: NextRequest) {
       // Rollback
       await supabase.auth.admin.deleteUser(userId);
       await supabase.from('companies').delete().eq('id', company.id);
-      console.error('Error creating profile:', profileError);
+      logger.error('Error creating profile:', profileError);
       return NextResponse.json(
         { error: 'Erreur lors de la création du profil' },
         { status: 500 }
@@ -167,12 +181,14 @@ async function handler(request: NextRequest) {
     }
 
     // 4. CRÉER L'ABONNEMENT AVEC ESSAI
-    const { error: subscriptionError } = await supabase.from('subscriptions').insert({
+    // Upsert (et non insert) : un trigger DB peut avoir déjà créé une ligne
+    // pour ce company_id lors de l'insertion de la company (contrainte unique).
+    const { error: subscriptionError } = await supabase.from('subscriptions').upsert({
       company_id: company.id,
-      plan: DEFAULT_TRIAL_PLAN,
+      plan: trialPlan,
       status: 'TRIALING',
-      vehicle_limit: PLAN_LIMITS[DEFAULT_TRIAL_PLAN].vehicleLimit,
-      user_limit: PLAN_LIMITS[DEFAULT_TRIAL_PLAN].userLimit,
+      vehicle_limit: PLAN_LIMITS[trialPlan].vehicleLimit,
+      user_limit: PLAN_LIMITS[trialPlan].userLimit,
       trial_ends_at: trialEndsAt.toISOString(),
       features: [
         'vehicles',
@@ -188,13 +204,13 @@ async function handler(request: NextRequest) {
       ],
       current_period_start: new Date().toISOString(),
       current_period_end: trialEndsAt.toISOString(),
-    });
+    }, { onConflict: 'company_id' });
 
     if (subscriptionError) {
       // Rollback
       await supabase.auth.admin.deleteUser(userId);
       await supabase.from('companies').delete().eq('id', company.id);
-      console.error('Error creating subscription:', subscriptionError);
+      logger.error('Error creating subscription:', subscriptionError);
       return NextResponse.json(
         { error: 'Erreur lors de la création de l\'abonnement' },
         { status: 500 }
@@ -211,11 +227,24 @@ async function handler(request: NextRequest) {
       description: 'Inscription avec essai gratuit 14 jours',
       metadata: {
         trial_ends_at: trialEndsAt.toISOString(),
-        plan: DEFAULT_TRIAL_PLAN,
+        plan: trialPlan,
       },
     });
 
     logger.info(`User registered with trial: ${email} (Company: ${company.id})`);
+
+    // 6. EMAIL DE BIENVENUE
+    try {
+      await sendEmail({
+        to: email,
+        subject: `Bienvenue sur FleetMaster Pro — votre essai commence maintenant`,
+        html: welcomeEmailTemplate({ firstName, companyName, trialEndsAt }),
+        text: welcomeEmailText({ firstName, companyName, trialEndsAt }),
+      });
+    } catch (emailError) {
+      // L'email de bienvenue n'est pas bloquant
+      logger.error('Erreur envoi email de bienvenue:', emailError);
+    }
 
     const duration = Date.now() - startTime;
 

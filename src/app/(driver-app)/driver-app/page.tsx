@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 // ============================================================================
 // PAGE D'ACCUEIL CONDUCTEUR
@@ -53,7 +54,7 @@ export default async function DriverHomePage() {
   
   // Récupérer la dernière inspection
   const { data: lastInspection } = await supabase
-    .from('inspections')
+    .from('vehicle_inspections')
     .select('id, score, created_at, status')
     .eq('driver_id', driver?.id || '')
     .order('created_at', { ascending: false })
@@ -66,7 +67,7 @@ export default async function DriverHomePage() {
     .select('id, type, description, scheduled_date, priority, status')
     .eq('vehicle_id', vehicle?.id || '')
     .in('status', ['scheduled', 'pending'])
-    .order('scheduled_date', { ascending: true })
+    .order('requested_at', { ascending: true })
     .limit(1)
     .maybeSingle();
   
@@ -112,16 +113,16 @@ export default async function DriverHomePage() {
                   variant="outline" 
                   className={cn(
                     'font-normal',
-                    vehicle.status === 'ACTIF' && 'border-green-500/50 text-green-400 bg-green-500/10',
-                    vehicle.status === 'EN_MAINTENANCE' && 'border-amber-500/50 text-amber-400 bg-amber-500/10',
-                    vehicle.status === 'INACTIF' && 'border-red-500/50 text-red-400 bg-red-500/10',
-                    vehicle.status === 'ARCHIVE' && 'border-slate-500/50 text-slate-400 bg-slate-500/10',
+                    vehicle.status === VEHICLE_STATUS.ACTIF && 'border-green-500/50 text-green-400 bg-green-500/10',
+                    vehicle.status === VEHICLE_STATUS.EN_MAINTENANCE && 'border-amber-500/50 text-amber-400 bg-amber-500/10',
+                    vehicle.status === VEHICLE_STATUS.INACTIF && 'border-red-500/50 text-red-400 bg-red-500/10',
+                    vehicle.status === VEHICLE_STATUS.ARCHIVE && 'border-slate-500/50 text-slate-400 bg-slate-500/10',
                   )}
                 >
-                  {vehicle.status === 'ACTIF' && 'Actif'}
-                  {vehicle.status === 'EN_MAINTENANCE' && 'En maintenance'}
-                  {vehicle.status === 'INACTIF' && 'Inactif'}
-                  {vehicle.status === 'ARCHIVE' && 'Archivé'}
+                  {vehicle.status === VEHICLE_STATUS.ACTIF && 'Actif'}
+                  {vehicle.status === VEHICLE_STATUS.EN_MAINTENANCE && 'En maintenance'}
+                  {vehicle.status === VEHICLE_STATUS.INACTIF && 'Inactif'}
+                  {vehicle.status === VEHICLE_STATUS.ARCHIVE && 'Archivé'}
                 </Badge>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-3">

@@ -1,9 +1,28 @@
 /**
  * Calcul des dates d'échéances réglementaires
  * CT, Tachygraphe, ATP selon le type de véhicule
+ * 
+ * ⚠️ DEPRECATED: Ce fichier est maintenu pour compatibilité legacy.
+ * 🆕 POUR LES NOUVELLES FONCTIONNALITÉS: Utilisez src/lib/compliance/calculate-deadlines.ts
+ *    - Support des activités ADR, Frigo, etc.
+ *    - Intégration avec compliance_rules
+ *    - Interface unifiée ComplianceDeadline
  */
 
 import { addYears, addMonths, format, parseISO } from 'date-fns';
+
+/**
+ * Types d'activités de transport (pour intégration avec nouveau système)
+ * @deprecated Utilisez TransportActivity depuis calculate-deadlines.ts
+ */
+export type TransportActivity =
+  | 'MARCHANDISES_GENERALES'
+  | 'FRIGORIFIQUE'
+  | 'ADR_COLIS'
+  | 'ADR_CITERNE'
+  | 'CONVOI_EXCEPTIONNEL'
+  | 'BENNE_TRAVAUX_PUBLICS'
+  | 'ANIMAUX_VIVANTS';
 
 export type VehicleType =
   | 'VOITURE'
@@ -292,3 +311,81 @@ export const vehicleTypeConfig: Record<VehicleType, {
     requiresATP: true,
   },
 };
+
+// ============================================
+// BRIDGE VERS NOUVEAU SYSTÈME (calculate-deadlines.ts)
+// ============================================
+
+/**
+ * Détermine l'activité de transport implicite selon le type de véhicule
+ * Cette fonction permet la transition vers le nouveau système basé sur les activités
+ * 
+ * @param vehicleType Type de véhicule
+ * @returns L'activité de transport correspondante
+ */
+export function inferActivityFromVehicleType(vehicleType: VehicleType): TransportActivity {
+  switch (vehicleType) {
+    case 'POIDS_LOURD_FRIGO':
+    case 'REMORQUE_FRIGO':
+      return 'FRIGORIFIQUE';
+    case 'VOITURE':
+    case 'FOURGON':
+    case 'POIDS_LOURD':
+    case 'TRACTEUR_ROUTIER':
+    case 'REMORQUE':
+    default:
+      return 'MARCHANDISES_GENERALES';
+  }
+}
+
+/**
+ * Génère la liste des documents requis selon l'activité
+ * Utilisé pour prévisualiser les exigences avant création de véhicule
+ * 
+ * @param activity Activité de transport
+ * @returns Liste des codes de documents requis
+ */
+export function getRequiredDocumentsForActivity(activity: TransportActivity): string[] {
+  const baseDocs = ['CT'];
+  
+  switch (activity) {
+    case 'MARCHANDISES_GENERALES':
+      return [...baseDocs, 'TACHY'];
+      
+    case 'FRIGORIFIQUE':
+      return [...baseDocs, 'TACHY', 'ATP', 'ETALONNAGE'];
+      
+    case 'ADR_COLIS':
+      return [...baseDocs, 'TACHY', 'ADR_CERT', 'ADR_EQUIPEMENT'];
+      
+    case 'ADR_CITERNE':
+      return [...baseDocs, 'TACHY', 'ADR_CERT', 'ADR_EQUIPEMENT', 'ETANCHEITE', 'HYDRAULIQUE'];
+      
+    case 'CONVOI_EXCEPTIONNEL':
+      return [...baseDocs, 'TACHY', 'AUTORISATION'];
+      
+    case 'BENNE_TRAVAUX_PUBLICS':
+      return [...baseDocs, 'TACHY', 'VGP_LEVAGE'];
+      
+    case 'ANIMAUX_VIVANTS':
+      return [...baseDocs, 'TACHY', 'CERTIFICATION', 'HYGIENE'];
+      
+    default:
+      return baseDocs;
+  }
+}
+
+/**
+ * Vérifie si une activité spécifique requiert un document particulier
+ * 
+ * @param activity Activité de transport
+ * @param documentCode Code du document (CT, TACHY, ADR_CERT, etc.)
+ * @returns true si le document est requis
+ */
+export function activityRequiresDocument(
+  activity: TransportActivity,
+  documentCode: string
+): boolean {
+  const requiredDocs = getRequiredDocumentsForActivity(activity);
+  return requiredDocs.includes(documentCode);
+}

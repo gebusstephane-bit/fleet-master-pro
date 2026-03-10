@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import { AppearanceSettings } from '@/types/appearance';
 
 export async function getAppearanceSettings(userId: string) {
@@ -31,7 +32,7 @@ export async function getAppearanceSettings(userId: string) {
           .single();
         
         if (createError) {
-          console.error('Error creating appearance settings:', createError);
+          logger.error('Error creating appearance settings:', createError);
           return { data: null, error: createError.message };
         }
         
@@ -43,7 +44,7 @@ export async function getAppearanceSettings(userId: string) {
     
     return { data, error: null };
   } catch (error) {
-    console.error('getAppearanceSettings error:', error);
+    logger.error('getAppearanceSettings error:', error);
     return { data: null, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
@@ -112,7 +113,7 @@ export async function updateAppearanceSettings(
     }
     
     if (result.error) {
-      console.error('Error updating appearance settings:', result.error);
+      logger.error('Error updating appearance settings:', result.error);
       return { error: result.error.message, data: null };
     }
     
@@ -120,7 +121,7 @@ export async function updateAppearanceSettings(
     
     return { data: result.data, error: null };
   } catch (error) {
-    console.error('updateAppearanceSettings error:', error);
+    logger.error('updateAppearanceSettings error:', error);
     return { error: error instanceof Error ? error.message : 'Unknown error', data: null };
   }
 }
@@ -173,7 +174,7 @@ export async function resetAppearanceSettings(userId: string) {
       .single();
     
     if (error) {
-      console.error('Error resetting appearance settings:', error);
+      logger.error('Error resetting appearance settings:', error);
       return { error: error.message, data: null };
     }
     
@@ -181,7 +182,7 @@ export async function resetAppearanceSettings(userId: string) {
     
     return { data, error: null };
   } catch (error) {
-    console.error('resetAppearanceSettings error:', error);
+    logger.error('resetAppearanceSettings error:', error);
     return { error: error instanceof Error ? error.message : 'Unknown error', data: null };
   }
 }
@@ -218,7 +219,7 @@ export async function exportAppearanceSettings(userId: string) {
     
     return { data: exportData, error: null };
   } catch (error) {
-    console.error('exportAppearanceSettings error:', error);
+    logger.error('exportAppearanceSettings error:', error);
     return { error: error instanceof Error ? error.message : 'Unknown error', data: null };
   }
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getUsers, getUserById, createUser, updateUser, toggleUserStatus, deleteUser, updateNotificationPreferences, type CreateUserData, type UpdateUserData, type NotificationPreferences } from '@/actions/users';
 import { toast } from 'sonner';
+import { USER_ROLE } from '@/constants/enums';
 import { getReadableError } from '@/lib/error-messages';
 
 export interface User {
@@ -243,9 +244,9 @@ export function useUserPermissions(currentUser: User | null) {
     };
   }
 
-  const isAdmin = currentUser.role === 'ADMIN';
-  const isDirecteur = currentUser.role === 'DIRECTEUR';
-  const isAgent = currentUser.role === 'AGENT_DE_PARC';
+  const isAdmin = currentUser.role === USER_ROLE.ADMIN;
+  const isDirecteur = currentUser.role === USER_ROLE.DIRECTEUR;
+  const isAgent = currentUser.role === USER_ROLE.AGENT_DE_PARC;
 
   return {
     canManageUsers: isAdmin || isDirecteur,
@@ -259,6 +260,6 @@ export function useUserPermissions(currentUser: User | null) {
     isAdmin,
     isDirecteur,
     isAgent,
-    isExploitant: currentUser.role === 'EXPLOITANT',
+    isExploitant: currentUser.role === USER_ROLE.EXPLOITANT,
   };
 }

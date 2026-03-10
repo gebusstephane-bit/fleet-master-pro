@@ -52,15 +52,15 @@ export function ActivityRow({ log, className }: ActivityRowProps) {
           size="sm"
         />
 
-        {/* Date */}
-        <div className="w-32 shrink-0">
+        {/* Date format DD/MM/YYYY HH:mm */}
+        <div className="w-36 shrink-0">
           <p
-            className="text-sm text-slate-300"
+            className="text-sm text-slate-300 font-medium"
             title={dateInfo.tooltip}
           >
-            {dateInfo.relative}
+            {dateInfo.formatted}
           </p>
-          <p className="text-xs text-slate-500">{dateInfo.full}</p>
+          <p className="text-xs text-slate-500">{dateInfo.relative}</p>
         </div>
 
         {/* Utilisateur */}
@@ -178,7 +178,7 @@ export function ActivityCard({ log, className }: ActivityRowProps) {
             className="text-xs text-slate-500 mt-1"
             title={dateInfo.tooltip}
           >
-            {dateInfo.relative}
+            {dateInfo.formatted}
           </p>
         </div>
       </div>

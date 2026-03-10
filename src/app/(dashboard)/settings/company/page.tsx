@@ -4,16 +4,19 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { logger } from '@/lib/logger';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { useUserContext } from '@/components/providers/user-provider';
-import { ArrowLeft, Building2, MapPin, Phone, Mail, Save, Loader2, Camera, Trash2, FileText, Calendar, Users, Code, ExternalLink, Key } from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, Phone, Mail, Save, Loader2, Camera, Trash2, FileText, Calendar, Users, Code, ExternalLink, Key, Plus, Package, Snowflake, AlertTriangle, AlertOctagon, Truck, Construction, Heart, Star } from 'lucide-react';
 import { getCompany, updateCompany, uploadCompanyLogo, deleteCompanyLogo, updateMonthlyReportSettings, ICompanyData } from '@/actions/company';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useCompanyActivities, useAddCompanyActivity, useRemoveCompanyActivity, useUpdateCompanyPrimaryActivity, TRANSPORT_ACTIVITIES } from '@/hooks/use-company-activities';
+import type { TransportActivity } from '@/actions/company-activities';
 
 export default function CompanyPage() {
   const { user } = useUserContext();
@@ -193,7 +196,7 @@ export default function CompanyPage() {
               {/* Logo Preview */}
               <div 
                 onClick={handleLogoClick}
-                className="relative h-32 w-32 rounded-xl border-2 border-dashed border-slate-300 hover:border-primary cursor-pointer overflow-hidden bg-slate-50 flex items-center justify-center transition-colors"
+                className="relative h-32 w-32 rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary cursor-pointer overflow-hidden bg-muted flex items-center justify-center transition-colors"
               >
                 {isUploading ? (
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -210,8 +213,8 @@ export default function CompanyPage() {
                   </>
                 ) : (
                   <div className="text-center p-4">
-                    <Building2 className="h-10 w-10 mx-auto text-slate-400 mb-2" />
-                    <span className="text-xs text-slate-500">Cliquer pour ajouter</span>
+                    <Building2 className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                    <span className="text-xs text-muted-foreground">Cliquer pour ajouter</span>
                   </div>
                 )}
               </div>
@@ -282,7 +285,7 @@ export default function CompanyPage() {
                 value={formData.siret}
                 onChange={(e) => setFormData({ ...formData, siret: e.target.value })}
                 disabled
-                className="bg-slate-50"
+                className="bg-muted"
               />
               <p className="text-xs text-muted-foreground">Le SIRET ne peut pas être modifié</p>
             </div>
@@ -465,6 +468,9 @@ export default function CompanyPage() {
           </CardContent>
         </Card>
 
+        {/* ── Activités de Transport Section ─────────────────────────── */}
+        <CompanyActivitiesSection />
+
         {/* ── API Section ─────────────────────────────────────────────── */}
         <Card>
           <CardHeader>
@@ -479,14 +485,14 @@ export default function CompanyPage() {
               Authentification par clé API, rate limiting par plan.
             </p>
 
-            <div className="rounded-lg border bg-slate-50 p-4 space-y-3">
+            <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
               <div className="flex items-start gap-3">
-                <Key className="h-4 w-4 mt-0.5 text-slate-500 shrink-0" />
+                <Key className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                 <div className="space-y-1 min-w-0">
                   <p className="text-sm font-medium">Clés API</p>
                   <p className="text-xs text-muted-foreground">
                     Créez et gérez vos clés API (format{' '}
-                    <code className="rounded bg-slate-200 px-1 font-mono text-xs">sk_live_…</code>).
+                    <code className="rounded bg-muted px-1 font-mono text-xs">sk_live_…</code>).
                   </p>
                   <Link
                     href="/settings/webhooks"
@@ -499,7 +505,7 @@ export default function CompanyPage() {
               </div>
 
               <div className="flex items-start gap-3">
-                <FileText className="h-4 w-4 mt-0.5 text-slate-500 shrink-0" />
+                <FileText className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Documentation Swagger</p>
                   <p className="text-xs text-muted-foreground">
@@ -517,7 +523,7 @@ export default function CompanyPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs text-amber-800">
+            <div className="rounded-lg border border-amber-900/50 bg-amber-950/30 p-3 text-xs text-amber-400">
               <strong>Rate limiting :</strong> ESSENTIAL 100 req/h · PRO 1 000 req/h · UNLIMITED 10 000 req/h
             </div>
           </CardContent>
@@ -543,5 +549,202 @@ export default function CompanyPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+// Map des icônes pour les activités
+const ACTIVITY_ICONS: Record<TransportActivity, React.ElementType> = {
+  MARCHANDISES_GENERALES: Package,
+  FRIGORIFIQUE: Snowflake,
+  ADR_COLIS: AlertTriangle,
+  ADR_CITERNE: AlertOctagon,
+  CONVOI_EXCEPTIONNEL: Truck,
+  BENNE_TRAVAUX_PUBLICS: Construction,
+  ANIMAUX_VIVANTS: Heart,
+};
+
+// Map des couleurs pour les badges
+const ACTIVITY_COLORS: Record<TransportActivity, string> = {
+  MARCHANDISES_GENERALES: 'bg-gray-100 text-gray-800 border-gray-200',
+  FRIGORIFIQUE: 'bg-blue-100 text-blue-800 border-blue-200',
+  ADR_COLIS: 'bg-orange-100 text-orange-800 border-orange-200',
+  ADR_CITERNE: 'bg-red-100 text-red-800 border-red-200',
+  CONVOI_EXCEPTIONNEL: 'bg-purple-100 text-purple-800 border-purple-200',
+  BENNE_TRAVAUX_PUBLICS: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  ANIMAUX_VIVANTS: 'bg-green-100 text-green-800 border-green-200',
+};
+
+/**
+ * Section Activités de Transport dans les paramètres entreprise
+ */
+function CompanyActivitiesSection() {
+  const { user } = useUserContext();
+  const { data: activities, isLoading } = useCompanyActivities();
+  const { mutate: addActivity, isPending: isAdding } = useAddCompanyActivity();
+  const { mutate: removeActivity, isPending: isRemoving } = useRemoveCompanyActivity();
+  const { mutate: setPrimaryActivity, isPending: isSettingPrimary } = useUpdateCompanyPrimaryActivity();
+  const [selectedActivity, setSelectedActivity] = useState<TransportActivity | ''>('');
+
+  // Filtrer les activités déjà assignées
+  const availableActivities = TRANSPORT_ACTIVITIES.filter(
+    (activity) => !activities?.some((a) => a.activity === activity.value)
+  );
+
+  const handleAddActivity = () => {
+    if (!selectedActivity) return;
+    
+    addActivity({ 
+      activity: selectedActivity, 
+      isPrimary: activities?.length === 0 
+    });
+    setSelectedActivity('');
+  };
+
+  const handleRemoveActivity = (activityId: string) => {
+    removeActivity(activityId);
+  };
+
+  const handleSetPrimary = (activity: TransportActivity) => {
+    setPrimaryActivity(activity);
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Truck className="h-5 w-5" />
+            Activités de transport
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div className="h-12 bg-muted animate-pulse rounded-lg" />
+            <div className="h-12 bg-muted animate-pulse rounded-lg" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Truck className="h-5 w-5" />
+          Activités de transport
+        </CardTitle>
+        <CardDescription>
+          Définissez les types de transport que votre entreprise effectue. 
+          Cela détermine les contrôles réglementaires à suivre.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Liste des activités actuelles */}
+        <div className="space-y-2">
+          {activities?.length === 0 && (
+            <div className="text-center py-4 text-muted-foreground text-sm border rounded-lg border-dashed">
+              Aucune activité définie. Ajoutez votre première activité ci-dessous.
+            </div>
+          )}
+          {activities?.map((activity) => {
+            const activityConfig = TRANSPORT_ACTIVITIES.find(a => a.value === activity.activity);
+            const Icon = ACTIVITY_ICONS[activity.activity];
+            return (
+              <div 
+                key={activity.id} 
+                className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
+              >
+                <div className="flex items-center gap-3">
+                  <Badge 
+                    variant="outline" 
+                    className={activity.is_primary 
+                      ? 'bg-primary/10 text-primary border-primary/20' 
+                      : 'bg-muted text-muted-foreground'
+                    }
+                  >
+                    {activity.is_primary ? '⭐ Principale' : 'Secondaire'}
+                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+                    <span className="font-medium">{activityConfig?.label}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  {/* Bouton "Rendre principale" pour les activités secondaires */}
+                  {!activity.is_primary && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleSetPrimary(activity.activity)}
+                      disabled={isSettingPrimary}
+                      className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                      title="Rendre activité principale"
+                    >
+                      <Star className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {/* Bouton supprimer uniquement pour les secondaires */}
+                  {!activity.is_primary && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleRemoveActivity(activity.id)}
+                      disabled={isRemoving}
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Ajouter une activité */}
+        {availableActivities.length > 0 && (
+          <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
+            <Select 
+              value={selectedActivity} 
+              onValueChange={(value) => setSelectedActivity(value as TransportActivity)}
+            >
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Sélectionner une activité..." />
+              </SelectTrigger>
+              <SelectContent>
+                {availableActivities.map((activity) => {
+                  const Icon = ACTIVITY_ICONS[activity.value];
+                  return (
+                    <SelectItem key={activity.value} value={activity.value}>
+                      <div className="flex items-center gap-2">
+                        {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+                        <div className="flex flex-col">
+                          <span>{activity.label}</span>
+                          <span className="text-xs text-muted-foreground">{activity.description}</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <Button 
+              onClick={handleAddActivity}
+              disabled={!selectedActivity || isAdding}
+              className="shrink-0"
+            >
+              {isAdding ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Ajouter
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

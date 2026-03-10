@@ -1,4 +1,8 @@
 /**
+ * @deprecated Ce fichier n'est plus utilisé (0 importeurs).
+ * Utiliser lib/auth-guards.ts pour l'authentification et les guards de rôles.
+ * Conservé temporairement pour référence — suppression prévue en v1.1.0
+ * 
  * Client Supabase sécurisé - Élimination du bypass RLS
  * 
  * PRINCIPE : Toutes les Server Actions utilisent le client RLS standard

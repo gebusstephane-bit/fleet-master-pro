@@ -3,6 +3,7 @@ export const revalidate = 0;
 
 import { Metadata, Viewport } from 'next';
 import { redirect } from 'next/navigation';
+import { USER_ROLE } from '@/constants/enums';
 import { createClient } from '@/lib/supabase/server';
 import { DriverAppLayoutClient } from './DriverAppLayoutClient';
 
@@ -73,7 +74,7 @@ export default async function DriverAppLayout({
   }
   
   // Déterminer si c'est un admin en mode aperçu (pour les tests)
-  const isAdminPreview = profile?.role === 'ADMIN' || profile?.role === 'DIRECTEUR';
+  const isAdminPreview = profile?.role === USER_ROLE.ADMIN || profile?.role === USER_ROLE.DIRECTEUR;
   
   // Construire l'objet driverData
   const driverData = driver ? {
@@ -82,7 +83,7 @@ export default async function DriverAppLayout({
     lastName: driver.last_name,
     userId: user.id,
     companyId: profile?.company_id || '',
-    role: profile?.role || 'CHAUFFEUR',
+    role: profile?.role || USER_ROLE.CHAUFFEUR,
   } : null;
   
   const vehicleData = vehicle ? {
@@ -98,7 +99,7 @@ export default async function DriverAppLayout({
     <DriverAppLayoutClient
       driver={driverData}
       vehicle={vehicleData}
-      isAdminPreview={isAdminPreview && profile?.role !== 'CHAUFFEUR'}
+      isAdminPreview={isAdminPreview && profile?.role !== USER_ROLE.CHAUFFEUR}
     >
       {children}
     </DriverAppLayoutClient>

@@ -5,7 +5,7 @@
  */
 
 import { useState } from "react";
-import { X, Filter, Search, Calendar } from "lucide-react";
+import { X, Filter, Search, Calendar, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ interface ActivityFiltersProps {
   onFiltersChange: (filters: ActivityFilters) => void;
   logs: ActivityLog[];
   className?: string;
+  users?: { id: string; first_name: string | null; last_name: string | null }[];
 }
 
 const actionTypesList = Object.entries(actionCategories).flatMap(
@@ -52,15 +53,37 @@ export function ActivityFiltersBar({
   onFiltersChange,
   logs,
   className,
+  users,
 }: ActivityFiltersProps) {
   const [searchQuery, setSearchQuery] = useState(filters.searchQuery || "");
 
   const hasActiveFilters =
     (filters.actionTypes?.length || 0) > 0 ||
     (filters.entityTypes?.length || 0) > 0 ||
+    filters.userId ||
     filters.dateFrom ||
     filters.dateTo ||
     filters.searchQuery;
+
+  // Extraire les utilisateurs uniques des logs si pas fourni
+  const uniqueUsers = users || Array.from(
+    new Map(
+      logs
+        .filter(log => log.user_id && log.user)
+        .map(log => [
+          log.user_id!,
+          {
+            id: log.user_id!,
+            first_name: log.user?.first_name || null,
+            last_name: log.user?.last_name || null,
+          }
+        ])
+    ).values()
+  ).sort((a, b) => 
+    `${a.first_name || ''} ${a.last_name || ''}`.localeCompare(
+      `${b.first_name || ''} ${b.last_name || ''}`
+    )
+  );
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +109,13 @@ export function ActivityFiltersBar({
       ? current.filter((t) => t !== type)
       : [...current, type as any];
     onFiltersChange({ ...filters, entityTypes: updated });
+  };
+
+  const toggleUser = (userId: string) => {
+    onFiltersChange({ 
+      ...filters, 
+      userId: filters.userId === userId ? undefined : userId 
+    });
   };
 
   return (
@@ -202,6 +232,59 @@ export function ActivityFiltersBar({
           </PopoverContent>
         </Popover>
 
+        {/* Filtre Utilisateur */}
+        {uniqueUsers.length > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "bg-slate-900/50 border-slate-700 text-slate-300 hover:bg-slate-800",
+                  filters.userId && "border-cyan-500/50 text-cyan-400"
+                )}
+              >
+                <User className="w-4 h-4 mr-2" />
+                Utilisateur
+                {filters.userId ? (
+                  <span className="ml-2 px-1.5 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded-full">
+                    1
+                  </span>
+                ) : null}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-0 bg-slate-900 border-slate-700">
+              <div className="p-3 border-b border-slate-800">
+                <p className="text-sm font-medium text-slate-200">Filtrer par utilisateur</p>
+              </div>
+              <div className="max-h-64 overflow-y-auto p-2 space-y-1">
+                {uniqueUsers.map((user) => (
+                  <button
+                    key={user.id}
+                    onClick={() => toggleUser(user.id)}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-sm transition-colors",
+                      filters.userId === user.id
+                        ? "bg-cyan-500/10 text-cyan-400"
+                        : "text-slate-400 hover:bg-slate-800"
+                    )}
+                  >
+                    <span className={cn(
+                      "w-2 h-2 rounded-full",
+                      filters.userId === user.id ? "bg-cyan-500" : "bg-slate-600"
+                    )} />
+                    <span className="flex-1 truncate">
+                      {user.first_name || user.last_name 
+                        ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
+                        : 'Utilisateur inconnu'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
         {/* Filtre Date */}
         <Popover>
           <PopoverTrigger asChild>
@@ -265,6 +348,23 @@ export function ActivityFiltersBar({
       {/* Tags des filtres actifs */}
       {hasActiveFilters && (
         <div className="flex flex-wrap items-center gap-2">
+          {filters.userId && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              {(() => {
+                const user = uniqueUsers.find(u => u.id === filters.userId);
+                return user 
+                  ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Utilisateur'
+                  : 'Utilisateur';
+              })()}
+              <button
+                onClick={() => toggleUser(filters.userId!)}
+                className="hover:opacity-70"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+
           {filters.actionTypes?.map((type) => {
             const config = getActionConfig(type);
             return (

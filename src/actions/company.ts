@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
+import { USER_ROLE } from '@/constants/enums';
 
 export interface ICompanyData {
   id?: string;
@@ -72,7 +73,7 @@ export async function updateCompany(userId: string, data: Partial<ICompanyData>)
       return { error: 'Entreprise non trouvée' };
     }
     
-    if (!['ADMIN', 'DIRECTEUR'].includes(profile.role)) {
+    if (!(([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(profile.role))) {
       return { error: 'Permissions insuffisantes' };
     }
     
@@ -87,8 +88,8 @@ export async function updateCompany(userId: string, data: Partial<ICompanyData>)
       return { error: 'Entreprise non trouvée' };
     }
     
-    // Update company
-    const { data: company, error: companyError } = await supabase
+    // Update company (sans .single() pour éviter PGRST116 si RLS bloque le retour)
+    const { error: companyError } = await supabase
       .from('companies')
       .update({
         name: data.name,
@@ -102,17 +103,28 @@ export async function updateCompany(userId: string, data: Partial<ICompanyData>)
         logo_url: data.logo_url,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', profile.company_id)
-      .select()
-      .single();
+      .eq('id', profile.company_id);
     
     if (companyError) {
       logger.error('Update error', companyError);
-      return { error: 'Erreur lors de la mise à jour' };
+      return { error: 'Erreur lors de la mise à jour: ' + companyError.message };
+    }
+    
+    // Re-fetch les données après update (pour être sûr de retourner les bonnes données)
+    const { data: company, error: fetchError } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', profile.company_id)
+      .maybeSingle();
+    
+    if (fetchError) {
+      logger.error('Fetch error after update', fetchError);
+      // On retourne quand même un succès car l'update a fonctionné
+      return { data: { ...data, id: profile.company_id } as ICompanyData };
     }
     
     revalidatePath('/settings/company');
-    return { data: company };
+    return { data: company || { ...data, id: profile.company_id } as ICompanyData };
   } catch (error) {
     logger.error('Server error', error as Error);
     return { error: 'Erreur serveur' };
@@ -134,7 +146,7 @@ export async function uploadCompanyLogo(userId: string, formData: FormData) {
       return { error: 'Entreprise non trouvée' };
     }
     
-    if (!['ADMIN', 'DIRECTEUR'].includes(profile.role)) {
+    if (!(([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(profile.role))) {
       return { error: 'Permissions insuffisantes' };
     }
     
@@ -215,7 +227,7 @@ export async function deleteCompanyLogo(userId: string) {
       return { error: 'Entreprise non trouvée' };
     }
     
-    if (!['ADMIN', 'DIRECTEUR'].includes(profile.role)) {
+    if (!(([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(profile.role))) {
       return { error: 'Permissions insuffisantes' };
     }
     
@@ -279,7 +291,7 @@ export async function updateMonthlyReportSettings(
       return { error: 'Entreprise non trouvée' };
     }
     
-    if (!['ADMIN', 'DIRECTEUR'].includes(profile.role)) {
+    if (!(([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(profile.role))) {
       return { error: 'Permissions insuffisantes' };
     }
     
@@ -306,8 +318,8 @@ export async function updateMonthlyReportSettings(
       return { error: 'Destinataires invalides' };
     }
     
-    // Update company
-    const { data: company, error: companyError } = await supabase
+    // Update company (sans .single() pour éviter PGRST116 si RLS bloque le retour)
+    const { error: companyError } = await supabase
       .from('companies')
       .update({
         monthly_report_enabled: settings.monthly_report_enabled,
@@ -315,17 +327,27 @@ export async function updateMonthlyReportSettings(
         monthly_report_recipients: settings.monthly_report_recipients,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', profile.company_id)
-      .select()
-      .single();
+      .eq('id', profile.company_id);
     
     if (companyError) {
       logger.error('Update monthly report settings error', companyError);
-      return { error: 'Erreur lors de la mise à jour des paramètres' };
+      return { error: 'Erreur lors de la mise à jour des paramètres: ' + companyError.message };
+    }
+    
+    // Re-fetch les données après update
+    const { data: company, error: fetchError } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', profile.company_id)
+      .maybeSingle();
+    
+    if (fetchError) {
+      logger.error('Fetch error after update', fetchError);
+      return { data: settings as IMonthlyReportSettings };
     }
     
     revalidatePath('/settings/company');
-    return { data: company };
+    return { data: company || settings };
   } catch (error) {
     logger.error('Server error', error instanceof Error ? error : new Error(String(error)));
     return { error: 'Erreur serveur: ' + (error instanceof Error ? error.message : String(error)) };

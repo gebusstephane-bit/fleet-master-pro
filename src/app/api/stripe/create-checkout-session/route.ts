@@ -230,7 +230,7 @@ async function handler(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Create checkout session error:', error);
+    logger.error('Create checkout session error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to create checkout session' },
       { status: 500 }

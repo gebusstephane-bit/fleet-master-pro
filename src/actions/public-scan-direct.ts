@@ -7,6 +7,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import { scanPublicActionClient } from '@/lib/safe-action';
 import { z } from 'zod';
 
@@ -101,7 +102,7 @@ export const createFuelSessionDirect = scanPublicActionClient
         .single();
       
       if (insertError) {
-        console.error('[FUEL_DIRECT] Insert error:', insertError);
+        logger.error('[FUEL_DIRECT] Insert error:', insertError);
         throw new Error(`Erreur insertion: ${insertError.message}`);
       }
       

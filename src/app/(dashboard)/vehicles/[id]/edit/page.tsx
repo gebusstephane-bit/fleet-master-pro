@@ -3,6 +3,7 @@
 import { useRouter, useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { VehicleForm } from '@/components/vehicles/vehicle-form';
+import { VehicleActivityManager } from '@/components/vehicles/vehicle-activity-manager';
 import { useVehicle, useUpdateVehicle } from '@/hooks/use-vehicles';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -47,44 +48,61 @@ export default function EditVehiclePage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Informations du véhicule</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <VehicleForm
-            defaultValues={{
-              registration_number: vehicle.registration_number,
-              brand: vehicle.brand,
-              model: vehicle.model,
-              year: vehicle.year,
-              type: vehicle.type as any,
-              fuel_type: vehicle.fuel_type as any,
-              color: vehicle.color,
-              mileage: vehicle.mileage,
-              vin: vehicle.vin || undefined,
-              status: vehicle.status as any,
-              // Assurance
-              insurance_company: (vehicle as any).insurance_company ?? '',
-              insurance_policy_number: (vehicle as any).insurance_policy_number ?? '',
-              insurance_expiry: (vehicle as any).insurance_expiry ?? '',
-              // Échéances réglementaires
-              technical_control_date: (vehicle as any).technical_control_date ?? '',
-              technical_control_expiry: (vehicle as any).technical_control_expiry ?? '',
-              tachy_control_date: (vehicle as any).tachy_control_date ?? '',
-              tachy_control_expiry: (vehicle as any).tachy_control_expiry ?? '',
-              atp_date: (vehicle as any).atp_date ?? '',
-              atp_expiry: (vehicle as any).atp_expiry ?? '',
-            }}
-            onSubmit={async (data) => {
-              await updateMutation.mutateAsync({ ...data, id } as unknown as Parameters<typeof updateMutation.mutateAsync>[0]);
-              router.push('/vehicles');
-            }}
-            isSubmitting={updateMutation.isPending}
-            submitLabel="Enregistrer les modifications"
-          />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Formulaire principal - prend 2 colonnes */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Informations du véhicule</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <VehicleForm
+                defaultValues={{
+                  registration_number: vehicle.registration_number,
+                  brand: vehicle.brand,
+                  model: vehicle.model,
+                  year: vehicle.year,
+                  type: vehicle.type as any,
+                  fuel_type: vehicle.fuel_type as any,
+                  color: vehicle.color,
+                  mileage: vehicle.mileage,
+                  vin: vehicle.vin || undefined,
+                  status: vehicle.status as any,
+                  // Type détaillé
+                  detailed_type: (vehicle as any).detailed_type ?? '',
+                  // Assurance
+                  insurance_company: (vehicle as any).insurance_company ?? '',
+                  insurance_policy_number: (vehicle as any).insurance_policy_number ?? '',
+                  insurance_expiry: (vehicle as any).insurance_expiry ?? '',
+                  // Échéances réglementaires
+                  technical_control_date: (vehicle as any).technical_control_date ?? '',
+                  technical_control_expiry: (vehicle as any).technical_control_expiry ?? '',
+                  tachy_control_date: (vehicle as any).tachy_control_date ?? '',
+                  tachy_control_expiry: (vehicle as any).tachy_control_expiry ?? '',
+                  atp_date: (vehicle as any).atp_date ?? '',
+                  atp_expiry: (vehicle as any).atp_expiry ?? '',
+                  // ADR (transport de marchandises dangereuses)
+                  adr_certificate_date: (vehicle as any).adr_certificate_date ?? '',
+                  adr_certificate_expiry: (vehicle as any).adr_certificate_expiry ?? '',
+                  adr_equipment_check_date: (vehicle as any).adr_equipment_check_date ?? '',
+                  adr_equipment_expiry: (vehicle as any).adr_equipment_expiry ?? '',
+                }}
+                onSubmit={async (data) => {
+                  await updateMutation.mutateAsync({ ...data, id } as unknown as Parameters<typeof updateMutation.mutateAsync>[0]);
+                  router.push('/vehicles');
+                }}
+                isSubmitting={updateMutation.isPending}
+                submitLabel="Enregistrer les modifications"
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar - Gestion activités */}
+        <div className="space-y-6">
+          <VehicleActivityManager vehicleId={id} />
+        </div>
+      </div>
     </div>
   );
 }

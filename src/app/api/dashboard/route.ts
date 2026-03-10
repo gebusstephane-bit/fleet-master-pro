@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from "@/lib/supabase/server";
 import { logger } from '@/lib/logger';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 // Forcer le rendu dynamique
 export const dynamic = 'force-dynamic';
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
       logger.error("API Dashboard: Erreur véhicules", { error: vError instanceof Error ? vError.message : String(vError) });
     } else {
       (results as any).vehicles.total = vehicles?.length || 0;
-      (results as any).vehicles.active = vehicles?.filter(v => v.status === 'ACTIF').length || 0;
+      (results as any).vehicles.active = vehicles?.filter(v => v.status === VEHICLE_STATUS.ACTIF).length || 0;
       logger.info("API Dashboard: Véhicules", { total: results.vehicles.total });
     }
     

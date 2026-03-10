@@ -34,14 +34,14 @@ export const GET = withDebugProtection(async () => {
   // Données filtrées par company_id (respecte RLS)
   const { data: maintenances, error: maintError } = await supabase
     .from('maintenance_records')
-    .select('id, status, service_type, cost, service_date')
+    .select('id, status, type, cost, requested_at')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .limit(10);
 
   const { data: inspections, error: inspectError } = await supabase
-    .from('inspections')
-    .select('id, status, inspection_date, vehicle_id')
+    .from('vehicle_inspections')
+    .select('id, status, created_at, vehicle_id')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .limit(10);

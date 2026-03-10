@@ -14,6 +14,7 @@ import {
   Settings,
   Sun,
   Menu,
+  LifeBuoy,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { cn } from "@/lib/utils";
@@ -262,6 +263,10 @@ export function Header({ user }: HeaderProps) {
                   <a href="/settings/profile" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#a1a1aa] hover:bg-cyan-500/10 hover:text-cyan-300 transition-colors">
                     <User className="h-4 w-4" />
                     <span className="text-sm">Mon profil</span>
+                  </a>
+                  <a href="/support" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#a1a1aa] hover:bg-cyan-500/10 hover:text-cyan-300 transition-colors">
+                    <LifeBuoy className="h-4 w-4" />
+                    <span className="text-sm">Aide & Support</span>
                   </a>
                   <a href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#a1a1aa] hover:bg-cyan-500/10 hover:text-cyan-300 transition-colors">
                     <Settings className="h-4 w-4" />

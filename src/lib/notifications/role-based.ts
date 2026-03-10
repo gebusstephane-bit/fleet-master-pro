@@ -3,6 +3,7 @@
  * FleetMaster Pro
  */
 
+import { USER_ROLE } from '@/constants/enums';
 import { createClient } from '@/lib/supabase/server';
 
 interface NotificationRecipient {
@@ -119,7 +120,7 @@ export async function notifyMaintenanceRequest(
 ) {
   const recipients = await getNotificationRecipients({
     companyId,
-    roles: ['ADMIN', 'DIRECTEUR'] as const,
+    roles: [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as const,
   });
   
   const notification: NotificationData = {
@@ -179,13 +180,13 @@ export async function notifyInspectionCompleted(
   let priority: NotificationData['priority'] = 'normal';
   
   if (inspectionData.status === 'CRITICAL_ISSUES') {
-    roles = ['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'];
+    roles = [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC];
     priority = 'critical';
   } else if (inspectionData.status === 'ISSUES_FOUND') {
-    roles = ['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'];
+    roles = [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC];
     priority = 'high';
   } else {
-    roles = ['ADMIN', 'DIRECTEUR'];
+    roles = [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR];
     priority = 'normal';
   }
   
@@ -245,7 +246,7 @@ export async function notifyDocumentsExpiring(
 ) {
   const recipients = await getNotificationRecipients({
     companyId,
-    roles: ['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'],
+    roles: [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC],
   });
   
   for (const doc of documents) {
@@ -278,7 +279,7 @@ export async function notifySystemAlert(
 ) {
   const recipients = await getNotificationRecipients({
     companyId,
-    roles: ['ADMIN'],
+    roles: [USER_ROLE.ADMIN],
   });
   
   const notification: NotificationData = {

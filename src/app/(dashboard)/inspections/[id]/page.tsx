@@ -20,10 +20,11 @@ import { useEffect, useState } from 'react';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { validateInspection, rejectInspection } from '@/actions/inspections-safe';
+import { validateInspection, rejectInspection } from '@/actions/inspections';
 import { useUserContext } from '@/components/providers/user-provider';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { USER_ROLE } from '@/constants/enums';
 
 interface Inspection {
   id: string;
@@ -85,7 +86,7 @@ export default function InspectionDetailPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
 
-  const canValidate = ['ADMIN', 'DIRECTEUR', 'AGENT_DE_PARC'].includes(user?.role || '');
+  const canValidate = ([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC] as string[]).includes(user?.role || '');
 
   useEffect(() => {
     fetchInspection();
