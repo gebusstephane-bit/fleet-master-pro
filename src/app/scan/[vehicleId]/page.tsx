@@ -9,7 +9,7 @@
  */
 
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { ThreeCardsChoice } from '@/components/scan/three-cards-choice';
 import { VEHICLE_STATUS } from '@/constants/enums';
 
@@ -31,10 +31,10 @@ export default async function ScanPage({ params, searchParams }: ScanPageProps) 
     redirect('/?error=missing_token');
   }
 
-  // Vérifier la validité du token et récupérer les infos véhicule
-  const supabase = await createClient();
-  
-  const { data: vehicle, error } = await supabase
+  // Vérifier la validité du token — admin client pour bypass RLS (accès anonyme public)
+  const adminClient = createAdminClient();
+
+  const { data: vehicle, error } = await adminClient
     .from('vehicles')
     .select('id, registration_number, brand, model, type, qr_code_data, status')
     .eq('id', vehicleId)
@@ -46,7 +46,8 @@ export default async function ScanPage({ params, searchParams }: ScanPageProps) 
     redirect('/?error=invalid_token');
   }
 
-  // Vérifier si l'utilisateur est authentifié
+  // Vérifier si l'utilisateur est authentifié (optionnel, pour afficher le lien carnet)
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
   let isAuthenticated = false;

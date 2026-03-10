@@ -15,7 +15,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { USER_ROLE } from '@/constants/enums';
 import { scanPublicActionClient } from '@/lib/safe-action';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
 // ============================================
@@ -106,8 +106,9 @@ async function validateVehicleAccess(
     return null;
   }
   
-  // Récupérer les infos complètes du véhicule
-  const { data: vehicle, error: vehicleError } = await supabase
+  // Récupérer les infos complètes du véhicule — admin client pour bypass RLS
+  const adminClient = createAdminClient();
+  const { data: vehicle, error: vehicleError } = await adminClient
     .from('vehicles')
     .select('id, company_id, registration_number, type')
     .eq('id', vehicleId)

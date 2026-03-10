@@ -9,7 +9,7 @@
  */
 
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { PublicInspectionForm } from '@/components/scan/public-inspection-form';
 import { VEHICLE_STATUS } from '@/constants/enums';
 
@@ -34,10 +34,10 @@ export default async function PublicInspectionPage({
     redirect('/?error=missing_token');
   }
 
-  // Vérifier la validité du token
-  const supabase = await createClient();
-  
-  const { data: vehicle, error } = await supabase
+  // Vérifier la validité du token — admin client pour bypass RLS (accès anonyme public)
+  const adminClient = createAdminClient();
+
+  const { data: vehicle, error } = await adminClient
     .from('vehicles')
     .select('id, registration_number, brand, model, type, qr_code_data, status, mileage')
     .eq('id', vehicleId)
