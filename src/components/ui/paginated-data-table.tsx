@@ -70,7 +70,7 @@ export function PaginatedDataTable<T>({
     const searchLower = searchValue.toLowerCase();
     return data.filter((item) =>
       searchKeys.some((key) => {
-        const value = (item as any)[key];
+        const value = (item as Record<string, unknown>)[key];
         if (typeof value === 'string') {
           return value.toLowerCase().includes(searchLower);
         }
@@ -87,8 +87,8 @@ export function PaginatedDataTable<T>({
     if (!sortColumn) return filteredData;
 
     return [...filteredData].sort((a, b) => {
-      const aValue = (a as any)[sortColumn];
-      const bValue = (b as any)[sortColumn];
+      const aValue = (a as Record<string, unknown>)[sortColumn];
+      const bValue = (b as Record<string, unknown>)[sortColumn];
 
       if (aValue === null || aValue === undefined) return 1;
       if (bValue === null || bValue === undefined) return -1;
@@ -224,7 +224,7 @@ export function PaginatedDataTable<T>({
                         column.align === 'right' && 'text-right'
                       )}
                     >
-                      {column.render ? column.render(item) : (item as any)[column.key]}
+                      {column.render ? column.render(item) : (item as Record<string, unknown>)[column.key] as React.ReactNode}
                     </TableCell>
                   ))}
                 </TableRow>

@@ -13,10 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Eye, EyeOff, AlertCircle, Check, CreditCard } from 'lucide-react';
-import { PLANS, PlanId, ACTIVE_PLANS } from '@/lib/plans';
+import { Loader2, Eye, EyeOff, AlertCircle, Check, Gift } from 'lucide-react';
 
-// Schéma de validation - 3 plans payants uniquement
+// Schéma de validation
 const registerSchema = z.object({
   companyName: z.string().min(2, 'Le nom de l\'entreprise est requis'),
   siret: z.string().regex(/^\d{14}$/, 'Le SIRET doit contenir 14 chiffres'),
@@ -26,7 +25,6 @@ const registerSchema = z.object({
   phone: z.string().regex(/^\d{10}$/, 'Le téléphone doit contenir 10 chiffres'),
   password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
   confirmPassword: z.string(),
-  plan: z.enum(['essential', 'pro', 'unlimited']),
   acceptTerms: z.boolean().refine((val) => val === true, {
     message: 'Vous devez accepter les conditions d\'utilisation',
   }),
@@ -43,7 +41,6 @@ export default function RegisterForm() {
   const canceled = searchParams.get('canceled');
   
   const [isLoading, setIsLoading] = useState(false);
-  const [isRedirectingToStripe, setIsRedirectingToStripe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState(1);
@@ -52,25 +49,18 @@ export default function RegisterForm() {
     register,
     handleSubmit,
     formState: { errors },
-    setValue,
-    watch,
     trigger,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      plan: 'essential', // Plan par défaut: Essential
       acceptTerms: false,
     },
   });
 
-  const selectedPlan = watch('plan') as PlanId;
-  const planConfig = PLANS[selectedPlan];
-
-  // Gérer le retour annulation Stripe
+  // Gérer le retour annulation (si jamais l'utilisateur revient)
   useEffect(() => {
     if (canceled) {
-      setError('Paiement annulé. Vous pouvez réessayer ou choisir une autre formule.');
-      localStorage.removeItem('pending_registration');
+      setError('Inscription annulée. Vous pouvez réessayer.');
     }
   }, [canceled]);
 
@@ -89,76 +79,41 @@ export default function RegisterForm() {
     }
   };
 
-  // TOUS les plans sont payants - redirection Stripe obligatoire
-  const createStripeCheckout = async (formData: RegisterFormData) => {
-    setIsRedirectingToStripe(true);
-    
+  // Nouveau flux : création directe sans CB
+  const onSubmit = async (data: RegisterFormData) => {
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const plan = PLANS[selectedPlan];
-      
-      // Debug log
-      console.log('Envoi à Stripe:', { 
-        priceId: plan.priceId, 
-        planType: selectedPlan,
-        email: formData.email 
-      });
-      
-      const response = await fetch('/api/stripe/create-checkout-session', {
+      const response = await fetch('/api/auth/register-with-trial', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: formData.email,
-          priceId: plan.priceId,     // ← ESSENTIEL : le vrai ID Stripe
-          planType: selectedPlan,    // ← 'essential', 'pro' ou 'unlimited'
-          tempData: {
-            companyName: formData.companyName,
-            siret: formData.siret,
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            phone: formData.phone,
-            password: formData.password,
-          },
+          companyName: data.companyName,
+          siret: data.siret,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          phone: data.phone,
+          password: data.password,
         }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Erreur lors de la création de la session de paiement');
+        throw new Error(result.error || 'Erreur lors de l\'inscription');
       }
 
-      // Stocker les données temporaires
-      localStorage.setItem('pending_registration', JSON.stringify({
-        sessionId: result.sessionId,
-        email: formData.email,
-        plan: selectedPlan,
-      }));
+      // Redirection vers onboarding après création réussie
+      router.push('/onboarding');
 
-      // Redirection vers Stripe Checkout
-      if (result.url) {
-        window.location.href = result.url;
-      } else {
-        throw new Error('URL de paiement non reçue');
-      }
-    } catch (err: any) {
-      setError('Erreur lors de la redirection vers le paiement : ' + err.message);
-      setIsRedirectingToStripe(false);
-    }
-  };
-
-  const onSubmit = async (data: RegisterFormData) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // TOUS les plans sont payants - toujours passer par Stripe
-      await createStripeCheckout(data);
     } catch (err: any) {
       let errorMessage = err.message || 'Une erreur est survenue. Veuillez réessayer.';
       
       if (err.status === 429 || err.message?.includes('rate limit')) {
         errorMessage = 'Trop de tentatives. Veuillez patienter quelques minutes.';
-      } else if (err.message?.includes('already exists')) {
+      } else if (err.message?.includes('déjà')) {
         errorMessage = 'Un compte existe déjà avec cet email.';
       }
       
@@ -168,11 +123,19 @@ export default function RegisterForm() {
   };
 
   return (
-    <Card className="w-full">
+    <Card className="w-full max-w-lg">
       <CardHeader className="space-y-1">
+        <div className="flex items-center justify-center mb-2">
+          <Badge className="bg-green-100 text-green-700 hover:bg-green-100 px-3 py-1">
+            <Gift className="w-4 h-4 mr-1.5 inline" />
+            14 jours d&apos;essai gratuit
+          </Badge>
+        </div>
         <CardTitle className="text-2xl text-center">Créer un compte</CardTitle>
         <CardDescription className="text-center">
-          Choisissez votre formule et commencez dès maintenant
+          Commencez votre essai gratuit de 14 jours
+          <br />
+          <span className="text-green-600 font-medium">Sans carte bancaire requise</span>
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -201,15 +164,6 @@ export default function RegisterForm() {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {isRedirectingToStripe && (
-            <Alert className="bg-blue-50 border-blue-200">
-              <CreditCard className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800">
-                Redirection vers notre partenaire de paiement sécurisé Stripe...
-              </AlertDescription>
             </Alert>
           )}
 
@@ -313,72 +267,17 @@ export default function RegisterForm() {
             </>
           )}
 
-          {/* ÉTAPE 3 : Sélection du plan (3 plans payants) */}
+          {/* ÉTAPE 3 : Confirmation */}
           {step === 3 && (
             <>
-              <div className="space-y-3">
-                <Label>Choisissez votre formule</Label>
-                <div className="grid gap-3">
-                  {ACTIVE_PLANS.map((planId) => {
-                    const plan = PLANS[planId];
-                    const isSelected = selectedPlan === planId;
-                    
-                    return (
-                      <div
-                        key={planId}
-                        className={`relative border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                          isSelected 
-                            ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
-                            : 'border-border hover:border-primary/50'
-                        }`}
-                        onClick={() => setValue('plan', planId)}
-                      >
-                        {/* Badge Popular */}
-                        {plan.popular && (
-                          <Badge className="absolute -top-2 left-4 bg-primary text-primary-foreground">
-                            Le plus populaire
-                          </Badge>
-                        )}
-                        
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-semibold text-lg">{plan.name}</h4>
-                              {isSelected && <Check className="w-4 h-4 text-primary" />}
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {plan.description}
-                            </p>
-                            
-                            {/* Features */}
-                            <ul className="text-xs text-muted-foreground mt-2 space-y-1">
-                              {plan.features.slice(0, 3).map((feature, idx) => (
-                                <li key={idx}>✓ {feature}</li>
-                              ))}
-                              {plan.features.length > 3 && (
-                                <li className="text-primary">+ {plan.features.length - 3} autres fonctionnalités</li>
-                              )}
-                            </ul>
-                          </div>
-                          
-                          <div className="text-right ml-4">
-                            <div className="text-2xl font-bold">{plan.priceMonthly}€</div>
-                            <div className="text-xs text-muted-foreground">/mois</div>
-                            <div className="text-xs text-green-600 mt-1">
-                              {plan.priceYearly}€/an
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                {/* Info paiement sécurisé */}
-                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground bg-muted p-2 rounded">
-                  <CreditCard className="w-4 h-4" />
-                  <span>Paiement sécurisé par Stripe • 14 jours d&apos;essai inclus</span>
-                </div>
+              <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                <h4 className="font-semibold text-blue-900 mb-2">Récapitulatif de l&apos;essai</h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>✓ 14 jours d&apos;accès complet au plan PRO</li>
+                  <li>✓ Jusqu&apos;à 20 véhicules et 50 conducteurs</li>
+                  <li>✓ Toutes les fonctionnalités incluses</li>
+                  <li>✓ Sans engagement, sans carte bancaire</li>
+                </ul>
               </div>
 
               <div className="flex items-start space-x-2">
@@ -394,11 +293,11 @@ export default function RegisterForm() {
                 <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(2)}>
                   Retour
                 </Button>
-                <Button type="submit" className="flex-1" disabled={isLoading || isRedirectingToStripe}>
-                  {isLoading || isRedirectingToStripe ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Redirection...</>
+                <Button type="submit" className="flex-1" disabled={isLoading}>
+                  {isLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Création...</>
                   ) : (
-                    <><CreditCard className="mr-2 h-4 w-4" />Payer {planConfig.priceMonthly}€/mois</>
+                    <>Créer mon compte</>
                   )}
                 </Button>
               </div>

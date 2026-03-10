@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createAdminClient, getUserWithCompany } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 interface VehicleData {
   registration_number: string;
@@ -28,7 +29,7 @@ export async function createVehicle(data: VehicleData) {
   const { error } = await supabase.from('vehicles').insert({
     ...data,
     company_id: userData.company_id,
-    status: 'active',
+    status: VEHICLE_STATUS.ACTIF,
   });
 
   if (error) {

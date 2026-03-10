@@ -4,6 +4,7 @@
  */
 
 import { Resend } from 'resend';
+import { logger } from '@/lib/logger';
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
@@ -52,8 +53,8 @@ function sanitizeRecipients(to: string | string[]): string | string[] {
   });
 
   if (!isAllAllowed) {
-    console.log(`🔄 Mode test: emails redirigés vers ${testEmail}`);
-    console.log(`   Destinataires originaux: ${recipients.join(', ')}`);
+    logger.info(`Mode test: emails redirigés vers ${testEmail}`);
+    logger.debug(`Destinataires originaux: ${recipients.join(', ')}`);
     return testEmail;
   }
 
@@ -63,11 +64,11 @@ function sanitizeRecipients(to: string | string[]): string | string[] {
 export async function sendEmail(options: EmailOptions, forceSimulate: boolean = false) {
   // Mode simulation complet (pour tester sans Resend)
   if (!resend || forceSimulate) {
-    console.log('📧 [SIMULATION] Email');
-    console.log('   De:', options.from || fromEmail);
-    console.log('   À:', options.to);
-    console.log('   Sujet:', options.subject);
-    console.log('   Pour envoyer de vrais emails, vérifiez votre domaine sur https://resend.com/domains');
+    logger.info('[SIMULATION] Email');
+    logger.debug('De:', options.from || fromEmail);
+    logger.debug('À:', options.to);
+    logger.debug('Sujet:', options.subject);
+    logger.info('Pour envoyer de vrais emails, vérifiez votre domaine sur https://resend.com/domains');
     return { success: true, simulated: true, id: 'simulated-' + Date.now() };
   }
 
@@ -97,7 +98,7 @@ export async function sendEmail(options: EmailOptions, forceSimulate: boolean = 
       throw new Error(error.message);
     }
 
-    console.log('✅ Email envoyé:', data?.id);
+    logger.info('Email envoyé:', data?.id);
     return { success: true, id: data?.id };
   } catch (error: any) {
     console.error('❌ Erreur envoi email:', error);

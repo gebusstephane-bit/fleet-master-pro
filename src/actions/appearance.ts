@@ -1,14 +1,22 @@
 'use server';
 
-import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+
+import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import { AppearanceSettings } from '@/types/appearance';
 
 export async function getAppearanceSettings(userId: string) {
   try {
-    const adminSupabase = createAdminClient();
+    const supabase = await createClient();
     
-    const { data, error } = await adminSupabase
+    // Vérifier que l'utilisateur est authentifié
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.id !== userId) {
+      return { data: null, error: 'Non autorisé' };
+    }
+    
+    const { data, error } = await supabase
       .from('user_appearance_settings')
       .select('*')
       .eq('user_id', userId)
@@ -17,14 +25,14 @@ export async function getAppearanceSettings(userId: string) {
     if (error) {
       // Si pas de données, créer les paramètres par défaut
       if (error.code === 'PGRST116') {
-        const { data: newSettings, error: createError } = await adminSupabase
+        const { data: newSettings, error: createError } = await supabase
           .from('user_appearance_settings')
           .insert({ user_id: userId })
           .select()
           .single();
         
         if (createError) {
-          console.error('Error creating appearance settings:', createError);
+          logger.error('Error creating appearance settings:', createError);
           return { data: null, error: createError.message };
         }
         
@@ -35,9 +43,9 @@ export async function getAppearanceSettings(userId: string) {
     }
     
     return { data, error: null };
-  } catch (error: any) {
-    console.error('getAppearanceSettings error:', error);
-    return { data: null, error: error.message };
+  } catch (error) {
+    logger.error('getAppearanceSettings error:', error);
+    return { data: null, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
@@ -47,7 +55,6 @@ export async function updateAppearanceSettings(
 ) {
   try {
     const supabase = await createClient();
-    const adminSupabase = createAdminClient();
     
     // Vérifier que l'utilisateur est authentifié
     const { data: { user } } = await supabase.auth.getUser();
@@ -56,29 +63,29 @@ export async function updateAppearanceSettings(
     }
     
     // Mapper les noms camelCase vers snake_case
-    const dbSettings: any = {};
-    if (settings.theme) dbSettings.theme = settings.theme;
-    if (settings.primaryColor) dbSettings.primary_color = settings.primaryColor;
-    if (settings.customColor) dbSettings.custom_color = settings.customColor;
-    if (settings.density) dbSettings.density = settings.density;
-    if (settings.font) dbSettings.font = settings.font;
-    if (settings.fontSize) dbSettings.font_size = settings.fontSize;
-    if (settings.language) dbSettings.language = settings.language;
-    if (settings.dateFormat) dbSettings.date_format = settings.dateFormat;
-    if (settings.timeFormat) dbSettings.time_format = settings.timeFormat;
-    if (settings.currency) dbSettings.currency = settings.currency;
-    if (settings.timezone) dbSettings.timezone = settings.timezone;
-    if (settings.sidebarStyle) dbSettings.sidebar_style = settings.sidebarStyle;
-    if (settings.sidebarAutoCollapse !== undefined) dbSettings.sidebar_auto_collapse = settings.sidebarAutoCollapse;
-    if (settings.sidebarIconsOnly !== undefined) dbSettings.sidebar_icons_only = settings.sidebarIconsOnly;
-    if (settings.reduceMotion !== undefined) dbSettings.reduce_motion = settings.reduceMotion;
-    if (settings.glassEffects !== undefined) dbSettings.glass_effects = settings.glassEffects;
-    if (settings.shadows !== undefined) dbSettings.shadows = settings.shadows;
+    const dbSettings: Record<string, unknown> = {};
+    if (settings.theme) {dbSettings.theme = settings.theme;}
+    if (settings.primaryColor) {dbSettings.primary_color = settings.primaryColor;}
+    if (settings.customColor) {dbSettings.custom_color = settings.customColor;}
+    if (settings.density) {dbSettings.density = settings.density;}
+    if (settings.font) {dbSettings.font = settings.font;}
+    if (settings.fontSize) {dbSettings.font_size = settings.fontSize;}
+    if (settings.language) {dbSettings.language = settings.language;}
+    if (settings.dateFormat) {dbSettings.date_format = settings.dateFormat;}
+    if (settings.timeFormat) {dbSettings.time_format = settings.timeFormat;}
+    if (settings.currency) {dbSettings.currency = settings.currency;}
+    if (settings.timezone) {dbSettings.timezone = settings.timezone;}
+    if (settings.sidebarStyle) {dbSettings.sidebar_style = settings.sidebarStyle;}
+    if (settings.sidebarAutoCollapse !== undefined) {dbSettings.sidebar_auto_collapse = settings.sidebarAutoCollapse;}
+    if (settings.sidebarIconsOnly !== undefined) {dbSettings.sidebar_icons_only = settings.sidebarIconsOnly;}
+    if (settings.reduceMotion !== undefined) {dbSettings.reduce_motion = settings.reduceMotion;}
+    if (settings.glassEffects !== undefined) {dbSettings.glass_effects = settings.glassEffects;}
+    if (settings.shadows !== undefined) {dbSettings.shadows = settings.shadows;}
     
     dbSettings.updated_at = new Date().toISOString();
     
     // Vérifier si l'entrée existe déjà
-    const { data: existing } = await adminSupabase
+    const { data: existing } = await supabase
       .from('user_appearance_settings')
       .select('id')
       .eq('user_id', userId)
@@ -87,7 +94,7 @@ export async function updateAppearanceSettings(
     let result;
     if (existing) {
       // Mettre à jour
-      result = await adminSupabase
+      result = await supabase
         .from('user_appearance_settings')
         .update(dbSettings)
         .eq('user_id', userId)
@@ -95,7 +102,7 @@ export async function updateAppearanceSettings(
         .single();
     } else {
       // Insérer
-      result = await adminSupabase
+      result = await supabase
         .from('user_appearance_settings')
         .insert({
           user_id: userId,
@@ -106,23 +113,22 @@ export async function updateAppearanceSettings(
     }
     
     if (result.error) {
-      console.error('Error updating appearance settings:', result.error);
+      logger.error('Error updating appearance settings:', result.error);
       return { error: result.error.message, data: null };
     }
     
     revalidatePath('/settings/appearance');
     
     return { data: result.data, error: null };
-  } catch (error: any) {
-    console.error('updateAppearanceSettings error:', error);
-    return { error: error.message, data: null };
+  } catch (error) {
+    logger.error('updateAppearanceSettings error:', error);
+    return { error: error instanceof Error ? error.message : 'Unknown error', data: null };
   }
 }
 
 export async function resetAppearanceSettings(userId: string) {
   try {
     const supabase = await createClient();
-    const adminSupabase = createAdminClient();
     
     // Vérifier que l'utilisateur est authentifié
     const { data: { user } } = await supabase.auth.getUser();
@@ -130,7 +136,18 @@ export async function resetAppearanceSettings(userId: string) {
       return { error: 'Non autorisé', data: null };
     }
     
-    const { data, error } = await adminSupabase
+    // Vérifier que les paramètres existent
+    const { data: existing } = await supabase
+      .from('user_appearance_settings')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+    
+    if (!existing) {
+      return { error: 'Paramètres non trouvés', data: null };
+    }
+    
+    const { data, error } = await supabase
       .from('user_appearance_settings')
       .update({
         theme: 'system',
@@ -157,16 +174,16 @@ export async function resetAppearanceSettings(userId: string) {
       .single();
     
     if (error) {
-      console.error('Error resetting appearance settings:', error);
+      logger.error('Error resetting appearance settings:', error);
       return { error: error.message, data: null };
     }
     
     revalidatePath('/settings/appearance');
     
     return { data, error: null };
-  } catch (error: any) {
-    console.error('resetAppearanceSettings error:', error);
-    return { error: error.message, data: null };
+  } catch (error) {
+    logger.error('resetAppearanceSettings error:', error);
+    return { error: error instanceof Error ? error.message : 'Unknown error', data: null };
   }
 }
 
@@ -201,8 +218,8 @@ export async function exportAppearanceSettings(userId: string) {
     };
     
     return { data: exportData, error: null };
-  } catch (error: any) {
-    console.error('exportAppearanceSettings error:', error);
-    return { error: error.message, data: null };
+  } catch (error) {
+    logger.error('exportAppearanceSettings error:', error);
+    return { error: error instanceof Error ? error.message : 'Unknown error', data: null };
   }
 }

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import { createSosProviderSchema, validateSchema, uuidSchema } from '@/lib/validation/schemas';
 
 export const dynamic = 'force-dynamic';
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ providers: providers || [] });
   } catch (error: any) {
-    console.error('[SOS Providers] GET error:', error);
+    logger.error('[SOS Providers] GET error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ provider: data }, { status: 201 });
   } catch (error: any) {
-    console.error('[SOS Providers] POST error:', error);
+    logger.error('[SOS Providers] POST error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -195,7 +196,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ provider: data });
   } catch (error: any) {
-    console.error('[SOS Providers] PATCH error:', error);
+    logger.error('[SOS Providers] PATCH error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -237,7 +238,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('[SOS Providers] DELETE error:', error);
+    logger.error('[SOS Providers] DELETE error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

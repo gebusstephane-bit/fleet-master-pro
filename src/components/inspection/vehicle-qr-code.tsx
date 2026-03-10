@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Printer, QrCode, Link2, ExternalLink, Download } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Printer, QrCode, Link2, ExternalLink, Download, RefreshCw, AlertTriangle } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 interface VehicleQRCodeProps {
   vehicleId: string;
@@ -15,10 +17,76 @@ interface VehicleQRCodeProps {
 
 export function VehicleQRCode({ vehicleId, registration }: VehicleQRCodeProps) {
   const [showQR, setShowQR] = useState(false);
+  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
 
-  // URL publique complete pour le QR code
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
-  const qrUrl = `${baseUrl}/inspection/${vehicleId}`;
+
+  // Récupérer le qr_code_data quand on affiche le QR
+  useEffect(() => {
+    if (showQR && !qrCodeData) {
+      fetchQrCodeData();
+    }
+  }, [showQR]);
+
+  const fetchQrCodeData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('qr_code_data')
+        .eq('id', vehicleId)
+        .single();
+
+      if (error) throw error;
+
+      if (data?.qr_code_data) {
+        setQrCodeData(data.qr_code_data);
+      } else {
+        // Si pas de token, en générer un nouveau
+        await regenerateToken();
+      }
+    } catch (err: any) {
+      setError('Erreur lors du chargement du QR Code');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const regenerateToken = async () => {
+    try {
+      setRegenerating(true);
+      const supabase = createClient();
+
+      const { data, error } = await supabase
+        .from('vehicles')
+        .update({ qr_code_data: crypto.randomUUID() })
+        .eq('id', vehicleId)
+        .select('qr_code_data')
+        .single();
+
+      if (error) throw error;
+
+      setQrCodeData(data.qr_code_data);
+      setError(null);
+    } catch (err: any) {
+      setError('Erreur lors de la régénération du token');
+      console.error(err);
+    } finally {
+      setRegenerating(false);
+      setLoading(false);
+    }
+  };
+
+  // URL avec token pour le QR code (format TEXT)
+  const qrUrl = qrCodeData
+    ? `${baseUrl}/scan/${vehicleId}?token=${encodeURIComponent(qrCodeData)}`
+    : null;
 
   const handleDownload = () => {
     const svg = document.getElementById(`qr-inspection-${vehicleId}`);
@@ -34,7 +102,7 @@ export function VehicleQRCode({ vehicleId, registration }: VehicleQRCodeProps) {
       canvas.height = img.height;
       ctx?.drawImage(img, 0, 0);
       const pngFile = canvas.toDataURL('image/png');
-      
+
       const downloadLink = document.createElement('a');
       downloadLink.download = `qr-code-${registration}.png`;
       downloadLink.href = pngFile;
@@ -49,7 +117,7 @@ export function VehicleQRCode({ vehicleId, registration }: VehicleQRCodeProps) {
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <QrCode className="h-5 w-5 text-blue-500" />
-          Contrôle d&apos;état
+          Contrôle QR Code
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -64,56 +132,98 @@ export function VehicleQRCode({ vehicleId, registration }: VehicleQRCodeProps) {
           </div>
         ) : (
           <>
-            {/* QR Code */}
-            <div className="flex justify-center p-4 bg-white rounded-lg border">
-              <QRCodeSVG
-                id={`qr-inspection-${vehicleId}`}
-                value={qrUrl}
-                size={200}
-                level="M"
-                includeMargin={true}
-                imageSettings={{
-                  src: '/logo.png',
-                  x: undefined,
-                  y: undefined,
-                  height: 24,
-                  width: 24,
-                  excavate: true,
-                }}
-              />
-            </div>
+            {error && (
+              <Alert variant="destructive" className="text-sm">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-            <div className="text-center space-y-2">
-              <p className="text-sm text-slate-500">Scannez pour contrôler ce véhicule</p>
-              <p className="text-xs text-slate-400 break-all font-mono">{qrUrl}</p>
-            </div>
+            {loading ? (
+              <div className="flex items-center justify-center h-48">
+                <div className="w-8 h-8 border-4 border-slate-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <>
+                {/* QR Code */}
+                {qrUrl ? (
+                  <div className="flex justify-center p-4 bg-white rounded-lg border">
+                    <QRCodeSVG
+                      id={`qr-inspection-${vehicleId}`}
+                      value={qrUrl}
+                      size={200}
+                      level="M"
+                      includeMargin={true}
+                      imageSettings={{
+                        src: '/logo.png',
+                        x: undefined,
+                        y: undefined,
+                        height: 24,
+                        width: 24,
+                        excavate: true,
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex justify-center p-4 bg-slate-800 rounded-lg border border-slate-700">
+                    <p className="text-slate-500">QR Code non disponible</p>
+                  </div>
+                )}
 
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                className="flex-1" 
-                onClick={() => window.print()}
-              >
-                <Printer className="w-4 h-4 mr-2" />
-                Imprimer
-              </Button>
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={handleDownload}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                PNG
-              </Button>
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={() => navigator.clipboard.writeText(qrUrl)}
-              >
-                <Link2 className="w-4 h-4 mr-2" />
-                Copier
-              </Button>
-            </div>
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-slate-500">Scannez pour accéder au véhicule</p>
+                  <p className="text-xs text-slate-400">
+                    Triple accès : Inspection, Carburant, Carnet
+                  </p>
+                  {qrCodeData && (
+                    <p className="text-xs text-slate-600 font-mono">
+                      Token: {qrCodeData.slice(0, 8)}...
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => window.print()}
+                    disabled={!qrUrl}
+                  >
+                    <Printer className="w-4 h-4 mr-2" />
+                    Imprimer
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={handleDownload}
+                    disabled={!qrUrl}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    PNG
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => qrUrl && navigator.clipboard.writeText(qrUrl)}
+                    disabled={!qrUrl}
+                  >
+                    <Link2 className="w-4 h-4 mr-2" />
+                    Copier
+                  </Button>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-slate-500 hover:text-slate-300"
+                  onClick={regenerateToken}
+                  disabled={regenerating}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${regenerating ? 'animate-spin' : ''}`} />
+                  Régénérer le token
+                </Button>
+              </>
+            )}
           </>
         )}
 

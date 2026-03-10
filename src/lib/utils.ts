@@ -153,3 +153,20 @@ export function isValidFrenchPlate(plate: string): boolean {
   const oldFormat = /^\d{1,4}\s?[A-Z]{1,4}\s?\d{1,3}$/i;
   return newFormat.test(plate) || oldFormat.test(plate);
 }
+
+/**
+ * Generate a unique ID
+ */
+export function generateId(): string {
+  return Math.random().toString(36).substring(2, 15);
+}
+
+/**
+ * Convert a string to a URL-friendly slug
+ */
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}

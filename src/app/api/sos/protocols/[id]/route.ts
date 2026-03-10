@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -59,7 +60,7 @@ export async function DELETE(
       .eq('user_id', user.id);
 
     if (error) {
-      console.error('[Protocols] Erreur suppression:', error);
+      logger.error('[Protocols] Erreur suppression:', error);
       return NextResponse.json(
         { error: 'Erreur lors de la suppression: ' + error.message },
         { status: 500 }
@@ -69,7 +70,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
-    console.error('[Protocols] Exception:', error);
+    logger.error('[Protocols] Exception:', error);
     return NextResponse.json(
       { error: 'Erreur serveur: ' + error.message },
       { status: 500 }

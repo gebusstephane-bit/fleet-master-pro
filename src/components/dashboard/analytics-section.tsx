@@ -8,7 +8,7 @@
 // @ts-ignore
 import { Vehicle } from "@/types/vehicle";
 // @ts-ignore
-import { DashboardAnalytics } from "@/actions/dashboard-analytics";
+import { DashboardAnalytics } from "@/actions/dashboard";
 import { CostTrendChart } from "./charts/cost-trend-chart";
 // @ts-ignore
 import { FleetStatusChart } from "./charts/fleet-status-chart";

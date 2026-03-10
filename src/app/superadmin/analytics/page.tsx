@@ -15,7 +15,7 @@ export default async function AnalyticsPage() {
 
   const { count: totalUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
   const { count: totalVehicles } = await supabase.from('vehicles').select('*', { count: 'exact', head: true });
-  const { count: totalInspections } = await supabase.from('inspections').select('*', { count: 'exact', head: true });
+  const { count: totalInspections } = await supabase.from('vehicle_inspections').select('*', { count: 'exact', head: true });
   // @ts-ignore
   const { count: totalMaintenance } = await (supabase.from('maintenance') as any).select('*', { count: 'exact', head: true });
 

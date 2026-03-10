@@ -1,9 +1,10 @@
 'use server';
 
-import { z } from 'zod';
-import { authActionClient } from '@/lib/safe-action';
-import { createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+
+import { authActionClient } from '@/lib/safe-action';
+import { createClient } from '@/lib/supabase/server';
 
 // Mapping des plans vers les variables d'environnement Stripe
 const PLAN_PRICE_IDS: Record<string, { monthly: string; yearly: string }> = {
@@ -30,12 +31,12 @@ const upgradeSchema = z.object({
 // Récupérer l'abonnement de l'entreprise
 export const getCompanySubscription = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
+    // RLS filtre automatiquement par company_id
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
-      .eq('company_id', ctx.user.company_id)
       .single();
     
     if (error) {
@@ -48,30 +49,29 @@ export const getCompanySubscription = authActionClient
 // Vérifier les limites actuelles
 export const checkSubscriptionLimits = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Récupérer l'abonnement avec les compteurs
+    // Récupérer l'abonnement avec les compteurs (RLS filtre automatiquement)
     const { data: sub } = await supabase
-      .from('company_subscription' as any)
+      .from('company_subscription')
       .select('*')
-      .eq('company_id', ctx.user.company_id)
       .single();
-    
+
     if (!sub) {
       throw new Error('Abonnement non trouvé');
     }
-    
+
     return {
       success: true,
       data: {
-        plan: (sub as any).plan,
-        vehicleLimit: (sub as any).vehicle_limit,
-        vehicleCount: (sub as any).current_vehicle_count,
-        canAddVehicle: (sub as any).can_add_vehicle,
-        userLimit: (sub as any).user_limit,
-        userCount: (sub as any).current_user_count,
-        canAddUser: (sub as any).can_add_user,
-        periodEnd: (sub as any).current_period_end,
+        plan: sub.plan,
+        vehicleLimit: sub.vehicle_limit,
+        vehicleCount: sub.current_vehicle_count,
+        canAddVehicle: sub.can_add_vehicle,
+        userLimit: sub.user_limit,
+        userCount: sub.current_user_count,
+        canAddUser: sub.can_add_user,
+        periodEnd: sub.current_period_end,
       }
     };
   });
@@ -81,24 +81,22 @@ export const createCheckoutSession = authActionClient
   .schema(upgradeSchema)
   .action(async ({ parsedInput, ctx }) => {
     const { plan, yearly } = parsedInput;
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Récupérer l'entreprise
+    // Récupérer l'entreprise (RLS filtre automatiquement)
     const { data: company } = await supabase
       .from('companies')
       .select('id, name, email')
-      .eq('id', ctx.user.company_id)
       .single();
     
     if (!company) {
       throw new Error('Entreprise non trouvée');
     }
     
-    // Récupérer ou créer le customer Stripe
+    // Récupérer ou créer le customer Stripe (RLS filtre automatiquement)
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('stripe_customer_id')
-      .eq('company_id', company.id)
       .single();
     
     let customerId = subscription?.stripe_customer_id;
@@ -117,19 +115,28 @@ export const createCheckoutSession = authActionClient
       
       customerId = customer.id;
       
-      // Sauvegarder le customer_id
+      // Sauvegarder le customer_id (RLS filtre automatiquement)
       await supabase
         .from('subscriptions')
-        .update({ stripe_customer_id: customerId })
-        .eq('company_id', company.id);
+        .update({ stripe_customer_id: customerId });
     }
     
     // Créer la session de checkout
     const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY!));
     
+    // Vérification explicite : si annuel demandé mais non configuré → erreur claire
+    const yearlyEnvVars: Record<string, string | undefined> = {
+      ESSENTIAL: process.env.STRIPE_PRICE_ID_ESSENTIAL_YEARLY,
+      PRO: process.env.STRIPE_PRICE_ID_PRO_YEARLY,
+      UNLIMITED: process.env.STRIPE_PRICE_ID_UNLIMITED_YEARLY,
+    };
+    if (yearly && !yearlyEnvVars[plan]) {
+      throw new Error("L'offre annuelle n'est pas encore disponible en ligne. Contactez-nous à contact@fleet-master.fr pour en bénéficier.");
+    }
+
     const planConfig = PLAN_PRICE_IDS[plan];
     const priceId = yearly ? planConfig.yearly : planConfig.monthly;
-    
+
     if (!priceId) {
       throw new Error('Price ID non configuré pour ce plan');
     }
@@ -165,13 +172,12 @@ export const requestEnterpriseQuote = authActionClient
   }))
   .action(async ({ parsedInput, ctx }) => {
     const { message, phone } = parsedInput;
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Récupérer les infos de l'entreprise
+    // Récupérer les infos de l'entreprise (RLS filtre automatiquement)
     const { data: company } = await supabase
       .from('companies')
       .select('id, name, email, siret')
-      .eq('id', ctx.user.company_id)
       .single();
     
     if (!company) {
@@ -213,12 +219,12 @@ export const requestEnterpriseQuote = authActionClient
 // Annuler l'abonnement
 export const cancelSubscription = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
+    // RLS filtre automatiquement par company_id
     const { data: sub } = await supabase
       .from('subscriptions')
       .select('stripe_subscription_id, plan')
-      .eq('company_id', ctx.user.company_id)
       .single();
     
     if (!sub?.stripe_subscription_id) {
@@ -230,14 +236,13 @@ export const cancelSubscription = authActionClient
     
     await stripe.subscriptions.cancel(sub.stripe_subscription_id);
     
-    // Mettre à jour en base (le webhook confirmera, mais on prépare)
+    // Mettre à jour en base (le webhook confirmera, mais on prépare) - RLS filtre automatiquement
     await supabase
       .from('subscriptions')
       .update({
         status: 'CANCELED',
         canceled_at: new Date().toISOString(),
-      })
-      .eq('company_id', ctx.user.company_id);
+      });
     
     revalidatePath('/settings/billing');
     

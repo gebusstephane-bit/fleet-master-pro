@@ -23,7 +23,7 @@ describe('Stripe Webhook Handler', () => {
 
   describe('Event Verification', () => {
     it('should verify webhook signature', () => {
-      const stripe = new Stripe('sk_test_key', { apiVersion: '2024-12-18.acacia' });
+      const stripe = new Stripe('sk_test_key', { apiVersion: '2026-01-28.clover' });
       const payload = JSON.stringify({
         id: 'evt_test',
         type: 'checkout.session.completed',
@@ -38,7 +38,7 @@ describe('Stripe Webhook Handler', () => {
     });
 
     it('should reject invalid signature', () => {
-      const stripe = new Stripe('sk_test_key', { apiVersion: '2024-12-18.acacia' });
+      const stripe = new Stripe('sk_test_key', { apiVersion: '2026-01-28.clover' });
       const payload = JSON.stringify({ type: 'test' });
 
       expect(() => {

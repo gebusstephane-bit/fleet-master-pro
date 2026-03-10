@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { getReadableError } from '@/lib/error-messages';
 import {
   getAlerts,
   createAlert,
@@ -40,7 +41,7 @@ export function useCreateAlerts() {
       queryClient.invalidateQueries({ queryKey: alertKeys.lists() });
       toast.success('Alertes mises à jour');
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(getReadableError(error)),
   });
 }
 

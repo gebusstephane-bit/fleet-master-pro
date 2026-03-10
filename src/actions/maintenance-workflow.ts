@@ -1,12 +1,18 @@
 'use server';
 
-import { z } from 'zod';
-import { authActionClient } from '@/lib/safe-action';
-import { createAdminClient } from '@/lib/supabase/server';
-import { revalidatePath } from 'next/cache';
-import { sendEmail } from '@/lib/email';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+
+import { USER_ROLE } from '@/constants/enums';
+import { sendEmail } from '@/lib/email';
+import { authActionClient } from '@/lib/safe-action';
+import { createClient } from '@/lib/supabase/server';
+import type { Database } from '@/types/supabase';
+import { recalculatePredictionsForVehicle } from '@/lib/maintenance-predictor';
+import { logger } from '@/lib/logger';
+
 
 // ============================================
 // SCHÉMAS
@@ -53,26 +59,26 @@ const completeMaintenanceSchema = z.object({
 // ============================================
 
 async function getUserCompanyData(userId: string) {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from('profiles')
-    .select('*, companies(*)')
+    .select('id, first_name, last_name, email, role, company_id')
     .eq('id', userId)
     .single();
-  
-  if (error) throw new Error('Utilisateur non trouvé');
+
+  if (error || !data) {throw new Error('Utilisateur non trouvé');}
   return data;
 }
 
 async function getCompanyDirectors(companyId: string) {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from('profiles')
     .select('id, email, first_name, last_name')
     .eq('company_id', companyId)
-    .in('role', ['ADMIN', 'DIRECTEUR']);
+    .in('role', [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR]);
   
-  if (error) return [];
+  if (error) {return [];}
   return data || [];
 }
 
@@ -83,7 +89,7 @@ async function addStatusHistory(
   userId: string,
   notes?: string
 ) {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   await supabase
     .from('maintenance_status_history')
     .insert({
@@ -102,13 +108,9 @@ async function addStatusHistory(
 export const createMaintenanceRequest = authActionClient
   .schema(createRequestSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    console.log('createMaintenanceRequest:', {
-      vehicleId: parsedInput.vehicleId,
-      userCompanyId: ctx.user.company_id,
-      userId: ctx.user.id
-    });
+    // Création maintenance request
     
     // 1. Vérifier le véhicule
     const { data: vehicle, error: vehicleError } = await supabase
@@ -118,10 +120,10 @@ export const createMaintenanceRequest = authActionClient
       .eq('company_id', ctx.user.company_id)
       .single();
     
-    console.log('Vehicle query result:', { vehicle, vehicleError });
+    // Vehicle query done
     
     if (vehicleError || !vehicle) {
-      console.error('Vehicle error:', vehicleError);
+      logger.error('Vehicle error:', vehicleError?.message);
       throw new Error('Véhicule non trouvé ou accès non autorisé');
     }
     
@@ -151,46 +153,51 @@ export const createMaintenanceRequest = authActionClient
       throw new Error('Erreur lors de la création de la demande: données manquantes');
     }
     
-    // 3. Trouver les directeurs et envoyer emails
-    const directors = await getCompanyDirectors(ctx.user.company_id);
-    const requester = await getUserCompanyData(ctx.user.id);
-    
-    for (const director of directors) {
-      const validationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/maintenance/validate?id=${maintenance.id}&token=${maintenance.validation_token}`;
-      
-      await sendEmail({
-        to: director.email,
-        subject: `🔧 Validation requise : ${vehicle.registration_number}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #1f2937;">Nouvelle demande d'intervention</h2>
-            
-            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>🚗 Véhicule :</strong> ${vehicle.registration_number} (${vehicle.brand} ${vehicle.model})</p>
-              <p><strong>🔧 Type :</strong> ${parsedInput.type}</p>
-              <p><strong>📝 Description :</strong> ${parsedInput.description}</p>
-              <p><strong>⚡ Priorité :</strong> <span style="color: ${parsedInput.priority === 'CRITICAL' ? '#dc2626' : parsedInput.priority === 'HIGH' ? '#ea580c' : '#6b7280'};">${parsedInput.priority}</span></p>
-              <p><strong>👤 Demandé par :</strong> ${requester.first_name} ${requester.last_name}</p>
-              ${parsedInput.estimatedCost ? `<p><strong>💰 Coût estimé :</strong> ${parsedInput.estimatedCost}€</p>` : ''}
+    // 3. Trouver les directeurs et envoyer emails (non-bloquant)
+    try {
+      const directors = await getCompanyDirectors(ctx.user.company_id);
+      const requester = await getUserCompanyData(ctx.user.id);
+
+      for (const director of directors) {
+        const validationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/maintenance/validate?id=${maintenance.id}&token=${maintenance.validation_token}`;
+
+        await sendEmail({
+          to: director.email,
+          subject: `🔧 Validation requise : ${vehicle.registration_number}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #1f2937;">Nouvelle demande d'intervention</h2>
+
+              <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>🚗 Véhicule :</strong> ${vehicle.registration_number} (${vehicle.brand} ${vehicle.model})</p>
+                <p><strong>🔧 Type :</strong> ${parsedInput.type}</p>
+                <p><strong>📝 Description :</strong> ${parsedInput.description}</p>
+                <p><strong>⚡ Priorité :</strong> <span style="color: ${parsedInput.priority === 'CRITICAL' ? '#dc2626' : parsedInput.priority === 'HIGH' ? '#ea580c' : '#6b7280'};">${parsedInput.priority}</span></p>
+                <p><strong>👤 Demandé par :</strong> ${requester.first_name} ${requester.last_name}</p>
+                ${parsedInput.estimatedCost ? `<p><strong>💰 Coût estimé :</strong> ${parsedInput.estimatedCost}€</p>` : ''}
+              </div>
+
+              <div style="margin: 30px 0; text-align: center;">
+                <a href="${validationUrl}&action=validate"
+                   style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-right: 10px; display: inline-block;">
+                  ✅ Valider la demande
+                </a>
+                <a href="${validationUrl}&action=reject"
+                   style="background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                   ❌ Refuser
+                </a>
+              </div>
+
+              <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">
+                Cet email a été envoyé automatiquement par FleetMaster Pro.
+              </p>
             </div>
-            
-            <div style="margin: 30px 0; text-align: center;">
-              <a href="${validationUrl}&action=validate" 
-                 style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-right: 10px; display: inline-block;">
-                ✅ Valider la demande
-              </a>
-              <a href="${validationUrl}&action=reject" 
-                 style="background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                 ❌ Refuser
-              </a>
-            </div>
-            
-            <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">
-              Cet email a été envoyé automatiquement par FleetMaster Pro.
-            </p>
-          </div>
-        `,
-      });
+          `,
+        });
+      }
+    } catch (emailError) {
+      // L'email est non-bloquant : la demande est créée même si l'envoi échoue
+      logger.error('Erreur envoi email directeur (non-bloquant):', emailError);
     }
     
     revalidatePath('/maintenance');
@@ -204,23 +211,28 @@ export const createMaintenanceRequest = authActionClient
 export const validateMaintenanceRequest = authActionClient
   .schema(validateRequestSchema.omit({ token: true }))
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    console.log('validateMaintenanceRequest:', {
-      id: parsedInput.id,
-      userCompanyId: ctx.user.company_id,
-      action: parsedInput.action
-    });
+    // Validation maintenance request
     
-    // 1. Récupérer la demande sans filtre company_id d'abord
+    // 1. Récupérer la demande
     const { data: maintenance, error } = await supabase
       .from('maintenance_records')
-      .select('*, vehicle:vehicles(registration_number, brand, model), requester:profiles!requested_by(email, first_name, last_name)')
+      .select('*')
       .eq('id', parsedInput.id)
       .single();
     
-    console.log('Maintenance found:', maintenance);
-    console.log('Maintenance error:', error);
+    // Récupérer le véhicule séparément si besoin
+    let vehicleData = null;
+    let requesterData = null;
+    if (maintenance) {
+      const { data: v } = await supabase.from('vehicles').select('registration_number, brand, model').eq('id', maintenance.vehicle_id).single();
+      vehicleData = v;
+      const { data: r } = await supabase.from('profiles').select('email, first_name, last_name').eq('id', maintenance.requested_by!).single();
+      requesterData = r;
+    }
+    
+    // Maintenance query done
     
     if (error || !maintenance) {
       throw new Error('Demande non trouvée');
@@ -228,17 +240,19 @@ export const validateMaintenanceRequest = authActionClient
     
     // Vérifier le company_id manuellement
     if (maintenance.company_id !== ctx.user.company_id) {
-      console.error('Company mismatch:', {
-        maintenanceCompanyId: maintenance.company_id,
-        userCompanyId: ctx.user.company_id
-      });
+      logger.error('Company mismatch');
       throw new Error('Accès non autorisé à cette demande');
     }
     
+    // Vérification stricte du rôle : seuls ADMIN et DIRECTEUR peuvent valider
+    if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(ctx.user.role))) {
+      throw new Error('Accès non autorisé - réservé aux directeurs');
+    }
+
     if (maintenance.status !== 'DEMANDE_CREEE') {
       throw new Error('Cette demande a déjà été traitée');
     }
-    
+
     const newStatus = parsedInput.action === 'validate' ? 'VALIDEE_DIRECTEUR' : 'REFUSEE';
     
     // 2. Mettre à jour le statut
@@ -265,13 +279,13 @@ export const validateMaintenanceRequest = authActionClient
     // 4. Email à l'agent de parc
     if (parsedInput.action === 'validate') {
       await sendEmail({
-        to: maintenance.requester?.email || '',
-        subject: `✅ Demande validée - Prenez RDV pour ${maintenance.vehicle.registration_number}`,
+        to: requesterData?.email || '',
+        subject: `✅ Demande validée - Prenez RDV pour ${vehicleData?.registration_number}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #10b981;">Votre demande a été validée</h2>
             
-            <p>Le directeur a validé l'intervention pour <strong>${maintenance.vehicle.registration_number}</strong>.</p>
+            <p>Le directeur a validé l'intervention pour <strong>${vehicleData?.registration_number}</strong>.</p>
             
             <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
               <p style="margin: 0;"><strong>Prochaine étape :</strong> Prenez rendez-vous avec un garage.</p>
@@ -289,12 +303,12 @@ export const validateMaintenanceRequest = authActionClient
     } else {
       // Email refus
       await sendEmail({
-        to: maintenance.requester?.email || '',
-        subject: `❌ Demande refusée - ${maintenance.vehicle.registration_number}`,
+        to: requesterData?.email || '',
+        subject: `❌ Demande refusée - ${vehicleData?.registration_number}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #ef4444;">Demande refusée</h2>
-            <p>Votre demande d'intervention pour <strong>${maintenance.vehicle.registration_number}</strong> a été refusée.</p>
+            <p>Votre demande d'intervention pour <strong>${vehicleData?.registration_number}</strong> a été refusée.</p>
             ${parsedInput.notes ? `<p><strong>Motif :</strong> ${parsedInput.notes}</p>` : ''}
           </div>
         `,
@@ -313,21 +327,18 @@ export const validateMaintenanceRequest = authActionClient
 export const scheduleMaintenanceRDV = authActionClient
   .schema(scheduleRDVSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
-    console.log('scheduleMaintenanceRDV:', {
-      maintenanceId: parsedInput.maintenanceId,
-      userCompanyId: ctx.user.company_id
-    });
+    // Schedule maintenance RDV
     
     // 1. Récupérer la maintenance
     const { data: maintenance, error } = await supabase
       .from('maintenance_records')
-      .select('*, vehicle:vehicles(registration_number, brand, model), requester:profiles!requested_by(email, first_name, last_name)')
+      .select('*')
       .eq('id', parsedInput.maintenanceId)
       .single();
     
-    console.log('scheduleMaintenanceRDV - maintenance:', maintenance, 'error:', error);
+    // Maintenance query done
     
     if (error || !maintenance) {
       throw new Error('Demande non trouvée');
@@ -340,6 +351,18 @@ export const scheduleMaintenanceRDV = authActionClient
     if (maintenance.status !== 'VALIDEE_DIRECTEUR') {
       throw new Error('Cette demande doit être validée avant de prendre RDV');
     }
+    
+    // Récupérer les données liées
+    const { data: vehicleData } = await supabase
+      .from('vehicles')
+      .select('registration_number, brand, model')
+      .eq('id', maintenance.vehicle_id)
+      .single();
+    const { data: requesterData } = await supabase
+      .from('profiles')
+      .select('email, first_name, last_name')
+      .eq('id', maintenance.requested_by!)
+      .single();
     
     // 2. Calculer les heures de fin
     const [hours, minutes] = parsedInput.rdvTime.split(':').map(Number);
@@ -379,7 +402,7 @@ export const scheduleMaintenanceRDV = authActionClient
       event_date: parsedInput.rdvDate,
       start_time: parsedInput.rdvTime,
       end_time: endTime,
-      title: `🔧 ${maintenance.vehicle.registration_number} - ${maintenance.type}`,
+      title: `🔧 ${vehicleData?.registration_number} - ${maintenance.type}`,
       description: `${maintenance.description} | Garage: ${parsedInput.garageName}`,
       event_type: 'RDV_GARAGE',
       attendees: maintenance.requested_by ? [maintenance.requested_by] : [],
@@ -396,22 +419,27 @@ export const scheduleMaintenanceRDV = authActionClient
       parsedInput.notes
     );
     
-    // 6. Emails de confirmation
+    // 6. Emails de confirmation (ADMIN + DIRECTEUR + AGENT_DE_PARC + EXPLOITANT)
     const directors = await getCompanyDirectors(ctx.user.company_id);
-    const recipients = [...directors, maintenance.requester];
+    const { data: exploitants } = await supabase
+      .from('profiles')
+      .select('id, email, first_name, last_name')
+      .eq('company_id', ctx.user.company_id)
+      .eq('role', USER_ROLE.EXPLOITANT);
+    const recipients = [...directors, ...(exploitants || []), requesterData];
     
     const formattedDate = format(new Date(parsedInput.rdvDate), 'EEEE d MMMM yyyy', { locale: fr });
     
     for (const recipient of recipients) {
       await sendEmail({
         to: recipient?.email || '',
-        subject: `📅 RDV confirmé : ${maintenance.vehicle.registration_number}`,
+        subject: `📅 RDV confirmé : ${vehicleData?.registration_number}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #3b82f6;">Rendez-vous de maintenance confirmé</h2>
             
             <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
-              <p style="margin: 5px 0;"><strong>🚗 Véhicule :</strong> ${maintenance.vehicle.registration_number}</p>
+              <p style="margin: 5px 0;"><strong>🚗 Véhicule :</strong> ${vehicleData?.registration_number}</p>
               <p style="margin: 5px 0;"><strong>📅 Date :</strong> ${formattedDate}</p>
               <p style="margin: 5px 0;"><strong>🕐 Heure :</strong> ${parsedInput.rdvTime}</p>
               <p style="margin: 5px 0;"><strong>🔧 Garage :</strong> ${parsedInput.garageName}</p>
@@ -443,11 +471,11 @@ export const scheduleMaintenanceRDV = authActionClient
 export const completeMaintenance = authActionClient
   .schema(completeMaintenanceSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data: maintenance, error } = await supabase
       .from('maintenance_records')
-      .select('*, vehicle:vehicles(registration_number, brand, model), requester:profiles!requested_by(email, first_name, last_name)')
+      .select('*')
       .eq('id', parsedInput.maintenanceId)
       .single();
     
@@ -462,6 +490,18 @@ export const completeMaintenance = authActionClient
     if (maintenance.status !== 'RDV_PRIS' && maintenance.status !== 'EN_COURS') {
       throw new Error('Le RDV doit être pris avant de terminer l\'intervention');
     }
+    
+    // Récupérer les données liées
+    const { data: vehicleData } = await supabase
+      .from('vehicles')
+      .select('registration_number, brand, model')
+      .eq('id', maintenance.vehicle_id)
+      .single();
+    const { data: requesterData } = await supabase
+      .from('profiles')
+      .select('email, first_name, last_name')
+      .eq('id', maintenance.requested_by!)
+      .single();
     
     // 1. Mettre à jour la maintenance
     const { data: updated } = await supabase
@@ -491,20 +531,87 @@ export const completeMaintenance = authActionClient
       ctx.user.id,
       parsedInput.completionNotes
     );
+
+    // 4. Mise à jour des dates réglementaires sur la fiche véhicule (CT/Tachy/ATP)
+    // Cela garantit que les prédictions utilisent la bonne date de référence
+    const descriptionLower = (maintenance.description || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const typeLower = (maintenance.type || '').toLowerCase();
+    
+    // Détection plus robuste : description OU type contient les mots-clés
+    const isCT = descriptionLower.includes('controle technique') || 
+                 descriptionLower.includes('control technique') ||
+                 typeLower.includes('inspection') ||
+                 descriptionLower.includes('ct ');
+                 
+    const isTachy = descriptionLower.includes('tachygraphe') || 
+                    descriptionLower.includes('tachy') ||
+                    descriptionLower.includes('calibration');
+                    
+    const isATP = descriptionLower.includes('atp') || 
+                  descriptionLower.includes('attestation transporteur');
+    
+    logger.debug('[MAINTENANCE-WORKFLOW] Détection CT/Tachy/ATP:', { 
+      description: maintenance.description, 
+      type: maintenance.type,
+      isCT, 
+      isTachy,
+      isATP,
+      descriptionNormalized: descriptionLower
+    });
+    
+    if (isCT || isTachy || isATP) {
+      const completedDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const vehicleUpdate: Database['public']['Tables']['vehicles']['Update'] = {};
+      
+      if (isCT) {
+        vehicleUpdate.technical_control_date = completedDate;
+      }
+      if (isTachy) {
+        vehicleUpdate.tachy_control_date = completedDate;
+      }
+      if (isATP) {
+        vehicleUpdate.atp_date = completedDate;
+      }
+      
+      try {
+        const { error: updateError } = await supabase
+          .from('vehicles')
+          .update(vehicleUpdate)
+          .eq('id', maintenance.vehicle_id);
+          
+        if (updateError) {
+          logger.error('[MAINTENANCE-WORKFLOW] Erreur SQL maj fiche véhicule:', updateError);
+        } else {
+          logger.debug('[MAINTENANCE-WORKFLOW] Date réglementaire mise à jour avec succès:', vehicleUpdate);
+        }
+      } catch (vehicleError) {
+        logger.error('[MAINTENANCE-WORKFLOW] Exception maj fiche véhicule:', vehicleError);
+      }
+    } else {
+      logger.debug('[MAINTENANCE-WORKFLOW] Pas de mise à jour réglementaire (pas CT/Tachy détecté)');
+    }
+    
+    // 5. Recalcul immédiat des prédictions (CORRECTION P1)
+    // Le cron quotidien prendra le relais si cette étape échoue
+    try {
+      await recalculatePredictionsForVehicle(maintenance.vehicle_id)
+    } catch (recalcError) {
+      logger.error('[MAINTENANCE] Recalcul prédictions non critique:', recalcError)
+    }
     
     // 4. Email confirmation à tous
     const directors = await getCompanyDirectors(ctx.user.company_id);
-    const recipients = [...directors, maintenance.requester];
+    const recipients = [...directors, requesterData];
     
     for (const recipient of recipients) {
       await sendEmail({
         to: recipient?.email || '',
-        subject: `✅ Intervention terminée : ${maintenance.vehicle.registration_number}`,
+        subject: `✅ Intervention terminée : ${vehicleData?.registration_number}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #10b981;">Intervention de maintenance terminée</h2>
             
-            <p>Le véhicule <strong>${maintenance.vehicle.registration_number}</strong> est de nouveau disponible.</p>
+            <p>Le véhicule <strong>${vehicleData?.registration_number}</strong> est de nouveau disponible.</p>
             
             <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
               <p style="margin: 5px 0;"><strong>🔧 Type :</strong> ${maintenance.type}</p>
@@ -535,28 +642,28 @@ export const completeMaintenance = authActionClient
 
 export const getMaintenanceRequests = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
-    
+    const supabase = await createClient();
+
     const { data, error } = await supabase
-      .from('maintenance_with_details' as any)
+      .from('maintenance_records')
       .select('*')
       .eq('company_id', ctx.user.company_id)
       .order('requested_at', { ascending: false });
-    
+
     if (error) {
       throw new Error(`Erreur récupération: ${error.message}`);
     }
-    
+
     return { success: true, data: data || [] };
   });
 
 export const getMaintenanceById = authActionClient
   .schema(z.object({ id: z.string().uuid() }))
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data: maintenance, error } = await supabase
-      .from('maintenance_with_details' as any)
+      .from('maintenance_records')
       .select('*')
       .eq('id', parsedInput.id)
       .eq('company_id', ctx.user.company_id)
@@ -575,13 +682,15 @@ export const getMaintenanceById = authActionClient
     
     // Récupérer l'événement agenda
     const { data: agendaEvent } = await supabase
-      .from('agenda_with_details' as any)
+      .from('maintenance_agenda')
       .select('*')
       .eq('maintenance_id', parsedInput.id)
       .eq('company_id', ctx.user.company_id)
       .maybeSingle();
     
-    return { success: true, data: { ...(maintenance as any), history: history || [], agendaEvent } };
+    // NOTE: maintenance_records utilise string pour type/priority/status
+    // alors que le composant attend des unions strictes — à aligner dans une session dédiée
+    return { success: true, data: { ...(maintenance as unknown as Record<string, unknown>), history: history || [], agendaEvent } };
   });
 
 export const getAgendaEvents = authActionClient
@@ -590,10 +699,10 @@ export const getAgendaEvents = authActionClient
     endDate: z.string().optional(),
   }).default({}))
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     let query = supabase
-      .from('agenda_with_details' as any)
+      .from('maintenance_agenda')
       .select('*')
       .eq('company_id', ctx.user.company_id);
     
@@ -616,7 +725,7 @@ export const getAgendaEvents = authActionClient
 export const markMaintenanceInProgress = authActionClient
   .schema(z.object({ id: z.string().uuid() }))
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data: maintenance } = await supabase
       .from('maintenance_records')
@@ -642,3 +751,124 @@ export const markMaintenanceInProgress = authActionClient
     revalidatePath(`/maintenance/${parsedInput.id}`);
     return { success: true, maintenance: updated };
   });
+
+// ============================================
+// WORKFLOW DE STATUT - Gestion des transitions (déplacé depuis maintenance.ts)
+// ============================================
+
+const ALLOWED_MANAGER_ROLES = [USER_ROLE.ADMIN, 'MANAGER', USER_ROLE.DIRECTEUR];
+
+/**
+ * Met à jour le statut d'une maintenance avec validation des transitions
+ * Visible UNIQUEMENT pour roles admin et manager
+ */
+export async function updateMaintenanceStatus(
+  maintenanceId: string,
+  newStatus: string,
+  additionalData?: { scheduled_date?: string; notes?: string }
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  
+  // Vérifier l'authentification et le rôle
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: 'Non authentifié' };
+  }
+  
+  // Récupérer le profil pour vérifier le rôle
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role, company_id')
+    .eq('id', user.id)
+    .single();
+  
+  if (profileError || !profile) {
+    return { success: false, error: 'Profil utilisateur non trouvé' };
+  }
+  
+  if (!ALLOWED_MANAGER_ROLES.includes(profile.role)) {
+    return { success: false, error: 'Accès refusé - Réservé aux administrateurs et managers' };
+  }
+  
+  // Définition des transitions valides
+  const TRANSITIONS: Record<string, string[]> = {
+    'DEMANDE_CREEE': ['VALIDEE', 'REFUSEE'],
+    'VALIDEE': ['RDV_PRIS'],
+    'VALIDEE_DIRECTEUR': ['RDV_PRIS'],
+    'RDV_PRIS': ['EN_COURS'],
+    'EN_COURS': ['TERMINEE'],
+    'TERMINEE': [],
+    'REFUSEE': ['DEMANDE_CREEE']
+  };
+  
+  // Récupérer le statut actuel
+  const { data: current, error: fetchError } = await supabase
+    .from('maintenance_records')
+    .select('status, company_id')
+    .eq('id', maintenanceId)
+    .single();
+  
+  if (fetchError || !current) {
+    return { success: false, error: 'Intervention non trouvée' };
+  }
+  
+  // Vérifier l'appartenance à la company
+  if (current.company_id !== profile.company_id && profile.role !== USER_ROLE.ADMIN) {
+    return { success: false, error: 'Accès non autorisé à cette intervention' };
+  }
+  
+  // Vérifier que la transition est valide
+  const allowedTransitions = TRANSITIONS[current.status] || [];
+  if (!allowedTransitions.includes(newStatus)) {
+    return { success: false, error: `Transition de statut invalide: ${current.status} → ${newStatus}` };
+  }
+  
+  // Préparer les données de mise à jour
+  const updateData: Record<string, unknown> = {
+    status: newStatus,
+    updated_at: new Date().toISOString(),
+  };
+  
+  // Ajouter les données additionnelles
+  if (additionalData?.scheduled_date) {
+    updateData.scheduled_date = additionalData.scheduled_date;
+  }
+  if (additionalData?.notes) {
+    updateData.notes = additionalData.notes;
+  }
+  
+  // Si passage à TERMINEE, ajouter completed_at
+  if (newStatus === 'TERMINEE') {
+    updateData.completed_at = new Date().toISOString();
+  }
+  
+  // Si passage à VALIDEE, enregistrer validated_at
+  if (newStatus === 'VALIDEE') {
+    updateData.validated_at = new Date().toISOString();
+  }
+  
+  // Exécuter la mise à jour
+  const { error: updateError } = await supabase
+    .from('maintenance_records')
+    .update(updateData)
+    .eq('id', maintenanceId);
+  
+  if (updateError) {
+    return { success: false, error: updateError.message };
+  }
+  
+  // Ajouter l'historique de statut
+  await supabase.from('maintenance_status_history').insert({
+    maintenance_id: maintenanceId,
+    old_status: current.status,
+    new_status: newStatus,
+    changed_by: user.id,
+    notes: additionalData?.notes,
+  });
+  
+  // Revalidation des chemins
+  revalidatePath('/maintenance');
+  revalidatePath(`/maintenance/${maintenanceId}`);
+  
+  return { success: true };
+}

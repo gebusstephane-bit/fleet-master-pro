@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
 import OpenAI from 'openai';
+import { logger } from '@/lib/logger';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
       .eq('is_active', true);
 
     if (providersError) {
-      console.error('Error fetching providers:', providersError);
+      logger.error('Error fetching providers', { error: providersError instanceof Error ? providersError.message : String(providersError) });
       return NextResponse.json(
         { error: 'Erreur lors de la recuperation des prestataires' },
         { status: 500 }
@@ -188,7 +189,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('SOS analyze API error:', error);
+    logger.error('SOS analyze API error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: 'Erreur interne du serveur: ' + error.message },
       { status: 500 }
@@ -330,7 +331,7 @@ Reponds en JSON exactement :
     };
 
   } catch (error) {
-    console.error('OpenAI error:', error);
+    logger.error('OpenAI error', { error: error instanceof Error ? error.message : String(error) });
     // Fallback sans IA
     const sorted = providers.sort((a, b) => (a.distance_km || 999) - (b.distance_km || 999));
     return {

@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,17 +58,17 @@ export async function GET(request: NextRequest) {
       .from('vehicles')
       .select('*')
       .eq('company_id', profile.company_id)
-      .eq('status', 'active')
+      .eq('status', VEHICLE_STATUS.ACTIF)
       .order('registration_number');
 
     // Debug: log toutes les colonnes du premier véhicule pour voir la structure
     if (vehicles && vehicles.length > 0) {
-      console.log('SOS Vehicles - Structure:', Object.keys(vehicles[0]));
-      console.log('SOS Vehicles - Premier véhicule:', vehicles[0]);
+      logger.debug('SOS Vehicles - Structure:', Object.keys(vehicles[0]));
+      logger.debug('SOS Vehicles - Premier véhicule:', vehicles[0]);
     }
 
     if (vehiclesError) {
-      console.error('Error fetching vehicles:', vehiclesError);
+      logger.error('Error fetching vehicles:', vehiclesError);
       return NextResponse.json(
         { error: 'Erreur lors de la recuperation des vehicules' },
         { status: 500 }
@@ -104,7 +106,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('SOS vehicles API error:', error);
+    logger.error('SOS vehicles API error:', error);
     return NextResponse.json(
       { error: 'Erreur interne du serveur' },
       { status: 500 }

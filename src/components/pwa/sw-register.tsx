@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
 /**
  * Enregistre le Service Worker FleetMaster.
@@ -21,7 +22,7 @@ export function ServiceWorkerRegister() {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         registrations.forEach((registration) => {
           registration.unregister().then(() => {
-            console.log('[SW] Désenregistré en mode dev');
+            logger.debug('[SW] Désenregistré en mode dev');
           });
         });
       });
@@ -31,7 +32,7 @@ export function ServiceWorkerRegister() {
           cacheNames.forEach((cacheName) => {
             if (cacheName.startsWith('fleetmaster-')) {
               caches.delete(cacheName);
-              console.log('[SW] Cache vidé:', cacheName);
+              logger.debug('[SW] Cache vidé:', cacheName);
             }
           });
         });
@@ -43,13 +44,13 @@ export function ServiceWorkerRegister() {
     navigator.serviceWorker
       .register('/sw.js', { scope: '/' })
       .then((registration) => {
-        console.log('[SW] Enregistré, scope:', registration.scope);
+        logger.debug('[SW] Enregistré, scope:', registration.scope);
 
         // Vérifie les mises à jour toutes les heures
         setInterval(() => registration.update(), 60 * 60 * 1000);
       })
       .catch((err) => {
-        console.warn('[SW] Échec de l\'enregistrement:', err);
+        logger.warn('[SW] Échec de l\'enregistrement:', err);
       });
   }, []);
 

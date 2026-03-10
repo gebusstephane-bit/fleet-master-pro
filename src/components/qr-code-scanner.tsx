@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -90,7 +91,7 @@ export function QRCodeScanner({ onScan, onError }: QRCodeScannerProps) {
         },
         (errorMessage) => {
           // Erreur de scan (ignorée - c'est normal quand aucun QR n'est détecté)
-          console.log('QR Scan error:', errorMessage);
+          logger.debug('QR Scan error:', errorMessage);
         }
       );
     } catch (err: any) {

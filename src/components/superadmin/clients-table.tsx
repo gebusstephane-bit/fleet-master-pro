@@ -45,10 +45,9 @@ interface ClientsTableProps {
 }
 
 const planColors: Record<string, string> = {
-  STARTER: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
-  BASIC: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  ESSENTIAL: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   PRO: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-  ENTERPRISE: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  UNLIMITED: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
 };
 
 const statusColors: Record<string, string> = {

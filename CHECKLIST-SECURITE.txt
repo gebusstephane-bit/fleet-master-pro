@@ -1,0 +1,145 @@
+═══════════════════════════════════════════════════════════════
+  CHECKLIST SÉCURITÉ - FLEETMASTER PRO
+  À vérifier sans coder (tests manuels)
+═══════════════════════════════════════════════════════════════
+
+INSTRUCTIONS :
+- Coche chaque case après avoir testé
+- Si une case ne passe pas, ARRÊTE et contacte le CTO
+- Garde ce fichier jusqu'à la mise en production
+
+───────────────────────────────────────────────────────────────
+
+□ 1. TEST ISOLATION ENTRE ENTREPRISES (CRITIQUE)
+   
+   Étape A - Créer compte TEST A :
+   [ ] Va sur http://localhost:3000/register
+   [ ] Crée un compte avec : testA@entrepriseA.com
+   [ ] Connecte-toi avec ce compte
+   [ ] Ajoute un véhicule : "RENAULT-A" (immatriculation : AA-123-AA)
+   [ ] Note l'ID du véhicule dans l'URL (ex: /vehicles/123e4567...)
+   
+   Étape B - Créer compte TEST B :
+   [ ] Déconnecte-toi (clic sur ton nom → Déconnexion)
+   [ ] Va sur http://localhost:3000/register
+   [ ] Crée un compte avec : testB@entrepriseB.com
+   [ ] Connecte-toi avec ce compte
+   
+   Étape C - Vérifier l'isolation :
+   [ ] Va sur http://localhost:3000/vehicles
+   [ ] Vérifie que tu ne vois PAS "RENAULT-A"
+   [ ] Vérifie que tu vois "Aucun véhicule" (ou tes propres véhicules)
+   
+   Étape D - Test de force (tentative d'accès interdit) :
+   [ ] Dans la barre d'adresse, tape l'URL du véhicule de A :
+         http://localhost:3000/vehicles/[ID-DU-VEHICULE-A]
+   [ ] Vérifie que tu as une erreur 403 ou redirection vers /vehicles
+   [ ] Tu ne dois PAS voir les détails de "RENAULT-A"
+
+   RÉSULTAT ATTENDU : Le compte B ne peut pas voir/modifier les véhicules de A
+   SI ÇA ÉCHOUE : Il y a une faille de sécurité critique !
+
+───────────────────────────────────────────────────────────────
+
+□ 2. TEST PAGES LÉGALES (Obligatoire CNIL)
+   
+   [ ] Va sur http://localhost:3000/mentions-legales
+   [ ] Vérifie que la page s'affiche avec un titre "Mentions Légales"
+   [ ] Vérifie qu'il y a un lien "Retour à l'accueil" qui fonctionne
+   
+   [ ] Va sur http://localhost:3000/politique-confidentialite
+   [ ] Vérifie que la page s'affiche avec un titre "Politique de Confidentialité"
+   [ ] Vérifie qu'il y a une section "Vos droits" avec les 5 droits RGPD listés
+   
+   [ ] Va sur http://localhost:3000/cgv
+   [ ] Vérifie que la page s'affiche avec un titre "Conditions Générales de Vente"
+   [ ] Vérifie qu'il y a les sections : Prix, Durée, Responsabilités
+   
+   [ ] Va sur http://localhost:3000 (page d'accueil)
+   [ ] Scroll jusqu'au footer (en bas de page)
+   [ ] Vérifie qu'il y a des liens "Mentions légales", "Confidentialité", "CGV"
+   [ ] Clique sur chaque lien et vérifie qu'il amène à la bonne page
+
+   RÉSULTAT ATTENDU : Toutes les pages légales sont accessibles et liées
+   SI ÇA ÉCHOUE : Non conforme RGPD, risque de sanction CNIL
+
+───────────────────────────────────────────────────────────────
+
+□ 3. TEST CONNEXION NORMALE (Fonctionnement général)
+   
+   [ ] Va sur http://localhost:3000/login
+   [ ] Connecte-toi avec ton compte principal (Stephane)
+   [ ] Vérifie que tu arrives sur le Dashboard
+   [ ] Vérifie que tes véhicules s'affichent correctement
+   [ ] Vérifie que tes chauffeurs s'affichent correctement
+   [ ] Vérifie que tes tournées s'affichent correctement
+   
+   [ ] Clique sur "Véhicules" dans le menu
+   [ ] Vérifie que tu vois tes véhicules (pas ceux des autres)
+   [ ] Clique sur un véhicule → vérifie que les détails s'affichent
+   
+   [ ] Clique sur "Chauffeurs" dans le menu
+   [ ] Vérifie que tu vois tes chauffeurs (pas ceux des autres)
+
+   RÉSULTAT ATTENDU : Tout fonctionne normalement pour ton compte
+   SI ÇA ÉCHOUE : Régression après les modifications
+
+───────────────────────────────────────────────────────────────
+
+□ 4. TEST DASHBOARD (Intégrité des données)
+   
+   [ ] Va sur http://localhost:3000/dashboard
+   [ ] Vérifie que le nombre de "Véhicules" correspond au nombre réel
+   [ ] Vérifie que le nombre de "Chauffeurs" correspond au nombre réel
+   [ ] Vérifie que le nombre de "Maintenances" correspond au nombre réel
+   [ ] Vérifie que le nombre de "Tournées" correspond au nombre réel
+   
+   [ ] Clique sur "Véhicules" dans la carte "Actions rapides"
+   [ ] Vérifie que tu arrives bien sur la liste des véhicules
+
+   RÉSULTAT ATTENDU : Les stats sont correctes et cohérentes
+   SI ÇA ÉCHOUE : Problème de filtrage par company_id
+
+───────────────────────────────────────────────────────────────
+
+□ 5. TEST MODIFICATION VÉHICULE (Sécurité écriture)
+   
+   [ ] Va sur http://localhost:3000/vehicles
+   [ ] Clique sur un véhicule existant
+   [ ] Clique sur "Modifier"
+   [ ] Change le kilométrage (ajoute 100 km)
+   [ ] Enregistre
+   [ ] Vérifie que la modification est bien sauvegardée
+   
+   [ ] Retourne sur la liste des véhicules
+   [ ] Vérifie que le kilométrage affiché est bien le nouveau
+
+   RÉSULTAT ATTENDU : Tu peux modifier tes propres véhicules
+   SI ÇA ÉCHOUE : Problème de permissions ou de mise à jour
+
+───────────────────────────────────────────────────────────────
+
+RÉSULTAT FINAL :
+
+Nombre de cases cochées : ___ / 5
+
+Si 5/5 : ✅ SÉCURITÉ VALIDÉE - Tu peux passer à la suite
+Si 4/5 : ⚠️  Vérifier le point qui manque
+Si <4/5 : 🔴 STOP - Contacte immédiatement le CTO
+
+───────────────────────────────────────────────────────────────
+
+NOTES POUR LE FUTUR (après mise en production) :
+
+□ À faire dans les 30 jours :
+   - Remplacer les textes "Lorem ipsum" par tes vraies mentions légales
+   - Consulter un juriste pour valider les CGV
+   - Mettre en place une bannière de cookies
+   - Ajouter une case à cocher "J'accepte les CGV" lors de l'inscription
+
+□ À faire dans les 90 jours :
+   - Audit de sécurité par un tiers
+   - Tests de pénétration (pentest)
+   - Certification RGPD complète
+
+═══════════════════════════════════════════════════════════════

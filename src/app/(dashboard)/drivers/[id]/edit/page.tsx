@@ -66,25 +66,50 @@ export default function EditDriverPage() {
               // @ts-ignore
               phone: driverData.phone || undefined,
               // @ts-ignore
+              address: driverData.address || undefined,
+              // @ts-ignore
+              city: driverData.city || undefined,
+              // @ts-ignore
+              nationality: driverData.nationality || undefined,
+              // @ts-ignore
+              birth_date: driverData.birth_date || null,
+              // @ts-ignore
               license_number: driverData.license_number,
               // @ts-ignore
               license_expiry: driverData.license_expiry,
               // @ts-ignore
               license_type: driverData.license_type,
               // @ts-ignore
-              address: driverData.address || undefined,
+              driver_card_number: driverData.driver_card_number || '',
               // @ts-ignore
-              city: driverData.city || undefined,
+              driver_card_expiry: driverData.driver_card_expiry || null,
               // @ts-ignore
-              hire_date: driverData.hire_date || '',
+              fimo_date: driverData.fimo_date || null,
               // @ts-ignore
-              status: driverData.status,
+              fcos_expiry: driverData.fcos_expiry || null,
+              // @ts-ignore
+              qi_date: driverData.qi_date || null,
+              // @ts-ignore
+              medical_certificate_expiry: driverData.medical_certificate_expiry || null,
+              // @ts-ignore
+              adr_certificate_expiry: driverData.adr_certificate_expiry || null,
+              // @ts-ignore
+              adr_classes: driverData.adr_classes || [],
               // @ts-ignore
               cqc_card_number: driverData.cqc_card_number || '',
               // @ts-ignore
-              cqc_expiry_date: driverData.cqc_expiry_date || '',
+              // Fallback sur cqc_expiry_date pour la rétrocompatibilité
+              cqc_expiry: driverData.cqc_expiry || driverData.cqc_expiry_date || null,
               // @ts-ignore
               cqc_category: driverData.cqc_category || 'GOODS',
+              // @ts-ignore
+              hire_date: driverData.hire_date || null,
+              // @ts-ignore
+              contract_type: driverData.contract_type || undefined,
+              // @ts-ignore
+              is_active: driverData.is_active ?? true,
+              // @ts-ignore
+              status: driverData.status,
             }}
             onSubmit={async (data) => {
               await updateMutation.mutateAsync({ ...data, id });

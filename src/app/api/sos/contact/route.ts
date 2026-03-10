@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
       }
     });
   } catch (error: any) {
-    console.error('Error in POST /api/sos/contact:', error);
+    logger.error('Error in POST /api/sos/contact:', error);
     return NextResponse.json(
       { error: 'Internal server error: ' + error.message },
       { status: 500 }

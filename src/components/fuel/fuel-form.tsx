@@ -3,6 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -24,7 +25,19 @@ import { Loader2 } from 'lucide-react';
 import { useVehicles } from '@/hooks/use-vehicles';
 import { useDrivers } from '@/hooks/use-drivers';
 
-const formSchema = z.object({
+// Type du formulaire (défini manuellement car le schema est dynamique)
+interface FormData {
+  vehicle_id: string;
+  driver_id?: string;
+  date: string;
+  quantity_liters: number;
+  price_total: number;
+  mileage_at_fill: number;
+  fuel_type: 'diesel' | 'gasoline' | 'electric' | 'hybrid' | 'lpg';
+  station_name?: string;
+}
+
+const createFormSchema = (vehicles: any[]) => z.object({
   vehicle_id: z.string().uuid(),
   driver_id: z.string().optional(),
   date: z.string(),
@@ -33,9 +46,17 @@ const formSchema = z.object({
   mileage_at_fill: z.number().min(0, 'Kilométrage requis'),
   fuel_type: z.enum(['diesel', 'gasoline', 'electric', 'hybrid', 'lpg']),
   station_name: z.string().optional(),
+}).refine((data) => {
+  // Validation: le kilométrage doit être >= au kilométrage actuel du véhicule
+  const selectedVehicle = vehicles.find(v => v.id === data.vehicle_id);
+  if (selectedVehicle?.mileage && data.mileage_at_fill < selectedVehicle.mileage) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Le kilométrage ne peut pas être inférieur au kilométrage actuel du véhicule',
+  path: ['mileage_at_fill'],
 });
-
-type FormData = z.infer<typeof formSchema>;
 
 interface FuelFormProps {
   onSubmit: (data: FormData) => void;
@@ -45,6 +66,9 @@ interface FuelFormProps {
 export function FuelForm({ onSubmit, isSubmitting = false }: FuelFormProps) {
   const { data: vehicles } = useVehicles();
   const { data: drivers } = useDrivers();
+  
+  // Schema dynamique avec validation du kilométrage
+  const formSchema = useMemo(() => createFormSchema(vehicles || []), [vehicles]);
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -59,6 +83,20 @@ export function FuelForm({ onSubmit, isSubmitting = false }: FuelFormProps) {
       station_name: '',
     },
   });
+  
+  // Récupérer le véhicule sélectionné pour afficher son kilométrage
+  const selectedVehicleId = form.watch('vehicle_id');
+  const selectedVehicle = useMemo(() => {
+    return vehicles?.find((v: any) => v.id === selectedVehicleId);
+  }, [vehicles, selectedVehicleId]);
+
+  // Pré-remplir le conducteur attitré quand le véhicule est sélectionné
+  useEffect(() => {
+    const assignedDriverId = (selectedVehicle as any)?.drivers?.id;
+    if (assignedDriverId && form.getValues('driver_id') === 'none') {
+      form.setValue('driver_id', assignedDriverId);
+    }
+  }, [selectedVehicleId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const quantity = form.watch('quantity_liters');
   const price = form.watch('price_total');
@@ -210,15 +248,31 @@ export function FuelForm({ onSubmit, isSubmitting = false }: FuelFormProps) {
           name="mileage_at_fill"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Kilométrage compteur *</FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel>Kilométrage compteur *</FormLabel>
+                {selectedVehicle && selectedVehicle.mileage > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    Actuel: <span className="text-amber-400 font-medium">{selectedVehicle.mileage.toLocaleString('fr-FR')} km</span>
+                  </span>
+                )}
+              </div>
               <FormControl>
                 <Input
                   type="number"
+                  min={selectedVehicle?.mileage || 0}
+                  placeholder={selectedVehicle?.mileage ? `Min: ${selectedVehicle.mileage.toLocaleString('fr-FR')} km` : 'Ex: 125000'}
+                  aria-invalid={form.formState.errors.mileage_at_fill ? 'true' : 'false'}
                   {...field}
                   onChange={(e) => field.onChange(Number(e.target.value))}
+                  className={form.formState.errors.mileage_at_fill ? 'border-red-500' : ''}
                 />
               </FormControl>
               <FormMessage />
+              {selectedVehicle && selectedVehicle.mileage > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Le kilométrage doit être supérieur ou égal à {selectedVehicle.mileage.toLocaleString('fr-FR')} km
+                </p>
+              )}
             </FormItem>
           )}
         />

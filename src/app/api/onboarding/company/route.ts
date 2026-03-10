@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { CompanyStepSchema } from "@/lib/onboarding/validation";
 
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
       .eq("id", companyId);
 
     if (error) {
-      console.error("Error updating company:", error);
+      logger.error("Error updating company:", error);
       return NextResponse.json(
         { error: "Erreur mise à jour entreprise" },
         { status: 500 }
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error in company onboarding:", error);
+    logger.error("Error in company onboarding:", error);
     return NextResponse.json(
       { error: "Erreur serveur" },
       { status: 500 }

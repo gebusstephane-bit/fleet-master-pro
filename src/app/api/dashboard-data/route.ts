@@ -6,8 +6,98 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { addDays, startOfMonth } from 'date-fns';
+import { logger } from '@/lib/logger';
+import type { Database } from '@/types/supabase';
+import { VEHICLE_STATUS } from '@/constants/enums';
 
 export const dynamic = 'force-dynamic';
+
+// Types pour les jointures Supabase (souples pour contourner SelectQueryError)
+interface VehicleSubset {
+  registration_number: string;
+  brand: string;
+  model: string;
+}
+
+interface ProfileSubset {
+  first_name: string;
+  last_name: string;
+}
+
+// Type pour les maintenances avec jointure vehicle
+type MaintenanceWithVehicle = Database['public']['Tables']['maintenance_records']['Row'] & {
+  vehicles: VehicleSubset | null;
+};
+
+// Type pour les prédictions avec jointure vehicle  
+type PredictionWithVehicle = Database['public']['Tables']['ai_predictions']['Row'] & {
+  vehicles: VehicleSubset | null;
+};
+
+// Type pour les activités avec jointure profile
+type ActivityWithProfile = Database['public']['Tables']['activity_logs']['Row'] & {
+  profiles: ProfileSubset | null;
+};
+
+// Types de retour API
+interface AlertItem {
+  id: string;
+  vehicle_id: string;
+  vehicle_name: string;
+  service_type: string;
+  due_date: string | null;
+  days_until: number;
+  priority: 'critical' | 'high' | 'medium';
+  garage: string | null;
+}
+
+interface AppointmentItem {
+  id: string;
+  vehicle_id: string;
+  vehicle_name: string;
+  service_type: string;
+  service_date: string | null;
+  service_time: string | null;
+  description: string;
+  garage: string | null;
+  days_until: number;
+}
+
+interface RiskVehicleItem {
+  id: string;
+  vehicle_id: string;
+  vehicle_name: string;
+  failure_probability: number;
+  predicted_failure_type: string;
+  urgency_level: string;
+  days_until_predicted: number;
+}
+
+interface ActivityItem {
+  id: string;
+  action_type: string;
+  entity_name: string;
+  description: string;
+  created_at: string;
+  user_name: string | undefined;
+}
+
+function translateMaintenanceType(type: string | null): string {
+  const translations: Record<string, string> = {
+    'vidange': 'Vidange',
+    'revision': 'Révision',
+    'pneumatiques': 'Pneumatiques',
+    'freins': 'Freins',
+    'batterie': 'Batterie',
+    'climatisation': 'Climatisation',
+    'courroie': 'Courroie distribution',
+    'echappement': 'Échappement',
+    'suspension': 'Suspension',
+    'transmission': 'Transmission',
+    'autre': 'Autre entretien',
+  };
+  return type ? (translations[type.toLowerCase()] || type) : 'Entretien';
+}
 
 export async function GET() {
   try {
@@ -34,9 +124,9 @@ export async function GET() {
 
     const vehicleStats = {
       total: vehicles?.length || 0,
-      active: vehicles?.filter(v => v.status === 'active').length || 0,
-      maintenance: vehicles?.filter(v => v.status === 'maintenance').length || 0,
-      inactive: vehicles?.filter(v => v.status === 'inactive' || v.status === 'retired').length || 0,
+      active: vehicles?.filter(v => v.status === VEHICLE_STATUS.ACTIF).length || 0,
+      maintenance: vehicles?.filter(v => v.status === VEHICLE_STATUS.EN_MAINTENANCE).length || 0,
+      inactive: vehicles?.filter(v => v.status === VEHICLE_STATUS.INACTIF || v.status === VEHICLE_STATUS.ARCHIVE).length || 0,
     };
 
     // 3. KPIs Chauffeurs
@@ -83,7 +173,7 @@ export async function GET() {
 
     // 5. KPIs Inspections
     const { data: allInspections } = await adminClient
-      .from('inspections')
+      .from('vehicle_inspections')
       .select('id, status, completed_at')
       .eq('company_id', companyId);
 
@@ -124,23 +214,23 @@ export async function GET() {
       .order('rdv_date', { ascending: true })
       .limit(10);
 
-    const alerts = (maintenanceAlerts || []).map(m => {
-      const dueDate = new Date(m.rdv_date as any);
+    const alerts: AlertItem[] = ((maintenanceAlerts as unknown) as MaintenanceWithVehicle[] || []).map(m => {
+      const dueDate = m.rdv_date ? new Date(m.rdv_date) : new Date();
       const daysUntil = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
       let priority: 'critical' | 'high' | 'medium' = 'medium';
       if (daysUntil <= 3) priority = 'critical';
       else if (daysUntil <= 7) priority = 'high';
-      const vehicle = m.vehicles as any;
+      const vehicle = m.vehicles;
       return {
         id: m.id,
         vehicle_id: m.vehicle_id,
         vehicle_name: vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.registration_number})` : 'Véhicule inconnu',
-        service_type: translateMaintenanceType(m.type as any),
+        service_type: translateMaintenanceType(m.type),
         due_date: m.rdv_date,
         days_until: daysUntil,
         priority,
         garage: m.garage_name,
-      } as any;
+      };
     });
 
     // 7. RDV programmés (60 prochains jours)
@@ -168,21 +258,21 @@ export async function GET() {
       .order('rdv_date', { ascending: true })
       .limit(10);
 
-    const appointments = (appointmentsData || []).map(m => {
-      const serviceDate = new Date(m.rdv_date as any);
+    const appointments: AppointmentItem[] = ((appointmentsData as unknown) as MaintenanceWithVehicle[] || []).map(m => {
+      const serviceDate = m.rdv_date ? new Date(m.rdv_date) : new Date();
       const daysUntil = Math.ceil((serviceDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-      const vehicle = m.vehicles as any;
+      const vehicle = m.vehicles;
       return {
         id: m.id,
         vehicle_id: m.vehicle_id,
         vehicle_name: vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.registration_number})` : 'Véhicule inconnu',
-        service_type: translateMaintenanceType(m.type as any),
+        service_type: translateMaintenanceType(m.type),
         service_date: m.rdv_date,
         service_time: m.rdv_time,
         description: m.description || '',
         garage: m.garage_name,
         days_until: daysUntil,
-      } as any;
+      };
     });
 
     // 8. Véhicules à risque IA
@@ -192,7 +282,7 @@ export async function GET() {
       .eq('company_id', companyId);
 
     const vehicleIds = companyVehicles?.map(v => v.id) || [];
-    let riskVehicles: any[] = [];
+    let riskVehicles: RiskVehicleItem[] = [];
 
     if (vehicleIds.length > 0) {
       const { data: predictions } = await adminClient
@@ -215,8 +305,8 @@ export async function GET() {
         .order('failure_probability', { ascending: false })
         .limit(10);
 
-      riskVehicles = (predictions || []).map((p: any) => {
-        const vehicle = p.vehicles as any;
+      riskVehicles = ((predictions as unknown) as PredictionWithVehicle[] || []).map(p => {
+        const vehicle = p.vehicles;
         return {
           id: p.id,
           vehicle_id: p.vehicle_id,
@@ -244,8 +334,8 @@ export async function GET() {
       .order('created_at', { ascending: false })
       .limit(10);
 
-    const activities = (activitiesData || []).map((a: any) => {
-      const user = a.profiles as any;
+    const activities: ActivityItem[] = ((activitiesData as unknown) as ActivityWithProfile[] || []).map(a => {
+      const user = a.profiles;
       return {
         id: a.id,
         action_type: a.action_type,
@@ -278,25 +368,10 @@ export async function GET() {
     });
 
   } catch (error) {
-    console.error('Dashboard API error:', error);
+    logger.error('Dashboard data error:', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
-      { error: 'Server error', details: (error as Error).message },
+      { error: 'Failed to fetch dashboard data' },
       { status: 500 }
     );
   }
-}
-
-function translateMaintenanceType(type: string): string {
-  const translations: Record<string, string> = {
-    'CORRECTIVE': 'Réparation',
-    'PNEUMATIQUE': 'Pneumatique',
-    'CARROSSERIE': 'Carrosserie',
-    'PREVENTIVE': 'Préventive',
-    'ROUTINE': 'Entretien régulier',
-    'REPAIR': 'Réparation',
-    'INSPECTION': 'Inspection',
-    'TIRE_CHANGE': 'Changement pneus',
-    'OIL_CHANGE': 'Vidange',
-  };
-  return translations[type] || type;
 }

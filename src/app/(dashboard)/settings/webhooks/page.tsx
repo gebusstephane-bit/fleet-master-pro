@@ -85,8 +85,8 @@ export default function WebhooksPage() {
         supabase.from('api_keys' as any).select('*').order('created_at', { ascending: false }),
         supabase.from('webhooks' as any).select('*').order('created_at', { ascending: false }),
       ]);
-      setApiKeys((keysRes.data as ApiKey[]) ?? []);
-      setWebhooks((hooksRes.data as Webhook[]) ?? []);
+      setApiKeys((keysRes.data as unknown as ApiKey[]) ?? []);
+      setWebhooks((hooksRes.data as unknown as Webhook[]) ?? []);
     } finally {
       setLoading(false);
     }

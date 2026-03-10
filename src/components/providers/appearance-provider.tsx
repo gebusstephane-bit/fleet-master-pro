@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { AppearanceSettings, defaultAppearanceSettings } from '@/types/appearance';
 import { updateAppearanceSettings } from '@/actions/appearance';
 import { useTheme } from '@/components/theme-provider';
+import { logger } from '@/lib/logger';
 
 interface AppearanceContextType {
   settings: AppearanceSettings;
@@ -88,5 +89,5 @@ export function useAppearance() {
 // Fonction vide - on n'applique rien en temps réel pour éviter les bugs
 export function applyAppearanceToDOM(settings: AppearanceSettings) {
   // Ne rien faire - tout sera appliqué au prochain rechargement
-  console.log('Settings saved:', settings);
+  logger.debug('Settings saved:', settings);
 }

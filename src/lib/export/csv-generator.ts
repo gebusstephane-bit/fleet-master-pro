@@ -44,7 +44,9 @@ const VEHICLE_HEADERS = [
   'Date création',
 ];
 
-export function generateVehiclesCSV(vehicles: any[]): string {
+import { Vehicle, Driver, Maintenance } from '@/types';
+
+export function generateVehiclesCSV(vehicles: Vehicle[]): string {
   const rows = vehicles.map((v) => [
     v.registration_number ?? '',
     v.vin ?? '',
@@ -74,13 +76,16 @@ const DRIVER_HEADERS = [
   'N° Permis',
   'Type permis',
   'Expiration permis',
+  'FCO (expiration)',
+  'FIMO (expiration)',
+  'CQC (expiration)',
   'Statut',
   'Score sécurité',
   'Véhicule assigné',
   'Date création',
 ];
 
-export function generateDriversCSV(drivers: any[]): string {
+export function generateDriversCSV(drivers: Driver[]): string {
   const rows = drivers.map((d) => [
     d.first_name ?? '',
     d.last_name ?? '',
@@ -89,6 +94,9 @@ export function generateDriversCSV(drivers: any[]): string {
     d.license_number ?? '',
     d.license_type ?? '',
     formatDateFR(d.license_expiry),
+    formatDateFR((d as any).fcos_expiry),
+    formatDateFR((d as any).fimo_expiry),
+    formatDateFR((d as any).cqc_expiry_date ?? (d as any).cqc_expiry),
     DRIVER_STATUS_LABELS[d.status] ?? d.status ?? '',
     d.safety_score != null ? d.safety_score : '',
     d.vehicles?.registration_number ?? '',
@@ -111,7 +119,7 @@ const MAINTENANCE_HEADERS = [
   'Prestataire',
 ];
 
-export function generateMaintenanceCSV(records: any[]): string {
+export function generateMaintenanceCSV(records: Maintenance[]): string {
   const rows = records.map((m) => [
     m.vehicles?.brand ? `${m.vehicles.brand} ${m.vehicles.model ?? ''}`.trim() : '',
     m.vehicles?.registration_number ?? '',
@@ -130,14 +138,14 @@ export function generateMaintenanceCSV(records: any[]): string {
 
 export type ExportType = 'vehicles' | 'drivers' | 'maintenance';
 
-export function generateCSV(type: ExportType, data: any[]): string {
+export function generateCSV(type: ExportType, data: Vehicle[] | Driver[] | Maintenance[]): string {
   switch (type) {
     case 'vehicles':
-      return generateVehiclesCSV(data);
+      return generateVehiclesCSV(data as Vehicle[]);
     case 'drivers':
-      return generateDriversCSV(data);
+      return generateDriversCSV(data as Driver[]);
     case 'maintenance':
-      return generateMaintenanceCSV(data);
+      return generateMaintenanceCSV(data as Maintenance[]);
     default:
       throw new Error(`Type d'export inconnu: ${type}`);
   }

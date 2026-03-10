@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,14 +96,14 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('[Add External Partner] Erreur:', error);
+      logger.error('[Add External Partner] Erreur', { error: error instanceof Error ? error.message : String(error) });
       return NextResponse.json(
         { error: 'Erreur lors de la création: ' + error.message },
         { status: 500 }
       );
     }
 
-    console.log('[Add External Partner] Ajouté:', partner.name);
+    logger.info('[Add External Partner] Ajouté', { name: partner.name });
 
     return NextResponse.json({
       success: true,
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('[Add External Partner] Erreur:', error);
+    logger.error('[Add External Partner] Erreur', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: 'Erreur serveur: ' + error.message },
       { status: 500 }

@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { AppearanceSettings, defaultAppearanceSettings } from '@/types/appearance';
 import { getAppearanceSettings, updateAppearanceSettings, resetAppearanceSettings } from '@/actions/appearance';
 import { toast } from 'sonner';
+import { getReadableError } from '@/lib/error-messages';
 // @ts-ignore
 import { applyAppearanceToDOM } from '@/components/providers/appearance-provider';
 
@@ -65,7 +66,7 @@ export function useAppearanceSettings(userId: string) {
     const result = await updateAppearanceSettings(userId, newSettings);
     
     if (result.error) {
-      toast.error('Impossible de sauvegarder les préférences');
+      toast.error(getReadableError(result.error));
     }
     
     setIsSaving(false);
@@ -81,7 +82,7 @@ export function useAppearanceSettings(userId: string) {
     const result = await resetAppearanceSettings(userId);
     
     if (result.error) {
-      toast.error('Impossible de réinitialiser les préférences');
+      toast.error(getReadableError(result.error));
     } else {
       toast.success('Préférences réinitialisées');
     }

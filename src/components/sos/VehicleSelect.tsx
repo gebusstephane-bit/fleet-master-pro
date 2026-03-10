@@ -1,6 +1,6 @@
 /**
  * VehicleSelect - Sélection du véhicule en panne
- * Version V3.2
+ * Version V3.2 - Aligné Design System FleetMaster Pro
  */
 
 'use client';
@@ -27,9 +27,9 @@ interface VehicleSelectProps {
 export function VehicleSelect({ vehicles, value, onChange }: VehicleSelectProps) {
   if (vehicles.length === 0) {
     return (
-      <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed">
-        <p className="text-gray-500">Aucun véhicule enregistré</p>
-        <p className="text-sm text-gray-400 mt-1">
+      <div className="text-center py-8 bg-[#0f172a]/40 rounded-lg border-2 border-dashed border-cyan-500/20">
+        <p className="text-muted-foreground">Aucun véhicule enregistré</p>
+        <p className="text-sm text-muted-foreground/70 mt-1">
           Ajoutez des véhicules dans la section Véhicules
         </p>
       </div>
@@ -54,29 +54,31 @@ export function VehicleSelect({ vehicles, value, onChange }: VehicleSelectProps)
             key={vehicle.id}
             onClick={() => onChange(vehicle)}
             className={cn(
-              'cursor-pointer transition-all p-4',
+              'cursor-pointer transition-all p-4 border-2',
               isSelected 
-                ? 'ring-2 ring-red-500 bg-red-50 border-red-200' 
-                : 'hover:shadow-md hover:bg-gray-50 border-gray-200'
+                ? 'ring-2 ring-cyan-500 bg-cyan-500/10 border-cyan-500' 
+                : 'border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/5 bg-[#0f172a]/40'
             )}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={cn(
                   'w-10 h-10 rounded-full flex items-center justify-center',
-                  category === 'PL' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700',
-                  isSelected && 'bg-red-100 text-red-700'
+                  category === 'PL' 
+                    ? 'bg-blue-500/20 text-blue-400' 
+                    : 'bg-emerald-500/20 text-emerald-400',
+                  isSelected && 'bg-cyan-500/20 text-cyan-400'
                 )}>
                   <Icon className="w-5 h-5" />
                 </div>
                 <div>
                   <p className={cn(
-                    'font-semibold',
-                    isSelected && 'text-red-900'
+                    'font-semibold text-foreground',
+                    isSelected && 'text-cyan-400'
                   )}>
                     {vehicle.registration_number}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     {vehicle.brand} {vehicle.model}
                   </p>
                 </div>
@@ -84,13 +86,16 @@ export function VehicleSelect({ vehicles, value, onChange }: VehicleSelectProps)
 
               <div className="flex items-center gap-2">
                 <Badge className={cn(
-                  category === 'PL' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700',
-                  isSelected && 'bg-red-100 text-red-700'
+                  'border',
+                  category === 'PL' 
+                    ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' 
+                    : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                  isSelected && 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
                 )}>
                   {category}
                 </Badge>
                 {isSelected && (
-                  <div className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center">
+                  <div className="w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center">
                     <Check className="w-4 h-4 text-white" />
                   </div>
                 )}

@@ -26,6 +26,7 @@ export function OnboardingLayout({
           src="/images/hero-fleet.jpg"
           alt="Fleet background"
           fill
+          sizes="100vw"
           className="object-cover opacity-40"
           priority
         />

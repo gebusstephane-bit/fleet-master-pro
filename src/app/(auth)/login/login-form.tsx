@@ -13,7 +13,9 @@ import { Label } from '@/components/ui/label';
 import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
+import { USER_ROLE } from '@/constants/enums';
 import { getSupabaseClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 
 const loginSchema = z.object({
   email: z.string().email('Adresse email invalide'),
@@ -43,7 +45,7 @@ export function LoginForm() {
     setError(null);
 
     try {
-      console.log('🔑 Tentative connexion...', data.email);
+      logger.debug('Tentative connexion...', data.email);
       
       const supabase = getSupabaseClient();
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -52,20 +54,38 @@ export function LoginForm() {
       });
 
       if (signInError) {
-        console.error('❌ Erreur connexion:', signInError);
+        logger.error('Erreur connexion:', signInError);
         throw signInError;
       }
 
-      console.log('✅ Connexion réussie:', signInData.user?.email);
-      console.log('📝 Session:', signInData.session ? 'présente' : 'absente');
+      logger.debug('Connexion réussie:', signInData.user?.email);
+      logger.debug('Session:', signInData.session ? 'présente' : 'absente');
 
       if (!signInData.session) {
         throw new Error('Pas de session créée');
       }
 
+      // Vérifier le rôle de l'utilisateur pour la redirection
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', signInData.user.id)
+        .single();
+      
+      const userRole = profile?.role;
+      logger.debug('Rôle:', userRole);
+
+      // Déterminer la redirection selon le rôle
+      let finalRedirect = redirect;
+      if (userRole === USER_ROLE.CHAUFFEUR) {
+        finalRedirect = '/driver-app';
+      } else if (redirect === '/login' || redirect === '/') {
+        finalRedirect = '/dashboard';
+      }
+
       // Vérifier que les cookies sont bien créés
       const cookies = document.cookie;
-      console.log('🍪 Cookies:', cookies.includes('sb-') ? 'présents' : 'absents');
+      logger.debug('Cookies:', cookies.includes('sb-') ? 'présents' : 'absents');
 
       setRedirecting(true);
       
@@ -73,11 +93,11 @@ export function LoginForm() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Redirection avec rechargement complet
-      console.log('🚀 Redirection vers:', redirect);
-      window.location.assign(redirect);
+      logger.debug('Redirection vers:', finalRedirect);
+      window.location.assign(finalRedirect);
 
     } catch (err: any) {
-      console.error('❌ Erreur:', err);
+      logger.error('Erreur:', err);
       setError(
         err.message === 'Invalid login credentials'
           ? 'Email ou mot de passe incorrect'

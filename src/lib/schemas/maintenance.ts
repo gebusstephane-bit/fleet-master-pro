@@ -25,6 +25,7 @@ export const maintenanceSchema = z.object({
     'FILTER_CHANGE',
     'TIMING_BELT',
     'TECHNICAL_CONTROL',
+    'ATP_CONTROL',
     'OTHER'
   ], {
     errorMap: () => ({ message: "Type d'intervention requis" })
@@ -49,8 +50,8 @@ export const maintenanceSchema = z.object({
   laborCost: z.number().min(0).default(0),
   partsCost: z.number().min(0).default(0),
   notes: z.string().optional(),
-  status: z.enum(['PLANNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).default('COMPLETED'),
-  priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).default('NORMAL'),
+  status: z.enum(['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS', 'TERMINEE', 'REFUSEE']).default('DEMANDE_CREEE'),
+  priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'CRITICAL']).default('NORMAL'),
 });
 
 export const maintenanceAlertSchema = z.object({
@@ -132,6 +133,12 @@ export const maintenanceTypeConfig = {
     color: 'bg-indigo-100 text-indigo-700',
     defaultIntervalMonths: 24,
   },
+  ATP_CONTROL: { 
+    label: 'Contrôle ATP', 
+    icon: 'FileCheck',
+    color: 'bg-teal-100 text-teal-700',
+    defaultIntervalMonths: 36, // Validité ATP : 36 mois
+  },
   OTHER: { 
     label: 'Autre', 
     icon: 'MoreHorizontal',
@@ -144,17 +151,32 @@ export function calculateNextService(
   type: keyof typeof maintenanceTypeConfig,
   currentMileage: number,
   serviceDate: string,
-  config?: { intervalKm?: number; intervalMonths?: number }
+  config?: { intervalKm?: number; intervalMonths?: number; intervalYears?: number }
 ) {
-  const typeConfig = maintenanceTypeConfig[type] as any;
+  const typeConfig = maintenanceTypeConfig[type] as {
+    label: string;
+    icon: string;
+    color: string;
+    defaultIntervalKm?: number;
+    defaultIntervalMonths?: number;
+    defaultIntervalYears?: number;
+  };
   
   const nextMileage = typeConfig?.defaultIntervalKm 
     ? currentMileage + (config?.intervalKm || typeConfig.defaultIntervalKm)
     : undefined;
-    
-  const nextDate = typeConfig?.defaultIntervalMonths
-    ? new Date(new Date(serviceDate).getTime() + (config?.intervalMonths || typeConfig.defaultIntervalMonths) * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    : undefined;
+  
+  // Calcul de la prochaine date (mois OU années)
+  let nextDate: string | undefined;
+  const baseDate = new Date(serviceDate);
+  
+  if (config?.intervalMonths || typeConfig?.defaultIntervalMonths) {
+    const months = config?.intervalMonths || typeConfig.defaultIntervalMonths;
+    nextDate = new Date(baseDate.getTime() + months! * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  } else if (config?.intervalYears || typeConfig?.defaultIntervalYears) {
+    const years = config?.intervalYears || typeConfig.defaultIntervalYears;
+    nextDate = new Date(baseDate.setFullYear(baseDate.getFullYear() + years!)).toISOString().split('T')[0];
+  }
     
   return { nextMileage, nextDate };
 }

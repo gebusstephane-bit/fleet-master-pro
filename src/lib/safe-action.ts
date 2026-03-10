@@ -7,6 +7,7 @@
  * - Validation Zod stricte
  * - Gestion d'erreurs sécurisée (pas de fuites d'info)
  * - Authentification obligatoire sur les actions sensibles
+ * - Actions publiques sécurisées pour accès QR Code (véhicule uniquement)
  */
 
 import { createSafeActionClient } from 'next-safe-action';
@@ -61,6 +62,8 @@ export const authActionClient = actionClient.use(async ({ next }) => {
     throw new Error(rateLimit.error);
   }
   
+  // Si pas de company_id, on autorise quand même (onboarding en cours)
+  // Les actions individuelles vérifieront si company_id est requis
   return next({ ctx: { user: userData } });
 });
 
@@ -68,6 +71,23 @@ export const authActionClient = actionClient.use(async ({ next }) => {
 export const sensitiveActionClient = actionClient.use(async ({ next }) => {
   // Rate limiting plus strict
   const rateLimit = await rateLimitMiddleware({ isSensitive: true });
+  
+  if (!rateLimit.allowed) {
+    throw new Error('Trop de tentatives. Veuillez réessayer dans une minute.');
+  }
+  
+  return next({ ctx: {} });
+});
+
+// Client pour actions publiques QR Code (scan véhicule)
+// Rate limiting strict : max 5 requêtes par IP pour prévenir brute force sur tokens
+export const scanPublicActionClient = actionClient.use(async ({ next }) => {
+  // Rate limiting très strict pour les accès publics véhicule
+  const rateLimit = await rateLimitMiddleware({ 
+    isSensitive: true,
+    customLimit: 5, // 5 requêtes max
+    windowSeconds: 60 // par minute
+  });
   
   if (!rateLimit.allowed) {
     throw new Error('Trop de tentatives. Veuillez réessayer dans une minute.');
@@ -92,7 +112,7 @@ export type ActionContext = {
     id: string;
     email: string;
     role: string;
-    company_id: string;
+    company_id: string | null;
     companies?: {
       id: string;
       name: string;

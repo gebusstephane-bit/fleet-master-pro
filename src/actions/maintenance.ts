@@ -1,9 +1,20 @@
 'use server';
 
-import { z } from 'zod';
-import { authActionClient, idSchema } from '@/lib/safe-action';
-import { createAdminClient } from '@/lib/supabase/server';
+/**
+ * Actions Maintenance - VERSION SÉCURISÉE RLS
+ * 
+ * PRINCIPE : Utilise uniquement createClient() avec RLS activé
+ * Les policies PostgreSQL assurent l'isolation par company_id
+ */
+
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+
+import { VEHICLE_STATUS, USER_ROLE } from '@/constants/enums';
+import { authActionClient, idSchema } from '@/lib/safe-action';
+import { logger } from '@/lib/logger';
+import { createClient } from '@/lib/supabase/server';
+import type { Database } from '@/types/supabase';
 import { maintenanceSchema } from '@/lib/schemas/maintenance';
 
 // Mapping des types frontend vers DB
@@ -20,11 +31,18 @@ const typeToDb: Record<string, string> = {
   'OTHER': 'repair',
 };
 
-// Créer une intervention
+/**
+ * Crée une nouvelle intervention de maintenance.
+ * Mappe le statut frontend vers les valeurs DB et calcule les dates réglementaires.
+ * Met à jour les dates CT/Tachy/ATP sur le véhicule si l'intervention est terminée.
+ * @param parsedInput - Données de l'intervention validées par maintenanceSchema
+ * @param ctx - Contexte d'authentification avec user.company_id
+ * @returns L'intervention créée avec les données du véhicule
+ */
 export const createMaintenance = authActionClient
   .schema(maintenanceSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { 
       vehicleId, 
@@ -35,37 +53,110 @@ export const createMaintenance = authActionClient
       ...maintenanceData 
     } = parsedInput;
     
-    // Vérifier que le véhicule appartient à l'entreprise
+    // Vérifier que le véhicule appartient à l'entreprise (RLS)
+    // Récupérer aussi company_id pour l'insert
     const { data: vehicle, error: vehicleError } = await supabase
       .from('vehicles')
       .select('id, company_id')
       .eq('id', vehicleId)
-      .eq('company_id', ctx.user.company_id)
       .single();
     
     if (vehicleError || !vehicle) {
       throw new Error('Véhicule non trouvé ou accès non autorisé');
     }
     
+    // Mapping du status frontend → DB (workflow complet maintenance)
+    const statusMap: Record<string, string> = {
+      'DEMANDE_CREEE': 'DEMANDE_CREEE',
+      'VALIDEE_DIRECTEUR': 'VALIDEE_DIRECTEUR',
+      'RDV_PRIS': 'RDV_PRIS',
+      'EN_COURS': 'EN_COURS',
+      'TERMINEE': 'TERMINEE',
+      'REFUSEE': 'REFUSEE',
+    };
+    
     // Insérer l'intervention
+    // NOTE: Colonnes réelles de maintenance_records (schema vérifié)
+    const insertData: Database['public']['Tables']['maintenance_records']['Insert'] = {
+      vehicle_id: vehicleId,
+      company_id: vehicle.company_id,
+      type: (typeToDb[maintenanceData.type] || 'repair'),
+      description: maintenanceData.description,
+      status: statusMap[maintenanceData.status] || 'DEMANDE_CREEE', // ← Utilise le status reçu (défaut: DEMANDE_CREEE)
+      priority: maintenanceData.priority === 'HIGH' ? 'HIGH' :
+                maintenanceData.priority === 'NORMAL' ? 'NORMAL' : 'LOW',
+      requested_at: new Date().toISOString(), // Date de création de la demande
+    };
+    
+    // Ajouter les champs optionnels selon le schema réel
+    if (maintenanceData.cost !== undefined && maintenanceData.cost !== null) {
+      insertData.cost = maintenanceData.cost;
+    }
+    if (maintenanceData.mileageAtService) {
+      insertData.mileage_at_maintenance = maintenanceData.mileageAtService;
+    }
+    // NOTE: completed_date ne remplit que si TERMINEE, sinon c'est scheduled_date
+    if (serviceDate && maintenanceData.status === 'TERMINEE') {
+      insertData.completed_at = serviceDate;
+      insertData.status = 'TERMINEE';
+    } else if (serviceDate) {
+      insertData.scheduled_date = serviceDate;
+    }
+    if (maintenanceData.garage) {
+      insertData.garage_name = maintenanceData.garage;
+    }
+    
     const { data: maintenance, error } = await supabase
       .from('maintenance_records')
-      .insert({
-        vehicle_id: vehicleId,
-        type: (typeToDb[maintenanceData.type] || 'repair') as string,
-        description: maintenanceData.description,
-        cost: maintenanceData.cost || 0,
-        mileage_at_service: maintenanceData.mileageAtService || 0,
-        service_date: serviceDate,
-        next_service_date: nextServiceDue || null,
-        performed_by: maintenanceData.garage || null,
-        status: 'completed',
-      } as any)
+      .insert(insertData)
       .select()
       .single();
     
     if (error) {
       throw new Error(`Erreur création intervention: ${error.message}`);
+    }
+    
+    // Mettre à jour les dates réglementaires si intervention CT/Tachy/ATP terminée
+    if (maintenanceData.status === 'TERMINEE') {
+      // Normalisation pour détection robuste (sans accents)
+      const descriptionLower = (maintenanceData.description || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const typeLower = maintenanceData.type?.toLowerCase() || '';
+      
+      const isCT = descriptionLower.includes('controle technique') || 
+                   descriptionLower.includes('control technique') ||
+                   typeLower.includes('inspection') ||
+                   descriptionLower.includes('ct ');
+                   
+      const isTachy = descriptionLower.includes('tachygraphe') || 
+                      descriptionLower.includes('tachy') ||
+                      descriptionLower.includes('calibration');
+                      
+      const isATP = descriptionLower.includes('atp') || 
+                    descriptionLower.includes('attestation transporteur');
+      
+      if (isCT || isTachy || isATP) {
+        const completedDate = serviceDate || new Date().toISOString().split('T')[0];
+        const vehicleUpdate: Database['public']['Tables']['vehicles']['Update'] = {};
+
+        if (isCT) {
+          vehicleUpdate.technical_control_date = completedDate;
+        }
+        if (isTachy) {
+          vehicleUpdate.tachy_control_date = completedDate;
+        }
+        if (isATP) {
+          vehicleUpdate.atp_date = completedDate;
+        }
+        
+        const { error: vehicleError } = await supabase
+          .from('vehicles')
+          .update(vehicleUpdate)
+          .eq('id', vehicleId);
+          
+        if (vehicleError) {
+          logger.error('[MAINTENANCE] Erreur maj fiche véhicule:', vehicleError);
+        }
+      }
     }
     
     // Mettre à jour le véhicule avec les prochaines échéances
@@ -85,10 +176,15 @@ export const createMaintenance = authActionClient
     return { success: true, data: maintenance };
   });
 
-// Récupérer toutes les interventions
+/**
+ * Récupère toutes les interventions de maintenance de la société.
+ * Inclut les informations des véhicules (immatriculation, marque, modèle).
+ * @param ctx - Contexte d'authentification
+ * @returns Liste des interventions triées par date de demande décroissante
+ */
 export const getMaintenances = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('maintenance_records')
@@ -96,8 +192,7 @@ export const getMaintenances = authActionClient
         *,
         vehicles(registration_number, brand, model, mileage, next_service_due, next_service_mileage)
       `)
-      .eq('company_id', ctx.user.company_id)
-      .order('service_date', { ascending: false });
+      .order('requested_at', { ascending: false });
     
     if (error) {
       throw new Error(`Erreur récupération: ${error.message}`);
@@ -106,14 +201,19 @@ export const getMaintenances = authActionClient
     return { success: true, data: data || [] };
   });
 
-// Récupérer les interventions d'un véhicule
+/**
+ * Récupère les interventions d'un véhicule spécifique.
+ * @param parsedInput - Objet contenant l'ID du véhicule
+ * @param ctx - Contexte d'authentification
+ * @returns Liste des interventions du véhicule
+ */
 export const getMaintenancesByVehicle = authActionClient
   .schema(z.object({ vehicleId: z.string().uuid() }))
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
-      .from('maintenance_with_details' as any)
+      .from('maintenance_records')
       .select('*')
       .eq('vehicle_id', parsedInput.vehicleId)
       .order('requested_at', { ascending: false });
@@ -125,11 +225,17 @@ export const getMaintenancesByVehicle = authActionClient
     return { success: true, data: data || [] };
   });
 
-// Récupérer une intervention
+/**
+ * Récupère une intervention par son ID avec détails complets.
+ * Inclut le véhicule concerné et les documents associés.
+ * @param parsedInput - Objet contenant l'ID de l'intervention
+ * @param ctx - Contexte d'authentification
+ * @returns L'intervention avec véhicule et documents
+ */
 export const getMaintenanceById = authActionClient
   .schema(idSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('maintenance_records')
@@ -139,7 +245,6 @@ export const getMaintenanceById = authActionClient
         maintenance_documents(*)
       `)
       .eq('id', parsedInput.id)
-      .eq('company_id', ctx.user.company_id)
       .single();
     
     if (error) {
@@ -149,22 +254,38 @@ export const getMaintenanceById = authActionClient
     return { success: true, data };
   });
 
-// Mettre à jour une intervention
+/**
+ * Met à jour une intervention de maintenance existante.
+ * Gère le changement de véhicule et les pièces remplacées.
+ * @param parsedInput - Données partielles incluant l'ID de l'intervention
+ * @param ctx - Contexte d'authentification
+ * @returns L'intervention mise à jour
+ */
 export const updateMaintenance = authActionClient
   .schema(maintenanceSchema.partial().extend({ id: z.string().uuid() }))
   .action(async ({ parsedInput, ctx }) => {
     const { id, vehicleId, documents, partsReplaced, ...updates } = parsedInput;
-    const supabase = createAdminClient();
+    const supabase = await createClient();
+    
+    // Vérifier que l'intervention existe
+    const { data: existing } = await supabase
+      .from('maintenance_records')
+      .select('id')
+      .eq('id', id)
+      .single();
+    
+    if (!existing) {
+      throw new Error('Intervention non trouvée');
+    }
     
     const { data, error } = await supabase
       .from('maintenance_records')
       .update({
         ...updates,
         vehicle_id: vehicleId,
-        parts_replaced: partsReplaced as any,
-      } as any)
+        parts_replaced: partsReplaced as string[] | undefined,
+      })
       .eq('id', id)
-      .eq('company_id', ctx.user.company_id)
       .select()
       .single();
     
@@ -177,17 +298,32 @@ export const updateMaintenance = authActionClient
     return { success: true, data };
   });
 
-// Supprimer une intervention
+/**
+ * Supprime définitivement une intervention de maintenance.
+ * @param parsedInput - Objet contenant l'ID de l'intervention
+ * @param ctx - Contexte d'authentification
+ * @returns Confirmation de suppression
+ */
 export const deleteMaintenance = authActionClient
   .schema(idSchema)
   .action(async ({ parsedInput, ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
+    
+    // Vérifier que l'intervention existe
+    const { data: existing } = await supabase
+      .from('maintenance_records')
+      .select('id')
+      .eq('id', parsedInput.id)
+      .single();
+    
+    if (!existing) {
+      throw new Error('Intervention non trouvée');
+    }
     
     const { error } = await supabase
       .from('maintenance_records')
       .delete()
-      .eq('id', parsedInput.id)
-      .eq('company_id', ctx.user.company_id);
+      .eq('id', parsedInput.id);
     
     if (error) {
       throw new Error(`Erreur suppression: ${error.message}`);
@@ -197,16 +333,21 @@ export const deleteMaintenance = authActionClient
     return { success: true };
   });
 
-// Récupérer les alertes maintenance
+/**
+ * Génère les alertes de maintenance préventive basées sur les échéances.
+ * Alertes sur kilométrage (si dépassement de 2000 km) et dates (si < 30 jours).
+ * Niveaux de criticité : CRITICAL (dépassé), WARNING (< 7j ou 500km), INFO.
+ * @param ctx - Contexte d'authentification
+ * @returns Liste des alertes avec véhicule, type, sévérité et message
+ */
 export const getMaintenanceAlerts = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data: vehicles, error } = await supabase
       .from('vehicles')
       .select('id, registration_number, brand, model, mileage, next_service_due, next_service_mileage')
-      .eq('company_id', ctx.user.company_id)
-      .eq('status', 'active');
+      .eq('status', VEHICLE_STATUS.ACTIF);
     
     if (error) {
       throw new Error(`Erreur récupération véhicules: ${error.message}`);
@@ -258,16 +399,20 @@ export const getMaintenanceAlerts = authActionClient
     return { success: true, data: alerts };
   });
 
-// Statistiques maintenance
+/**
+ * Calcule les statistiques de maintenance pour l'année en cours.
+ * Agrège les coûts par type d'intervention (routine, repair, inspection).
+ * @param ctx - Contexte d'authentification
+ * @returns Statistiques avec coût total, nombre d'interventions et répartition par type
+ */
 export const getMaintenanceStats = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     const { data, error } = await supabase
       .from('maintenance_records')
-      .select('cost, type, service_date')
-      .eq('company_id', ctx.user.company_id)
-      .gte('service_date', new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
+      .select('cost, type, requested_at')
+      .gte('requested_at', new Date(new Date().getFullYear(), 0, 1).toISOString());
     
     if (error) {
       throw new Error(`Erreur stats: ${error.message}`);
@@ -290,3 +435,5 @@ export const getMaintenanceStats = authActionClient
     
     return { success: true, data: stats };
   });
+
+

@@ -12,17 +12,19 @@ import {
   ArrowLeft, Car, Truck, Calendar, User, MapPin, 
   Gauge, Fuel, CheckCircle2, XCircle, AlertTriangle,
   Wrench, AlertOctagon, Droplets, FileText, Star,
-  ThermometerSnowflake, Thermometer, ThumbsUp, ThumbsDown
+  ThermometerSnowflake, Thermometer, ThumbsUp, ThumbsDown,
+  Camera
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useState } from 'react';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { validateInspection, rejectInspection } from '@/actions/inspections-safe';
+import { validateInspection, rejectInspection } from '@/actions/inspections';
 import { useUserContext } from '@/components/providers/user-provider';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { USER_ROLE } from '@/constants/enums';
 
 interface Inspection {
   id: string;
@@ -42,6 +44,7 @@ interface Inspection {
   tires_condition: any;
   compartment_c1_temp?: number;
   compartment_c2_temp?: number;
+  photos?: string[];
   status: string;
   created_at: string;
   created_by?: string;
@@ -83,7 +86,7 @@ export default function InspectionDetailPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
 
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'DIRECTEUR';
+  const canValidate = ([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR, USER_ROLE.AGENT_DE_PARC] as string[]).includes(user?.role || '');
 
   useEffect(() => {
     fetchInspection();
@@ -197,8 +200,8 @@ export default function InspectionDetailPage() {
           </div>
         </div>
         
-        {/* BOUTONS DE VALIDATION BIEN VISIBLES */}
-        {inspection.status === 'PENDING' && (
+        {/* BOUTONS DE VALIDATION - Uniquement pour admin/directeur/agent */}
+        {inspection.status === 'PENDING' && canValidate && (
           <div className="flex gap-3">
             <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
               <DialogTrigger asChild>
@@ -260,7 +263,7 @@ export default function InspectionDetailPage() {
           <FileText className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-800">
             Ce contrôle est en attente de validation par un administrateur ou un responsable.
-            {isAdmin && " Vous pouvez le valider ou le refuser en utilisant les boutons ci-dessus."}
+            {canValidate && " Vous pouvez le valider ou le refuser en utilisant les boutons ci-dessus."}
           </AlertDescription>
         </Alert>
       )}
@@ -461,6 +464,41 @@ export default function InspectionDetailPage() {
                     )}
                   </div>
                 </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Photos */}
+      {inspection.photos && inspection.photos.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Camera className="h-5 w-5" />
+              Photos du contrôle ({inspection.photos.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {inspection.photos.map((photoUrl, index) => (
+                <a 
+                  key={index}
+                  href={photoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 hover:border-blue-400 transition-colors group"
+                >
+                  <img 
+                    src={photoUrl}
+                    alt={`Photo ${index + 1}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                  <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                    Photo {index + 1}
+                  </div>
+                </a>
               ))}
             </div>
           </CardContent>

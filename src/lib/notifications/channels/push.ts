@@ -17,8 +17,8 @@ async function getFcmTokens(userId: string): Promise<string[]> {
   try {
     const adminClient = createAdminClient();
     
-    // @ts-ignore
-    const { data, error } = await (adminClient.from('push_tokens') as any)
+    const { data, error } = await (adminClient as any)
+      .from('push_tokens')
       .select('token')
       .eq('user_id', userId);
 
@@ -27,8 +27,7 @@ async function getFcmTokens(userId: string): Promise<string[]> {
       return [];
     }
 
-    // @ts-ignore
-    return data?.map((t: any) => t.token) || [];
+    return (data as unknown as Array<{ token: string }> | null)?.map((t) => t.token) || [];
   } catch (err) {
     logger.error('Exception récupération tokens FCM:', { error: (err as Error).message });
     return [];
@@ -65,10 +64,10 @@ export async function sendPushNotification(
 
   try {
     // Lazy loading de Firebase Admin
+    // @ts-ignore — firebase-admin optionnel (non installé si FCM non configuré)
+    const { getMessaging } = await import('firebase-admin/messaging');
     // @ts-ignore
-    const { getMessaging } = await import('firebase-admin/messaging' as any);
-    // @ts-ignore
-    const { initializeApp, getApps, cert } = await import('firebase-admin/app' as any);
+    const { initializeApp, getApps, cert } = await import('firebase-admin/app');
 
     // Initialiser Firebase Admin si pas déjà fait
     if (getApps().length === 0) {
@@ -105,7 +104,7 @@ export async function sendPushNotification(
     // Nettoyer les tokens invalides
     if (response.failureCount > 0) {
       const invalidTokens: string[] = [];
-      response.responses.forEach((resp: any, idx: number) => {
+      response.responses.forEach((resp: { success: boolean; error?: { code?: string } }, idx: number) => {
         if (!resp.success) {
           const error = resp.error;
           if (
@@ -149,8 +148,8 @@ export async function sendPushNotification(
 async function removeInvalidTokens(userId: string, tokens: string[]): Promise<void> {
   try {
     const adminClient = createAdminClient();
-    // @ts-ignore
-    await (adminClient.from('push_tokens') as any)
+    await (adminClient as any)
+      .from('push_tokens')
       .delete()
       .eq('user_id', userId)
       .in('token', tokens);
@@ -171,10 +170,10 @@ export async function registerPushToken(
   try {
     const adminClient = createAdminClient();
     
-    // @ts-ignore
-    const { error } = await (adminClient.from('push_tokens') as any)
+    const { error } = await (adminClient as any)
+      .from('push_tokens')
       .upsert(
-        { user_id: userId, token },
+        { user_id: userId, token: token },
         { onConflict: 'token' }
       );
 
@@ -201,8 +200,8 @@ export async function unregisterPushToken(
   try {
     const adminClient = createAdminClient();
     
-    // @ts-ignore
-    const { error } = await (adminClient.from('push_tokens') as any)
+    const { error } = await (adminClient as any)
+      .from('push_tokens')
       .delete()
       .eq('user_id', userId)
       .eq('token', token);

@@ -1,12 +1,14 @@
 'use server';
 
-import { authActionClient } from '@/lib/safe-action';
-import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email/client';
 import { 
   maintenanceAlertTemplate, 
   maintenanceAlertText
 } from '@/lib/email/templates/maintenance-alert';
+import { VEHICLE_STATUS } from '@/constants/enums';
+import { authActionClient } from '@/lib/safe-action';
+import { logger } from '@/lib/logger';
+import { createClient } from '@/lib/supabase/server';
 
 interface MaintenanceAlertData {
   vehicleName: string;
@@ -25,7 +27,7 @@ interface MaintenanceAlertData {
  */
 export const sendMaintenanceAlerts = authActionClient
   .action(async ({ ctx }) => {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     
     // Récupérer les utilisateurs avec notifications activées
     const { data: users } = await supabase
@@ -43,7 +45,7 @@ export const sendMaintenanceAlerts = authActionClient
       .from('vehicles')
       .select('id, registration_number, brand, model, mileage, next_service_due, next_service_mileage')
       .eq('company_id', ctx.user.company_id)
-      .eq('status', 'active');
+      .eq('status', VEHICLE_STATUS.ACTIF);
     
     const alerts: MaintenanceAlertData[] = [];
     const today = new Date();
@@ -99,7 +101,7 @@ export const sendMaintenanceAlerts = authActionClient
         });
         sentCount++;
       } catch (error) {
-        console.error('Erreur envoi email:', error);
+        logger.error('Erreur envoi email:', error);
       }
     }
     

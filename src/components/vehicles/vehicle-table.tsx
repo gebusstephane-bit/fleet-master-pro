@@ -22,8 +22,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Edit, Trash2, Car, Eye } from 'lucide-react';
+import { Edit, Trash2, Car, Eye, Plus } from 'lucide-react';
 import { DeleteDialog } from './delete-dialog';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface Vehicle {
   id: string;
@@ -52,10 +53,10 @@ const vehicleTypeLabels: Record<string, string> = {
 };
 
 const statusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  active: { label: 'Actif', variant: 'default' },
-  inactive: { label: 'Inactif', variant: 'secondary' },
-  maintenance: { label: 'Maintenance', variant: 'destructive' },
-  retired: { label: 'Retiré', variant: 'outline' },
+  ACTIF: { label: 'Actif', variant: 'default' },
+  INACTIF: { label: 'Inactif', variant: 'secondary' },
+  EN_MAINTENANCE: { label: 'En maintenance', variant: 'destructive' },
+  ARCHIVE: { label: 'Archivé', variant: 'outline' },
 };
 
 export function VehicleTable({ data, isLoading, onDelete }: VehicleTableProps) {
@@ -169,13 +170,15 @@ export function VehicleTable({ data, isLoading, onDelete }: VehicleTableProps) {
 
   if (data.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <Car className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold">Aucun véhicule</h3>
-        <p className="text-muted-foreground">
-          Commencez par ajouter votre premier véhicule.
-        </p>
-      </div>
+      <EmptyState
+        icon={Car}
+        title="Aucun véhicule"
+        description="Commencez par ajouter votre premier véhicule à la flotte."
+        action={{
+          label: 'Ajouter un véhicule',
+          onClick: () => router.push('/vehicles/new'),
+        }}
+      />
     );
   }
 

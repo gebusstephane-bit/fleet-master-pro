@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id);
 
     if (error) {
-      console.error('[Mark Contacted] Erreur:', error);
+      logger.error('[Mark Contacted] Erreur:', error);
       return NextResponse.json(
         { error: 'Erreur lors de la mise à jour' },
         { status: 500 }
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
-    console.error('[Mark Contacted] Erreur:', error);
+    logger.error('[Mark Contacted] Erreur:', error);
     return NextResponse.json(
       { error: 'Erreur serveur: ' + error.message },
       { status: 500 }

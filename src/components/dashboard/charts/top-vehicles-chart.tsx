@@ -11,7 +11,7 @@ import {
   Cell,
 } from "recharts";
 import { GlassCard } from "@/components/ui/glass-card";
-import { TopVehicleData } from "@/actions/dashboard-analytics";
+import { TopVehicleData } from "@/actions/dashboard";
 import { formatCurrency } from "@/lib/analytics/formatters";
 import { AlertTriangle } from "lucide-react";
 

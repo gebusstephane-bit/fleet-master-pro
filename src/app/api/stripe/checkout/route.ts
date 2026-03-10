@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { stripe, isStripeConfigured } from '@/lib/stripe/stripe';
+import { logger } from '@/lib/logger';
 
 // Mapping des plans vers les variables d'environnement Stripe
 const PLAN_PRICE_IDS: Record<string, { monthly: string; yearly: string }> = {
@@ -96,6 +97,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Déterminer le price_id
+    // Vérification explicite : si annuel demandé mais non configuré → erreur claire
+    const yearlyEnvVars: Record<string, string | undefined> = {
+      ESSENTIAL: process.env.STRIPE_PRICE_ID_ESSENTIAL_YEARLY,
+      PRO: process.env.STRIPE_PRICE_ID_PRO_YEARLY,
+      UNLIMITED: process.env.STRIPE_PRICE_ID_UNLIMITED_YEARLY,
+    };
+    if (yearly && !yearlyEnvVars[normalizedPlan]) {
+      return NextResponse.json(
+        {
+          error: 'yearly_not_available',
+          message: "L'offre annuelle n'est pas encore disponible en ligne. Contactez-nous à contact@fleet-master.fr pour en bénéficier.",
+        },
+        { status: 422 }
+      );
+    }
+
     const planConfig = PLAN_PRICE_IDS[normalizedPlan];
     const priceId = yearly ? planConfig.yearly : planConfig.monthly;
 
@@ -131,7 +148,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: session.url });
 
   } catch (error: any) {
-    console.error('Checkout error:', error);
+    logger.error('Checkout error:', error);
     return NextResponse.json(
       { error: 'Failed to create checkout session' },
       { status: 500 }

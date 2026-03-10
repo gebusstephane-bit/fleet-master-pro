@@ -4,8 +4,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { getDashboardStats } from '@/actions/dashboard';
-import { getDashboardAnalytics, DashboardAnalytics } from '@/actions/dashboard-analytics';
+import { getDashboardStats, getDashboardAnalytics, DashboardAnalytics } from '@/actions/dashboard';
 import { useUser } from './use-user';
 
 export const dashboardKeys = {

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, Wrench, Calendar, AlertTriangle, 
-  CheckCircle2, Clock, MapPin, ChevronRight, Filter
+  CheckCircle2, Clock, MapPin, ChevronRight, Filter, ClipboardList
 } from 'lucide-react';
 import { ExportButton } from '@/components/export/export-button';
 import { DataTable } from '@/components/ui/data-table';
@@ -19,8 +19,10 @@ import { CreateRequestDialog } from '@/components/maintenance/create-request-dia
 import { ScheduleRDVDialog } from '@/components/maintenance/schedule-rdv-dialog';
 import { CompleteMaintenanceDialog } from '@/components/maintenance/complete-maintenance-dialog';
 import { useUser } from '@/hooks/use-user';
+import { EmptyState } from '@/components/ui/empty-state';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { USER_ROLE } from '@/constants/enums';
 
 interface MaintenanceRequest {
   id: string;
@@ -52,7 +54,7 @@ export default function MaintenancePage() {
   const [selectedRequest, setSelectedRequest] = useState<MaintenanceRequest | null>(null);
   const { data: user } = useUser();
 
-  const isDirector = user?.role === 'ADMIN' || user?.role === 'DIRECTEUR';
+  const isDirector = user?.role === USER_ROLE.ADMIN || user?.role === USER_ROLE.DIRECTEUR;
 
   const loadRequests = async () => {
     setLoading(true);
@@ -335,14 +337,20 @@ export default function MaintenancePage() {
               </Button>
             </CardHeader>
             <CardContent>
-              <DataTable
-                columns={columns}
-                data={filteredRequests.pending}
-                keyExtractor={(m) => m.id}
-                isLoading={loading}
-                // @ts-expect-error emptyMessage prop type issue
-                emptyMessage="Aucune demande en attente"
-              />
+              {filteredRequests.pending.length === 0 && !loading ? (
+                <EmptyState
+                  icon={ClipboardList}
+                  title="Aucune demande en attente"
+                  description="Toutes les demandes de maintenance ont été traitées."
+                />
+              ) : (
+                <DataTable
+                  columns={columns}
+                  data={filteredRequests.pending}
+                  keyExtractor={(m) => m.id}
+                  isLoading={loading}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -356,14 +364,20 @@ export default function MaintenancePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <DataTable
-                columns={columns}
-                data={filteredRequests.toSchedule}
-                keyExtractor={(m) => m.id}
-                isLoading={loading}
-                // @ts-expect-error emptyMessage prop type issue
-                emptyMessage="Aucune intervention à planifier"
-              />
+              {filteredRequests.toSchedule.length === 0 && !loading ? (
+                <EmptyState
+                  icon={Calendar}
+                  title="Aucune intervention à planifier"
+                  description="Les interventions validées apparaîtront ici pour planification."
+                />
+              ) : (
+                <DataTable
+                  columns={columns}
+                  data={filteredRequests.toSchedule}
+                  keyExtractor={(m) => m.id}
+                  isLoading={loading}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -380,14 +394,20 @@ export default function MaintenancePage() {
               </Button>
             </CardHeader>
             <CardContent>
-              <DataTable
-                columns={scheduledColumns}
-                data={filteredRequests.scheduled}
-                keyExtractor={(m) => m.id}
-                isLoading={loading}
-                // @ts-expect-error emptyMessage prop type issue
-                emptyMessage="Aucune intervention planifiée"
-              />
+              {filteredRequests.scheduled.length === 0 && !loading ? (
+                <EmptyState
+                  icon={MapPin}
+                  title="Aucune intervention planifiée"
+                  description="Les interventions avec rendez-vous apparaîtront ici."
+                />
+              ) : (
+                <DataTable
+                  columns={scheduledColumns}
+                  data={filteredRequests.scheduled}
+                  keyExtractor={(m) => m.id}
+                  isLoading={loading}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -401,14 +421,20 @@ export default function MaintenancePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <DataTable
-                columns={columns}
-                data={filteredRequests.completed}
-                keyExtractor={(m) => m.id}
-                isLoading={loading}
-                // @ts-expect-error emptyMessage prop type issue
-                emptyMessage="Aucune intervention dans l'historique"
-              />
+              {filteredRequests.completed.length === 0 && !loading ? (
+                <EmptyState
+                  icon={CheckCircle2}
+                  title="Aucune intervention terminée"
+                  description="L'historique des interventions terminées apparaîtra ici."
+                />
+              ) : (
+                <DataTable
+                  columns={columns}
+                  data={filteredRequests.completed}
+                  keyExtractor={(m) => m.id}
+                  isLoading={loading}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>

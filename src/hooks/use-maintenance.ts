@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { useUserContext } from '@/components/providers/user-provider';
 import { logger } from '@/lib/logger';
+import { getReadableError } from '@/lib/error-messages';
 import {
   createMaintenance,
   updateMaintenance,
@@ -24,7 +25,7 @@ export interface Maintenance {
   company_id: string;
   vehicle_id: string;
   type: 'preventive' | 'corrective' | 'inspection' | 'repair';
-  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'DEMANDE_CREEE' | 'VALIDEE_DIRECTEUR' | 'RDV_PRIS' | 'EN_COURS' | 'TERMINEE' | 'REFUSEE';
   priority: 'low' | 'medium' | 'high' | 'critical';
   title: string;
   description?: string;
@@ -35,6 +36,27 @@ export interface Maintenance {
   performed_by?: string;
   parts_used?: string[];
   notes?: string;
+  created_at: string;
+  updated_at: string;
+  vehicles?: {
+    id: string;
+    registration_number: string;
+    brand: string;
+    model: string;
+  } | null;
+}
+
+// Type étendu pour les réponses Supabase avec jointure
+interface MaintenanceRecordWithVehicle {
+  id: string;
+  company_id: string;
+  vehicle_id: string;
+  type: string;
+  status: string;
+  priority: string;
+  description?: string;
+  rdv_date?: string | null;
+  rdv_time?: string | null;
   created_at: string;
   updated_at: string;
   vehicles?: {
@@ -80,7 +102,7 @@ export function useMaintenances(options?: { enabled?: boolean }) {
           vehicles(registration_number, brand, model)
         `)
         .eq('company_id', companyId)
-        .order('scheduled_date', { ascending: false });
+        .order('requested_at', { ascending: false });
       
       if (error) {
         logger.error('Error fetching maintenances', error);
@@ -95,12 +117,12 @@ export function useMaintenances(options?: { enabled?: boolean }) {
               *,
               vehicles(registration_number, brand, model)
             `)
-            .order('scheduled_date', { ascending: false });
+            .order('requested_at', { ascending: false });
           
           if (!allError && allData) {
             const filtered = allData.filter(m => m.company_id === companyId);
             logger.info('Fallback: Found maintenances', { count: filtered.length });
-            return filtered as Maintenance[];
+            return filtered as unknown as Maintenance[];
           }
         }
         
@@ -108,7 +130,7 @@ export function useMaintenances(options?: { enabled?: boolean }) {
       }
       
       logger.info('Fetched maintenances', { count: data?.length || 0 });
-      return (data || []) as Maintenance[];
+      return (data || []) as unknown as Maintenance[];
     },
     enabled: options?.enabled !== false && !!companyId,
     retry: 1,
@@ -145,7 +167,7 @@ export function useMaintenance(id: string, options?: { enabled?: boolean }) {
         throw new Error(error.message);
       }
       
-      return data as Maintenance;
+      return data as unknown as Maintenance;
     },
     enabled: options?.enabled !== false && !!id && !!companyId,
     ...cacheTimes.maintenance,
@@ -169,14 +191,49 @@ export function useMaintenancesByVehicle(vehicleId: string, options?: { enabled?
         .select('*')
         .eq('vehicle_id', vehicleId)
         .eq('company_id', companyId)
-        .order('scheduled_date', { ascending: false });
+        .order('requested_at', { ascending: false });
       
       if (error) {
         logger.error('Error fetching maintenances by vehicle', error);
         throw new Error(error.message);
       }
       
-      return (data || []) as Maintenance[];
+      return (data || []) as unknown as Maintenance[];
+    },
+    enabled: options?.enabled !== false && !!vehicleId && !!companyId,
+    ...cacheTimes.maintenance,
+  });
+}
+
+// Hook récupération interventions actives par véhicule (pour lien incident)
+export function useActiveMaintenancesByVehicle(vehicleId: string, options?: { enabled?: boolean }) {
+  const { user } = useUserContext();
+  const companyId = user?.company_id;
+  
+  return useQuery({
+    queryKey: [...maintenanceKeys.byVehicle(vehicleId), 'active'],
+    queryFn: async () => {
+      if (!vehicleId || !companyId) return [];
+      
+      const supabase = getSupabaseClient();
+      
+      const { data, error } = await supabase
+        .from('maintenance_records')
+        .select(`
+          *,
+          vehicles(registration_number, brand, model)
+        `)
+        .eq('vehicle_id', vehicleId)
+        .eq('company_id', companyId)
+        .in('status', ['DEMANDE_CREEE', 'VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS'])
+        .order('requested_at', { ascending: false });
+      
+      if (error) {
+        logger.error('Error fetching active maintenances by vehicle', error);
+        throw new Error(error.message);
+      }
+      
+      return (data || []) as unknown as Maintenance[];
     },
     enabled: options?.enabled !== false && !!vehicleId && !!companyId,
     ...cacheTimes.maintenance,
@@ -211,7 +268,7 @@ export function useCreateMaintenance() {
       toast.success('Intervention créée avec succès');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -240,7 +297,7 @@ export function useUpdateMaintenance() {
       toast.success('Intervention mise à jour');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -268,7 +325,7 @@ export function useDeleteMaintenance() {
       toast.success('Intervention supprimée');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -311,17 +368,18 @@ export function useMaintenanceAlerts(options?: { enabled?: boolean }) {
 
       // Mapper vers la forme attendue par le dashboard
       const now = new Date();
-      return (data || []).map(m => {
-        const vehicle = (m as any).vehicles;
+      return (data || []).map((m: unknown) => {
+        const record = m as MaintenanceRecordWithVehicle;
+        const vehicle = record.vehicles;
         const vehicleName = vehicle
           ? `${vehicle.brand} ${vehicle.model} (${vehicle.registration_number})`
           : 'Véhicule inconnu';
-        const rdvDate = (m as any).rdv_date as string | null;
+        const rdvDate = record.rdv_date ?? null;
         const daysUntil = rdvDate
           ? Math.ceil((new Date(rdvDate).getTime() - now.getTime()) / 86_400_000)
           : null;
 
-        const priorityRaw: string = (m as any).priority || 'NORMAL';
+        const priorityRaw = record.priority || 'NORMAL';
         const severity =
           priorityRaw === 'CRITICAL' || priorityRaw === 'critical' ? 'CRITICAL'
           : priorityRaw === 'HIGH' || priorityRaw === 'high' ? 'WARNING'
@@ -330,11 +388,11 @@ export function useMaintenanceAlerts(options?: { enabled?: boolean }) {
           : 'INFO';
 
         return {
-          ...m,
+          ...record,
           vehicleName,
           severity,
           dueDate: rdvDate ? new Date(rdvDate).toLocaleDateString('fr-FR') : '—',
-          message: (m as any).description || `Maintenance ${m.type || ''}`.trim(),
+          message: record.description || `Maintenance ${record.type || ''}`.trim(),
         };
       });
     },
@@ -372,19 +430,19 @@ export function useMaintenanceStats(options?: { enabled?: boolean }) {
         .from('maintenance_records')
         .select('id', { count: 'exact' })
         .eq('company_id', companyId)
-        .eq('status', 'scheduled');
+        .eq('status', 'RDV_PRIS');
       
       const { data: inProgressData } = await supabase
         .from('maintenance_records')
         .select('id', { count: 'exact' })
         .eq('company_id', companyId)
-        .eq('status', 'in_progress');
+        .eq('status', 'EN_COURS');
       
       const { data: completedData } = await supabase
         .from('maintenance_records')
         .select('id', { count: 'exact' })
         .eq('company_id', companyId)
-        .eq('status', 'completed');
+        .eq('status', 'TERMINEE');
       
       return {
         total: total || 0,
@@ -414,7 +472,7 @@ export function useSendMaintenanceAlerts() {
       toast.success(`${data.sent} alertes envoyées à ${data.recipients} destinataires`);
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -435,7 +493,7 @@ export function useTestEmailConfig() {
       toast.success('Email de test envoyé avec succès');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }

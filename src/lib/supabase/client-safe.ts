@@ -5,12 +5,23 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase';
+import { logger } from '@/lib/logger';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // Client standard
 export const supabaseClient = createClient<Database>(SUPABASE_URL, SUPABASE_KEY);
+
+interface SafeQueryResult<T> {
+  data: T[] | null;
+  error: Error | null;
+  debug?: Record<string, unknown>;
+}
+
+interface CompanyIdItem {
+  company_id?: string;
+}
 
 /**
  * Fonction utilitaire pour faire des requêtes avec retry et fallback
@@ -24,11 +35,11 @@ export async function safeQuery<T>(
     orderBy?: { column: string; ascending?: boolean };
     limit?: number;
   }
-): Promise<{ data: T[] | null; error: any; debug?: any }> {
-  console.log(`[safeQuery] START - Table: ${table}, CompanyId: ${companyId?.slice(0, 8)}...`);
+): Promise<SafeQueryResult<T>> {
+  logger.debug(`[safeQuery] START - Table: ${table}, CompanyId: ${companyId?.slice(0, 8)}...`);
   
   if (!companyId) {
-    console.error('[safeQuery] ERROR: No company_id provided');
+    logger.error('[safeQuery] ERROR: No company_id provided');
     return { data: null, error: new Error('No company_id provided'), debug: { stage: 'no_company_id' } };
   }
 
@@ -36,11 +47,11 @@ export async function safeQuery<T>(
 
   try {
     // Essai 1 : Requête normale avec filtre company_id
-    console.log(`[safeQuery] Attempt 1: Direct query with company_id filter`);
+    logger.debug(`[safeQuery] Attempt 1: Direct query with company_id filter`);
     const startTime = Date.now();
     
     const { data, error } = await supabaseClient
-      .from(table as any)
+      .from(table as keyof Database['public']['Tables'])
       .select(select)
       .eq('company_id', companyId)
       .order(options?.orderBy?.column || 'created_at', { 
@@ -49,25 +60,25 @@ export async function safeQuery<T>(
       .limit(options?.limit || 1000);
 
     const duration = Date.now() - startTime;
-    console.log(`[safeQuery] Attempt 1 completed in ${duration}ms`, { 
+    logger.debug(`[safeQuery] Attempt 1 completed in ${duration}ms`, { 
       success: !error, 
       dataCount: data?.length,
-      errorCode: error?.code,
+      errorCode: (error as { code?: string })?.code,
       errorMessage: error?.message?.slice(0, 100)
     });
 
     if (!error) {
-      console.log(`[safeQuery] SUCCESS: Found ${data?.length || 0} records`);
+      logger.debug(`[safeQuery] SUCCESS: Found ${data?.length || 0} records`);
       return { data: data as T[], error: null, debug: { stage: 'direct_success', count: data?.length } };
     }
 
     // Si erreur de récursion RLS, essayer sans filtre
-    if (error.message?.includes('infinite recursion') || error.code === '42P17') {
-      console.warn(`[safeQuery] RLS recursion detected (42P17), trying fallback without filter...`);
+    if (error.message?.includes('infinite recursion') || (error as { code?: string })?.code === '42P17') {
+      logger.warn(`[safeQuery] RLS recursion detected (42P17), trying fallback without filter...`);
       
       const fallbackStart = Date.now();
       const { data: allData, error: allError } = await supabaseClient
-        .from(table as any)
+        .from(table as keyof Database['public']['Tables'])
         .select(select)
         .order(options?.orderBy?.column || 'created_at', { 
           ascending: options?.orderBy?.ascending ?? false 
@@ -75,15 +86,15 @@ export async function safeQuery<T>(
         .limit(options?.limit || 1000);
 
       const fallbackDuration = Date.now() - fallbackStart;
-      console.log(`[safeQuery] Fallback completed in ${fallbackDuration}ms`, {
+      logger.debug(`[safeQuery] Fallback completed in ${fallbackDuration}ms`, {
         success: !allError,
         totalRecords: allData?.length,
-        errorCode: allError?.code,
+        errorCode: (allError as { code?: string })?.code,
         errorMessage: allError?.message?.slice(0, 100)
       });
 
       if (allError) {
-        console.error(`[safeQuery] Fallback also failed:`, allError);
+        logger.error(`[safeQuery] Fallback also failed:`, allError);
         return { 
           data: null, 
           error: allError,
@@ -96,8 +107,8 @@ export async function safeQuery<T>(
       }
 
       // Filtrer côté client
-      const filtered = (allData || []).filter((item: any) => item.company_id === companyId);
-      console.log(`[safeQuery] Fallback SUCCESS: ${filtered.length}/${allData?.length || 0} records match company_id`);
+      const filtered = (allData || []).filter((item) => (item as CompanyIdItem).company_id === companyId);
+      logger.debug(`[safeQuery] Fallback SUCCESS: ${filtered.length}/${allData?.length || 0} records match company_id`);
       
       return { 
         data: filtered as T[], 
@@ -111,12 +122,13 @@ export async function safeQuery<T>(
     }
 
     // Autre erreur
-    console.error(`[safeQuery] Direct query failed with non-RLS error:`, error);
+    logger.error(`[safeQuery] Direct query failed with non-RLS error:`, error);
     return { data: null, error, debug: { stage: 'direct_failed', error } };
     
-  } catch (e: any) {
-    console.error(`[safeQuery] EXCEPTION:`, e);
-    return { data: null, error: e, debug: { stage: 'exception', error: e } };
+  } catch (e) {
+    logger.error(`[safeQuery] EXCEPTION:`, e);
+    const caughtError = e instanceof Error ? e : new Error(String(e));
+    return { data: null, error: caughtError, debug: { stage: 'exception', error: caughtError } };
   }
 }
 
@@ -130,12 +142,12 @@ export async function safeQuerySimple<T>(
     orderBy?: { column: string; ascending?: boolean };
     limit?: number;
   }
-): Promise<{ data: T[] | null; error: any }> {
+): Promise<{ data: T[] | null; error: Error | null }> {
   const select = options?.select || '*';
 
   try {
     const { data, error } = await supabaseClient
-      .from(table as any)
+      .from(table as keyof Database['public']['Tables'])
       .select(select)
       .order(options?.orderBy?.column || 'created_at', { 
         ascending: options?.orderBy?.ascending ?? false 
@@ -143,7 +155,7 @@ export async function safeQuerySimple<T>(
       .limit(options?.limit || 1000);
 
     return { data: data as T[], error };
-  } catch (e: any) {
-    return { data: null, error: e };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
   }
 }

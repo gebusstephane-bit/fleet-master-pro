@@ -2,6 +2,57 @@
 
 Ce document décrit les mesures de sécurité implémentées et les bonnes pratiques pour FleetMaster Pro.
 
+📋 **Documentation complète**: [docs/security-posture.md](./docs/security-posture.md)  
+📊 **Score ISO 27001**: 23/25 (Mars 2026)
+
+## 🔒 Résumé des Corrections de Sécurité (Mars 2026)
+
+### 5. ✅ Sanitization des Logs (ISO 27001)
+**Problème**: Console logs exposant des données sensibles (emails, IPs, UUIDs complets).
+
+**Impact**: Fuite potentielle de PII dans les logs système.
+
+**Solution**:
+- Création de `src/lib/security/sanitize-logs.ts`
+- Logger structuré dans `src/lib/logger.ts`
+- Masquage automatique des emails, UUIDs, JWT tokens, IPs
+- Remplacement des `console.error` par `logger.error()`
+
+**Fichiers modifiés**:
+- `src/lib/logger.ts` (refonte complète)
+- `src/lib/supabase/server.ts` (logs sécurisés)
+- `src/middleware.ts` (logs sécurisés)
+
+**Utilisation**:
+```typescript
+// ❌ AVANT (dangereux)
+console.error('Auth error:', error, user.email);
+
+// ✅ APRÈS (sécurisé)
+logger.errorWithError('Auth operation failed', error, {
+  userId: user.id, // UUID tronqué automatiquement
+  email: user.email, // Email masqué (a***@domain.com)
+});
+```
+
+### 6. ✅ NPM Audit Fix (Mars 2026)
+**Problème**: 14 vulnérabilités NPM détectées (11 High).
+
+**Solution**:
+- `npm audit fix` appliqué (9 vulnérabilités corrigées)
+- 5 vulnérabilités résiduelles documentées avec justifications métier
+
+**Vulnérabilités résiduelles acceptées**:
+| Package | Severity | Justification |
+|---------|----------|---------------|
+| `next` | High | Breaking change majeur (v14→16). Migration planifiée Q2 2026. |
+| `glob` | High | Dev-only dependency (eslint), pas d'exposition production. |
+| `immutable` | High | Dépendance swagger-ui, usage interne admin only. |
+| `xlsx` | High | Pas de fix disponible. Traitement sandbox côté serveur. |
+| `dompurify` | Moderate | XSS edge cases. Reste la meilleure lib de sanitization. |
+
+---
+
 ## 🔒 Résumé des Corrections de Sécurité (Février 2026)
 
 ### Vulnérabilités Corrigées

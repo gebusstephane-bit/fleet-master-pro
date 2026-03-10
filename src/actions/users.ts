@@ -1,8 +1,20 @@
 'use server';
 
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+/**
+ * Actions Utilisateurs - VERSION SÉCURISÉE RLS
+ * 
+ * PRINCIPE : 
+ * - createClient() pour toutes les opérations sur la DB (profiles) - RLS sécurisé
+ * - createAdminClient() UNIQUEMENT pour auth.admin.createUser/deleteUser (nécessite service role)
+ */
+
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+
+import { USER_ROLE } from '@/constants/enums';
+import { requireManagerOrAbove } from '@/lib/auth-guards';
+import { logger } from '@/lib/logger';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 // Schémas de validation
 const createUserSchema = z.object({
@@ -28,40 +40,23 @@ const updateUserSchema = z.object({
 export type CreateUserData = z.infer<typeof createUserSchema>;
 export type UpdateUserData = z.infer<typeof updateUserSchema>;
 
-// Vérifier les permissions
-async function checkPermissions(supabase: any, userId: string, requiredRoles: string[]) {
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('role, company_id')
-    .eq('id', userId)
-    .single();
-  
-  if (error || !profile) {
-    return { allowed: false, error: 'Utilisateur non trouvé' };
-  }
-  
-  if (!requiredRoles.includes(profile.role)) {
-    return { allowed: false, error: 'Permissions insuffisantes' };
-  }
-  
-  return { allowed: true, profile };
-}
-
-// Récupérer tous les utilisateurs de l'entreprise
+/**
+ * Récupérer tous les utilisateurs de l'entreprise
+ * RLS : Filtre automatiquement par company_id
+ */
 export async function getUsers(companyId?: string) {
   try {
     const supabase = await createClient();
-    const adminSupabase = createAdminClient();
     
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return { error: 'Non authentifié', data: null };
     }
     
-    // Si pas de companyId fourni, récupérer celui de l'utilisateur courant
+    // Si pas de companyId fourni, récupérer celui de l'utilisateur courant (via RLS)
     let targetCompanyId = companyId;
     if (!targetCompanyId) {
-      const { data: profile } = await adminSupabase
+      const { data: profile } = await supabase
         .from('profiles')
         .select('company_id, role')
         .eq('id', user.id)
@@ -74,36 +69,40 @@ export async function getUsers(companyId?: string) {
       targetCompanyId = profile.company_id || undefined;
     }
     
-    const { data, error } = await adminSupabase
+    // RLS filtre automatiquement par company_id
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('company_id', targetCompanyId || '')
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('getUsers error:', error);
+      logger.error('getUsers error:', error);
       return { error: error.message, data: null };
     }
     
     return { data, error: null };
-  } catch (error: any) {
-    console.error('getUsers exception:', error);
-    return { error: error.message, data: null };
+  } catch (error) {
+    logger.error('getUsers exception:', error);
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }
 
-// Récupérer un utilisateur par ID
+/**
+ * Récupérer un utilisateur par ID
+ * RLS : Vérifie l'appartenance à la company
+ */
 export async function getUserById(userId: string) {
   try {
     const supabase = await createClient();
-    const adminSupabase = createAdminClient();
     
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (!currentUser) {
       return { error: 'Non authentifié', data: null };
     }
     
-    const { data, error } = await adminSupabase
+    // RLS filtre automatiquement
+    const { data, error } = await supabase
       .from('profiles')
       .select('*, user_notification_preferences(*)')
       .eq('id', userId)
@@ -114,360 +113,58 @@ export async function getUserById(userId: string) {
     }
     
     return { data, error: null };
-  } catch (error: any) {
-    return { error: error.message, data: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }
 
-// Créer un nouvel utilisateur
-export async function createUser(data: CreateUserData, creatorId: string) {
-  try {
-    console.log('createUser: Données reçues:', { ...data, password: '***' });
-    
-    const supabase = await createClient();
-    const adminSupabase = createAdminClient();
-    
-    // Vérifier company_id
-    if (!data.company_id) {
-      return { error: 'Company ID manquant', data: null };
-    }
-    
-    // 1. Vérifier que le créateur a les droits (avec admin pour bypass RLS)
-    const { data: creator, error: creatorError } = await adminSupabase
-      .from('profiles')
-      .select('role, company_id')
-      .eq('id', creatorId)
-      .single();
-    
-    if (creatorError || !creator) {
-      return { error: 'Créateur non trouvé', data: null };
-    }
-    
-    console.log('createUser: Créateur trouvé:', creator);
-    
-    // Seul ADMIN ou DIRECTEUR peut créer des utilisateurs
-    if (!['ADMIN', 'DIRECTEUR'].includes(creator.role)) {
-      return { error: 'Permissions insuffisantes pour créer un utilisateur', data: null };
-    }
-    
-    // Seul ADMIN peut créer d'autres ADMIN
-    if (data.role === 'ADMIN' && creator.role !== 'ADMIN') {
-      return { error: 'Seul un administrateur peut créer un autre administrateur', data: null };
-    }
-    
-    // DIRECTEUR ne peut pas créer d'autres DIRECTEUR
-    if (data.role === 'DIRECTEUR' && creator.role === 'DIRECTEUR') {
-      return { error: 'Un directeur ne peut pas créer un autre directeur', data: null };
-    }
-    
-    // Vérifier que l'email n'est pas déjà utilisé
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', data.email)
-      .single();
-    
-    if (existingUser) {
-      return { error: 'Un utilisateur avec cet email existe déjà', data: null };
-    }
-    
-    // 2. Créer l'utilisateur dans Auth Supabase (avec admin client)
-    const { data: authUser, error: authError } = await adminSupabase.auth.admin.createUser({
-      email: data.email,
-      password: data.password,
-      email_confirm: true,
-      user_metadata: {
-        first_name: data.first_name,
-        last_name: data.last_name,
-        role: data.role,
-      },
-    });
-    
-    if (authError) {
-      console.error('createUser auth error:', authError);
-      return { error: `Erreur création auth: ${authError.message}`, data: null };
-    }
-    
-    // 3. Créer le profil (avec admin pour bypass RLS)
-    console.log('createUser: Création profil avec company_id:', data.company_id);
-    
-    const { data: profile, error: profileError } = await adminSupabase
-      .from('profiles')
-      .insert({
-        id: authUser.user.id,
-        company_id: data.company_id,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email,
-        phone: data.phone,
-        role: data.role,
-        is_active: true,
-        created_by: creatorId,
-      })
-      .select()
-      .single();
-    
-    console.log('createUser: Profil créé:', profile);
-    
-    if (profileError) {
-      // Rollback: supprimer l'utilisateur auth
-      await adminSupabase.auth.admin.deleteUser(authUser.user.id);
-      console.error('createUser profile error:', profileError);
-      return { error: `Erreur création profil: ${profileError.message}`, data: null };
-    }
-    
-    // 4. Créer les préférences de notifications par défaut (avec admin)
-    await adminSupabase
-      .from('user_notification_preferences')
-      .insert({
-        user_id: authUser.user.id,
-        alert_maintenance: true,
-        alert_inspection: true,
-        alert_routes: true,
-        alert_documents_expiry: true,
-        alert_fuel: false,
-        alert_critical_only: data.role === 'EXPLOITANT',
-        email_enabled: true,
-        sms_enabled: false,
-        push_enabled: false,
-      });
-    
-    revalidatePath('/settings/users');
-    
-    return { 
-      data: { 
-        user: profile 
-      }, 
-      error: null 
-    };
-  } catch (error: any) {
-    console.error('createUser exception:', error);
-    return { error: error.message, data: null };
-  }
+// Type pour les préférences de notification
+export interface NotificationPreferences {
+  email_notifications?: boolean;
+  notify_maintenance?: boolean;
+  notify_alerts?: boolean;
+  notify_fuel?: boolean;
+  daily_digest?: boolean;
+  alert_maintenance?: boolean;
+  alert_inspection?: boolean;
+  alert_routes?: boolean;
+  alert_documents_expiry?: boolean;
+  alert_critical_only?: boolean;
+  email_enabled?: boolean;
+  sms_enabled?: boolean;
+  push_enabled?: boolean;
 }
 
-// Mettre à jour un utilisateur
-export async function updateUser(data: UpdateUserData, updaterId: string) {
-  try {
-    const supabase = await createClient();
-    const adminSupabase = createAdminClient();
-    
-    // 1. Vérifier les permissions (avec admin)
-    const { data: updater, error: updaterError } = await adminSupabase
-      .from('profiles')
-      .select('role, company_id')
-      .eq('id', updaterId)
-      .single();
-    
-    if (updaterError || !updater) {
-      return { error: 'Modificateur non trouvé', data: null };
-    }
-    
-    // 2. Récupérer l'utilisateur cible (avec admin)
-    const { data: target, error: targetError } = await adminSupabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user_id)
-      .single();
-    
-    if (targetError || !target) {
-      return { error: 'Utilisateur non trouvé', data: null };
-    }
-    
-    // 3. Vérifier les permissions de modification
-    // - ADMIN peut tout modifier
-    // - DIRECTEUR peut modifier dans sa company sauf les ADMIN
-    // - Un utilisateur peut se modifier lui-même (sauf son rôle)
-    
-    const isSelf = updaterId === data.user_id;
-    const isAdmin = updater.role === 'ADMIN';
-    const isDirecteur = updater.role === 'DIRECTEUR';
-    const sameCompany = updater.company_id === target.company_id;
-    
-    if (!isAdmin && !isDirecteur && !isSelf) {
-      return { error: 'Permissions insuffisantes', data: null };
-    }
-    
-    if (isDirecteur) {
-      if (!sameCompany) {
-        return { error: 'Utilisateur d\'une autre entreprise', data: null };
-      }
-      if (target.role === 'ADMIN') {
-        return { error: 'Impossible de modifier un administrateur', data: null };
-      }
-      if (data.role && data.role === 'ADMIN') {
-        return { error: 'Impossible de promouvoir au rang d\'administrateur', data: null };
-      }
-    }
-    
-    if (isSelf && data.role && data.role !== target.role) {
-      return { error: 'Vous ne pouvez pas modifier votre propre rôle', data: null };
-    }
-    
-    // 4. Effectuer la mise à jour (avec admin)
-    const updateData: any = {};
-    if (data.first_name) updateData.first_name = data.first_name;
-    if (data.last_name) updateData.last_name = data.last_name;
-    if (data.phone !== undefined) updateData.phone = data.phone;
-    if (data.role && (isAdmin || isDirecteur)) updateData.role = data.role;
-    if (data.is_active !== undefined && (isAdmin || isDirecteur)) updateData.is_active = data.is_active;
-    
-    const { data: updated, error } = await adminSupabase
-      .from('profiles')
-      .update(updateData)
-      .eq('id', data.user_id)
-      .select()
-      .single();
-    
-    if (error) {
-      return { error: error.message, data: null };
-    }
-    
-    revalidatePath('/settings/users');
-    revalidatePath(`/settings/users/${data.user_id}/edit`);
-    
-    return { data: updated, error: null };
-  } catch (error: any) {
-    return { error: error.message, data: null };
-  }
-}
-
-// Activer/Désactiver un utilisateur
-export async function toggleUserStatus(userId: string, isActive: boolean, actorId: string) {
-  try {
-    const supabase = await createClient();
-    const adminSupabase = createAdminClient();
-    
-    // Vérifier permissions (avec admin)
-    const { data: actor, error: actorError } = await adminSupabase
-      .from('profiles')
-      .select('role, company_id')
-      .eq('id', actorId)
-      .single();
-    
-    if (actorError || !actor) {
-      return { error: 'Acteur non trouvé', data: null };
-    }
-    
-    const { data: target, error: targetError } = await adminSupabase
-      .from('profiles')
-      .select('company_id, role')
-      .eq('id', userId)
-      .single();
-    
-    if (targetError || !target) {
-      return { error: 'Cible non trouvée', data: null };
-    }
-    
-    // Vérifications
-    if (actor.role !== 'ADMIN') {
-      if (actor.company_id !== target.company_id) {
-        return { error: 'Entreprise différente', data: null };
-      }
-      if (target.role === 'ADMIN') {
-        return { error: 'Impossible de modifier un admin', data: null };
-      }
-    }
-    
-    // Ne pas se désactiver soi-même
-    if (actorId === userId && !isActive) {
-      return { error: 'Vous ne pouvez pas vous désactiver vous-même', data: null };
-    }
-    
-    // Mettre à jour le profil (avec admin)
-    const { error } = await adminSupabase
-      .from('profiles')
-      .update({ is_active: isActive })
-      .eq('id', userId);
-    
-    if (error) {
-      return { error: error.message, data: null };
-    }
-    
-    // Désactiver/activer dans Auth aussi
-    if (!isActive) {
-      await adminSupabase.auth.admin.updateUserById(userId, { 
-        ban_duration: '876000h' // 100 ans = banni
-      });
-    } else {
-      await adminSupabase.auth.admin.updateUserById(userId, { 
-        ban_duration: 'none' 
-      });
-    }
-    
-    revalidatePath('/settings/users');
-    
-    return { data: { success: true }, error: null };
-  } catch (error: any) {
-    return { error: error.message, data: null };
-  }
-}
-
-// Supprimer un utilisateur (ADMIN uniquement)
-export async function deleteUser(userId: string, actorId: string) {
-  try {
-    const supabase = await createClient();
-    const adminSupabase = createAdminClient();
-    
-    // Vérifier que c'est un ADMIN (avec admin)
-    const { data: actor, error: actorError } = await adminSupabase
-      .from('profiles')
-      .select('role')
-      .eq('id', actorId)
-      .single();
-    
-    if (actorError || !actor || actor.role !== 'ADMIN') {
-      return { error: 'Seul un administrateur peut supprimer un utilisateur', data: null };
-    }
-    
-    // Ne pas se supprimer soi-même
-    if (actorId === userId) {
-      return { error: 'Vous ne pouvez pas vous supprimer vous-même', data: null };
-    }
-    
-    // Supprimer d'abord les données liées (avec admin)
-    await adminSupabase.from('user_notification_preferences').delete().eq('user_id', userId);
-    await adminSupabase.from('user_login_history').delete().eq('user_id', userId);
-    
-    // Supprimer le profil (avec admin)
-    await adminSupabase.from('profiles').delete().eq('id', userId);
-    
-    // Supprimer l'utilisateur Auth
-    await adminSupabase.auth.admin.deleteUser(userId);
-    
-    revalidatePath('/settings/users');
-    
-    return { data: { success: true }, error: null };
-  } catch (error: any) {
-    return { error: error.message, data: null };
-  }
-}
-
-// Mettre à jour les préférences de notifications
+/**
+ * Mettre à jour les préférences de notification
+ * RLS : Vérifie que l'utilisateur modifie ses propres préférences ou appartient à la même company
+ */
 export async function updateNotificationPreferences(
   userId: string, 
-  preferences: {
-    alert_maintenance?: boolean;
-    alert_inspection?: boolean;
-    alert_routes?: boolean;
-    alert_documents_expiry?: boolean;
-    alert_fuel?: boolean;
-    alert_critical_only?: boolean;
-    email_enabled?: boolean;
-    sms_enabled?: boolean;
-    push_enabled?: boolean;
-  }
+  preferences: Partial<NotificationPreferences>
 ) {
   try {
     const supabase = await createClient();
-    const adminSupabase = createAdminClient();
     
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.id !== userId) {
-      return { error: 'Non autorisé', data: null };
+    if (!user) {
+      return { error: 'Non authentifié', data: null };
     }
     
-    const { data, error } = await adminSupabase
+    // Vérifier que l'utilisateur cible existe (RLS filtre par company)
+    const { data: targetUser, error: targetError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
+    
+    if (targetError || !targetUser) {
+      return { error: 'Utilisateur non trouvé', data: null };
+    }
+    
+    // Mettre à jour les préférences (RLS vérifie l'appartenance)
+    const { data, error } = await supabase
       .from('user_notification_preferences')
       .upsert({
         user_id: userId,
@@ -482,7 +179,359 @@ export async function updateNotificationPreferences(
     }
     
     return { data, error: null };
-  } catch (error: any) {
-    return { error: error.message, data: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
+  }
+}
+
+/**
+ * Créer un nouvel utilisateur
+ * RLS pour profiles, AdminClient UNIQUEMENT pour auth.admin.createUser
+ * Vérifie également la limite d'utilisateurs selon le plan d'abonnement
+ */
+export async function createUser(data: CreateUserData, creatorId: string) {
+  try {
+    // VÉRIFICATION SÉCURITÉ : Vérifier le rôle côté serveur (incontournable)
+    try {
+      await requireManagerOrAbove();
+    } catch {
+      return { error: 'Accès refusé', data: null };
+    }
+
+    const supabase = await createClient();
+    // Admin client UNIQUEMENT pour les opérations auth (création user)
+    const adminSupabase = createAdminClient();
+    
+    // Vérifier company_id
+    if (!data.company_id) {
+      return { error: 'Company ID manquant', data: null };
+    }
+    
+    // 1. Vérifier que le créateur a les droits (RLS)
+    const { data: creator, error: creatorError } = await supabase
+      .from('profiles')
+      .select('role, company_id')
+      .eq('id', creatorId)
+      .single();
+    
+    if (creatorError || !creator) {
+      return { error: 'Créateur non trouvé', data: null };
+    }
+    
+    // Seul ADMIN ou DIRECTEUR peut créer des utilisateurs
+    if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(creator.role))) {
+      return { error: 'Permissions insuffisantes pour créer un utilisateur', data: null };
+    }
+
+    // Seul ADMIN peut créer d'autres ADMIN
+    if (data.role === USER_ROLE.ADMIN && creator.role !== USER_ROLE.ADMIN) {
+      return { error: 'Seul un administrateur peut créer un autre administrateur', data: null };
+    }
+
+    // DIRECTEUR ne peut pas créer d'autres DIRECTEUR
+    if (data.role === USER_ROLE.DIRECTEUR && creator.role === USER_ROLE.DIRECTEUR) {
+      return { error: 'Un directeur ne peut pas créer un autre directeur', data: null };
+    }
+    
+    // 2. Vérifier la limite d'utilisateurs selon le plan
+    const { data: subscription, error: subError } = await supabase
+      .from('subscriptions')
+      .select('plan, user_limit')
+      .single();
+    
+    if (subError) {
+      return { error: 'Impossible de vérifier les limites d\'abonnement', data: null };
+    }
+    
+    // Compter les utilisateurs actuels
+    const { count: userCount, error: countError } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('company_id', data.company_id);
+    
+    if (countError) {
+      return { error: 'Impossible de compter les utilisateurs', data: null };
+    }
+    
+    // Vérifier si la limite est atteinte
+    if (userCount !== null && userCount >= (subscription.user_limit || 0)) {
+      return { 
+        error: `Limite d'utilisateurs atteinte (${userCount}/${subscription.user_limit}). Passez au plan supérieur pour ajouter plus d'utilisateurs.`,
+        data: { 
+          limitReached: true, 
+          currentCount: userCount, 
+          limit: subscription.user_limit,
+          upgradeUrl: '/settings/billing'
+        }
+      };
+    }
+    
+    // Vérifier que l'email n'est pas déjà utilisé (RLS)
+    const { data: existingUser } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', data.email)
+      .single();
+    
+    if (existingUser) {
+      return { error: 'Un utilisateur avec cet email existe déjà', data: null };
+    }
+    
+    // 2. Créer l'utilisateur dans Auth Supabase (NÉCESSITE ADMIN CLIENT)
+    const { data: authUser, error: authError } = await adminSupabase.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        company_id: data.company_id,
+      },
+    });
+    
+    if (authError || !authUser.user) {
+      return { error: `Erreur création auth: ${authError?.message}`, data: null };
+    }
+    
+    // 3. Le profil est créé automatiquement par le trigger
+    // Mettre à jour le profil avec les données complètes (RLS)
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: data.phone,
+        role: data.role,
+        company_id: data.company_id,
+        is_active: true,
+      })
+      .eq('id', authUser.user.id)
+      .select()
+      .single();
+    
+    if (profileError) {
+      // Rollback: supprimer l'utilisateur auth si le profil échoue
+      await adminSupabase.auth.admin.deleteUser(authUser.user.id);
+      return { error: `Erreur création profil: ${profileError.message}`, data: null };
+    }
+    
+    revalidatePath('/settings/users');
+    
+    return { data: profile, error: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
+  }
+}
+
+/**
+ * Mettre à jour un utilisateur
+ * RLS : Vérifie les permissions
+ */
+export async function updateUser(data: UpdateUserData, updaterId: string) {
+  try {
+    // VÉRIFICATION SÉCURITÉ : Vérifier le rôle côté serveur (incontournable)
+    try {
+      await requireManagerOrAbove();
+    } catch {
+      return { error: 'Accès refusé', data: null };
+    }
+
+    const supabase = await createClient();
+    
+    // Vérifier permissions (RLS)
+    const { data: updater, error: updaterError } = await supabase
+      .from('profiles')
+      .select('role, company_id')
+      .eq('id', updaterId)
+      .single();
+    
+    if (updaterError || !updater) {
+      return { error: 'Utilisateur non trouvé', data: null };
+    }
+    
+    // Vérifier l'utilisateur cible (RLS)
+    const { data: target, error: targetError } = await supabase
+      .from('profiles')
+      .select('role, company_id')
+      .eq('id', data.user_id)
+      .single();
+    
+    if (targetError || !target) {
+      return { error: 'Utilisateur cible non trouvé', data: null };
+    }
+    
+    // Permissions
+    if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(updater.role))) {
+      return { error: 'Permissions insuffisantes', data: null };
+    }
+
+    // Seul ADMIN peut modifier un ADMIN
+    if (target.role === USER_ROLE.ADMIN && updater.role !== USER_ROLE.ADMIN) {
+      return { error: 'Seul un administrateur peut modifier un administrateur', data: null };
+    }
+
+    // Seul ADMIN peut changer le rôle
+    if (data.role && updater.role !== USER_ROLE.ADMIN) {
+      return { error: 'Seul un administrateur peut changer le rôle', data: null };
+    }
+    
+    // Mettre à jour (RLS vérifie l'appartenance)
+    const { data: updated, error } = await supabase
+      .from('profiles')
+      .update({
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: data.phone,
+        role: data.role,
+        is_active: data.is_active,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', data.user_id)
+      .select()
+      .single();
+    
+    if (error) {
+      return { error: error.message, data: null };
+    }
+    
+    revalidatePath('/settings/users');
+    return { data: updated, error: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
+  }
+}
+
+/**
+ * Supprimer un utilisateur
+ * RLS pour vérification, AdminClient UNIQUEMENT pour auth.admin.deleteUser
+ */
+export async function deleteUser(userId: string, actorId: string) {
+  try {
+    // VÉRIFICATION SÉCURITÉ : Vérifier le rôle côté serveur (incontournable)
+    try {
+      await requireManagerOrAbove();
+    } catch {
+      return { error: 'Accès refusé', data: null };
+    }
+
+    const supabase = await createClient();
+    const adminSupabase = createAdminClient();
+    
+    // Vérifier permissions (RLS)
+    const { data: actor, error: actorError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', actorId)
+      .single();
+    
+    if (actorError || !actor) {
+      return { error: 'Acteur non trouvé', data: null };
+    }
+    
+    // Vérifier l'utilisateur cible (RLS)
+    const { data: target, error: targetError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+    
+    if (targetError || !target) {
+      return { error: 'Utilisateur cible non trouvé', data: null };
+    }
+    
+    // Permissions
+    if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(actor.role))) {
+      return { error: 'Permissions insuffisantes', data: null };
+    }
+
+    // Seul ADMIN peut supprimer un ADMIN
+    if (target.role === USER_ROLE.ADMIN && actor.role !== USER_ROLE.ADMIN) {
+      return { error: 'Seul un administrateur peut supprimer un administrateur', data: null };
+    }
+    
+    // Supprimer d'abord les données liées (RLS)
+    await supabase.from('user_notification_preferences').delete().eq('user_id', userId);
+    await supabase.from('user_login_history').delete().eq('user_id', userId);
+    
+    // Supprimer le profil (RLS)
+    await supabase.from('profiles').delete().eq('id', userId);
+    
+    // Supprimer l'utilisateur auth (NÉCESSITE ADMIN CLIENT)
+    const { error: authError } = await adminSupabase.auth.admin.deleteUser(userId);
+    
+    if (authError) {
+      return { error: `Erreur suppression auth: ${authError.message}`, data: null };
+    }
+    
+    revalidatePath('/settings/users');
+    return { success: true, data: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
+  }
+}
+
+/**
+ * Désactiver/réactiver un utilisateur
+ * RLS : Vérifie les permissions
+ */
+export async function toggleUserStatus(userId: string, isActive: boolean, actorId: string) {
+  try {
+    // VÉRIFICATION SÉCURITÉ : Vérifier le rôle côté serveur (incontournable)
+    try {
+      await requireManagerOrAbove();
+    } catch {
+      return { error: 'Accès refusé', data: null };
+    }
+
+    const supabase = await createClient();
+    const adminSupabase = createAdminClient();
+    
+    // Vérifier permissions (RLS)
+    const { data: actor, error: actorError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', actorId)
+      .single();
+    
+    if (actorError || !actor) {
+      return { error: 'Acteur non trouvé', data: null };
+    }
+    
+    if ((!([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(actor.role))) {
+      return { error: 'Permissions insuffisantes', data: null };
+    }
+
+    // Mettre à jour le profil (RLS)
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ is_active: isActive, updated_at: new Date().toISOString() })
+      .eq('id', userId)
+      .select()
+      .single();
+    
+    if (error) {
+      return { error: error.message, data: null };
+    }
+    
+    // Mettre à jour auth (NÉCESSITE ADMIN CLIENT)
+    if (!isActive) {
+      await adminSupabase.auth.admin.updateUserById(userId, { 
+        ban_duration: '8760h' // Ban for 1 year (effectively permanent)
+      });
+    } else {
+      await adminSupabase.auth.admin.updateUserById(userId, { 
+        ban_duration: '0h' // Unban
+      });
+    }
+    
+    revalidatePath('/settings/users');
+    return { data, error: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue';
+    return { error: message, data: null };
   }
 }

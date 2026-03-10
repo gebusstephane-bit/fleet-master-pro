@@ -1,0 +1,170 @@
+name: Security Audit
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Déclencheurs :
+#   • schedule : tous les dimanches à 03h00 UTC
+#   • workflow_dispatch : permet un audit manuel à tout moment
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write  # Pour publier les résultats SARIF (optionnel)
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+
+  # ─────────────────────────────────────────────
+  # JOB 1 — npm audit
+  # ─────────────────────────────────────────────
+  npm-audit:
+    name: npm audit (high + critical)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        # npm ci sans cache : on veut toujours les métadonnées de vulnérabilités fraîches
+        run: npm ci
+
+      # ───────────────────────────────────────────────────────────────────────
+      # Audit — bloque si vulnérabilité HIGH ou CRITICAL détectée.
+      # Le rapport JSON est capturé pour parsing et notification Slack.
+      # ───────────────────────────────────────────────────────────────────────
+      - name: Run npm audit
+        id: audit
+        run: |
+          set +e
+          npm audit --audit-level=high --json > audit-report.json 2>&1
+          AUDIT_EXIT=$?
+          set -e
+
+          echo "exit_code=$AUDIT_EXIT" >> $GITHUB_OUTPUT
+
+          # Extraire les compteurs pour la notification
+          HIGH=$(jq '.metadata.vulnerabilities.high // 0' audit-report.json 2>/dev/null || echo 0)
+          CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' audit-report.json 2>/dev/null || echo 0)
+          TOTAL=$(jq '.metadata.vulnerabilities | (.high // 0) + (.critical // 0)' audit-report.json 2>/dev/null || echo 0)
+
+          echo "high=$HIGH"         >> $GITHUB_OUTPUT
+          echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL"       >> $GITHUB_OUTPUT
+
+          # Affiche un résumé lisible dans les logs
+          echo ""
+          echo "════════════════════════════════════"
+          echo "  npm audit — Résultats"
+          echo "════════════════════════════════════"
+          jq '{
+            info:     .metadata.vulnerabilities.info,
+            low:      .metadata.vulnerabilities.low,
+            moderate: .metadata.vulnerabilities.moderate,
+            high:     .metadata.vulnerabilities.high,
+            critical: .metadata.vulnerabilities.critical
+          }' audit-report.json 2>/dev/null || cat audit-report.json
+          echo "════════════════════════════════════"
+
+          exit $AUDIT_EXIT
+
+      # ───────────────────────────────────────────────────────────────────────
+      # Rapport JSON uploadé comme artifact pour investigation
+      # ───────────────────────────────────────────────────────────────────────
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report-${{ github.run_id }}
+          path: audit-report.json
+          retention-days: 30
+
+      # ───────────────────────────────────────────────────────────────────────
+      # Notification Slack — uniquement si des vulnérabilités HIGH/CRITICAL
+      # ont été trouvées (step audit en échec).
+      # Prérequis : secret SLACK_WEBHOOK_URL (Incoming Webhook URL)
+      # ───────────────────────────────────────────────────────────────────────
+      - name: Notify Slack — vulnerabilities found
+        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚨 FleetMaster Pro — Vulnérabilités de sécurité détectées"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Projet :*\nFleetMaster Pro"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Date :*\n${{ github.event.head_commit.timestamp || 'Audit planifié' }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Vulnérabilités HIGH :*\n${{ steps.audit.outputs.high }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Vulnérabilités CRITICAL :*\n${{ steps.audit.outputs.critical }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ steps.audit.outputs.total }} dépendance(s) à risque détectée(s). Action immédiate requise.\n*Commande :* `npm audit fix` puis vérifier les breaking changes."
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": { "type": "plain_text", "text": "Voir le rapport" },
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                      "style": "danger"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Audit hebdomadaire automatique — FleetMaster Pro CI/CD"
+                    }
+                  ]
+                }
+              ]
+            }
+
+      # ───────────────────────────────────────────────────────────────────────
+      # Fallback email via GitHub Actions native notification
+      # (si SLACK_WEBHOOK_URL n'est pas configuré)
+      # GitHub envoie automatiquement un email au propriétaire du repo
+      # quand un workflow scheduled échoue — aucune config supplémentaire.
+      # ───────────────────────────────────────────────────────────────────────

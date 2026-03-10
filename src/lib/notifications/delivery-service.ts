@@ -3,6 +3,7 @@
  * Orchestre l'envoi via différents canaux selon les préférences utilisateur
  */
 
+import { VEHICLE_STATUS } from '@/constants/enums';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
 import {
@@ -208,7 +209,7 @@ export async function sendNotificationToCompany(
     .select('id')
     .eq('company_id', companyId)
     // @ts-ignore
-    .eq('status', 'active');
+    .eq('status', VEHICLE_STATUS.ACTIF);
 
   if (error || !users) {
     logger.error('Erreur récupération utilisateurs entreprise:', { error: error?.message });

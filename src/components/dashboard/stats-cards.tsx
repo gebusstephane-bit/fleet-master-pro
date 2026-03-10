@@ -1,6 +1,7 @@
 /**
- * Composant StatsCards
+ * Composant StatsCards - Dashboard SaaS 2026
  * Affiche les cartes de statistiques du dashboard
+ * Glassmorphism Design System
  */
 
 'use client';
@@ -10,16 +11,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Truck, 
   Users, 
-  Route, 
   AlertTriangle,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Wrench,
 } from 'lucide-react';
-// @ts-ignore
 import { DashboardStats } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface StatsCardsProps {
-  // @ts-ignore
   stats: DashboardStats;
 }
 
@@ -33,8 +33,8 @@ export function StatsCards({ stats }: StatsCardsProps) {
       href: '/vehicles',
       trend: null,
       trendValue: null,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-500/10 border-blue-500/20',
     },
     {
       title: 'Chauffeurs',
@@ -44,32 +44,30 @@ export function StatsCards({ stats }: StatsCardsProps) {
       href: '/drivers',
       trend: null,
       trendValue: null,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-500/10 border-emerald-500/20',
     },
     {
-      title: 'Tournées aujourd\'hui',
-      // @ts-ignore
-      value: stats.todayRoutes || 0,
-      subtitle: 'En cours et planifiées',
-      icon: Route,
-      href: '/routes',
-      trend: 'up',
-      trendValue: '+12%',
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
+      title: 'Maintenances',
+      value: stats.upcomingMaintenance || 0,
+      subtitle: 'À venir ce mois',
+      icon: Wrench,
+      href: '/maintenance',
+      trend: (stats.overdueMaintenance || 0) > 0 ? 'down' : null,
+      trendValue: (stats.overdueMaintenance || 0) > 0 ? `${stats.overdueMaintenance} urgentes` : null,
+      color: (stats.overdueMaintenance || 0) > 0 ? 'text-red-400' : 'text-amber-400',
+      bgColor: (stats.overdueMaintenance || 0) > 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-amber-500/10 border-amber-500/20',
     },
     {
       title: 'Alertes',
-      // @ts-ignore
       value: stats.alertsCount || 0,
       subtitle: `${stats.criticalAlerts || 0} critiques`,
       icon: AlertTriangle,
       href: '/alerts',
       trend: (stats.criticalAlerts || 0) > 0 ? 'down' : null,
       trendValue: (stats.criticalAlerts || 0) > 0 ? 'Action requise' : null,
-      color: (stats.criticalAlerts || 0) > 0 ? 'text-red-600' : 'text-amber-600',
-      bgColor: (stats.criticalAlerts || 0) > 0 ? 'bg-red-50' : 'bg-amber-50',
+      color: (stats.criticalAlerts || 0) > 0 ? 'text-red-400' : 'text-slate-400',
+      bgColor: (stats.criticalAlerts || 0) > 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-slate-500/10 border-slate-500/20',
     },
   ];
 
@@ -77,23 +75,26 @@ export function StatsCards({ stats }: StatsCardsProps) {
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
         <Link key={card.title} href={card.href}>
-          <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+          <Card className="hover:shadow-[0_0_30px_rgba(6,182,212,0.15)] hover:border-cyan-500/30 transition-all cursor-pointer bg-[#0f172a]/60 border-cyan-500/15 backdrop-blur-xl group h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                 {card.title}
               </CardTitle>
-              <div className={`p-2 rounded-lg ${card.bgColor}`}>
-                <card.icon className={`h-4 w-4 ${card.color}`} />
+              <div className={cn("p-2 rounded-lg border", card.bgColor)}>
+                <card.icon className={cn("h-4 w-4", card.color)} />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{card.value}</div>
+              <div className="text-2xl font-bold text-white tabular-nums tracking-tight">{card.value}</div>
               <div className="flex items-center gap-2 mt-1">
-                <p className="text-xs text-muted-foreground">{card.subtitle}</p>
+                <p className="text-xs text-slate-500">{card.subtitle}</p>
                 {card.trend && (
-                  <span className={`text-xs flex items-center ${
-                    card.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <span className={cn(
+                    "text-xs flex items-center px-1.5 py-0.5 rounded-full border",
+                    card.trend === 'up' 
+                      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' 
+                      : 'text-red-400 bg-red-500/10 border-red-500/20'
+                  )}>
                     {card.trend === 'up' ? (
                       <TrendingUp className="h-3 w-3 mr-0.5" />
                     ) : (

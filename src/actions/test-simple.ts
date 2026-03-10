@@ -1,7 +1,7 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient , createAdminClient } from '@/lib/supabase/server';
+
 
 // Action SIMPLIFIÉE avec bonne gestion de l'auth
 export async function getTestData() {
@@ -51,10 +51,10 @@ export async function getTestData() {
         error: vErr?.message
       }
     };
-  } catch (e: any) {
+  } catch (e) {
     return {
       success: false,
-      error: e.message
+      error: e instanceof Error ? e.message : String(e)
     };
   }
 }

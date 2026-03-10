@@ -11,12 +11,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
 // Types de panne valides
 const BREAKDOWN_TYPES = ['mechanical', 'frigo', 'tire', 'electric', 'bodywork', 'tailgate'] as const;
 type BreakdownType = typeof BREAKDOWN_TYPES[number];
+
+interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
+interface Vehicle {
+  id: string;
+  brand: string;
+  model: string;
+  type: string | null;
+  registration_number: string;
+}
+
+interface EmergencyRule {
+  id: string;
+  name: string;
+  rule_type: 'contract_24_7' | 'insurance' | 'management' | string;
+  phone_number: string;
+  contact_name: string | null;
+  contract_reference: string | null;
+  instructions: string | null;
+  display_color: string | null;
+  applies_to_breakdown_types: string[];
+  applies_if_immobilized: boolean | null;
+  applies_on_highway: boolean | null;
+}
+
+interface ServiceProvider {
+  id: string;
+  lat: number;
+  lng: number;
+  intervention_radius_km: number | null;
+  distance_km?: number | null;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,6 +88,14 @@ export async function POST(request: NextRequest) {
       vehicleImmobilized = false,
       onHighway = false,
       severity = 'normal'
+    }: {
+      vehicleId: string;
+      breakdownType: BreakdownType;
+      coordinates?: Coordinates;
+      address: string;
+      vehicleImmobilized?: boolean;
+      onHighway?: boolean;
+      severity?: string;
     } = await request.json();
 
     if (!vehicleId || !breakdownType) {
@@ -59,14 +105,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Récupération véhicule
+    // 2. Récupération du profil utilisateur avec company_id
+    const { data: profile, error: profileError } = await adminClient
+      .from('profiles')
+      .select('company_id, role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile?.company_id) {
+      return NextResponse.json({ error: 'Profil utilisateur invalide' }, { status: 403 });
+    }
+
+    // 3. Récupération véhicule avec vérification company_id (IDOR protection)
     const { data: vehicle, error: vehicleError } = await adminClient
       .from('vehicles')
-      .select('id, brand, model, type, registration_number')
+      .select('id, brand, model, type, registration_number, company_id')
       .eq('id', vehicleId)
       .single();
 
     if (vehicleError || !vehicle) {
+      return NextResponse.json({ error: 'Véhicule non trouvé' }, { status: 404 });
+    }
+
+    // Vérification IDOR : le véhicule doit appartenir à l'entreprise de l'utilisateur
+    if (vehicle.company_id !== profile.company_id) {
+      logger.warn('[SOS V3.2] Tentative IDOR détectée');
       return NextResponse.json({ error: 'Véhicule non trouvé' }, { status: 404 });
     }
 
@@ -79,7 +142,7 @@ export async function POST(request: NextRequest) {
     const isHighway = detectHighway(address) || onHighway === true;
     
     if (isHighway && vehicleImmobilized && isCriticalHighwayBreakdown(breakdownType)) {
-      console.log('[SOS V3.2] 🚨 AUTOROUTE + IMMOBILISÉ - Service autoroute requis');
+      logger.info('[SOS V3.2] 🚨 AUTOROUTE + IMMOBILISÉ - Service autoroute requis');
       
       return NextResponse.json({
         level: 'highway_emergency',
@@ -114,42 +177,43 @@ export async function POST(request: NextRequest) {
       .or(`applies_on_highway.is.null,applies_on_highway.eq.${isHighway}`)
       .order('priority', { ascending: true });
 
-    console.log(`[SOS V3.2] ${rules?.length || 0} règle(s) trouvée(s) pour ${breakdownType}, immobilisé=${vehicleImmobilized}, autoroute=${isHighway}`);
+    logger.info(`[SOS V3.2] ${rules?.length || 0} règle(s) trouvée(s)`, { breakdownType, vehicleImmobilized, isHighway });
 
     // 5. ARBRE DE DÉCISION PAR TYPE DE PANNE
 
     // === CAS A : PNEU ===
     if (breakdownType === 'tire') {
-      return handleTireBreakdown(rules || [], vehicle, vehicleCategory, vehicleImmobilized, coordinates, address, user.id, adminClient);
+      return handleTireBreakdown((rules || []) as EmergencyRule[], vehicle as Vehicle, vehicleCategory, vehicleImmobilized, coordinates, address, user.id, adminClient);
     }
 
     // === CAS B : HAYON (TAILGATE) ===
     if (breakdownType === 'tailgate') {
-      return handleTailgateBreakdown(rules || [], vehicle, vehicleCategory, user.id, adminClient);
+      return handleTailgateBreakdown((rules || []) as EmergencyRule[], vehicle as Vehicle, vehicleCategory, user.id, adminClient);
     }
 
     // === CAS C : FRIGO ===
     if (breakdownType === 'frigo') {
-      return handleFrigoBreakdown(rules || [], vehicle, vehicleCategory, coordinates, address, user.id, adminClient);
+      return handleFrigoBreakdown((rules || []) as EmergencyRule[], vehicle as Vehicle, vehicleCategory, coordinates, address, user.id, adminClient);
     }
 
     // === CAS D : ÉLECTRIQUE ===
     if (breakdownType === 'electric') {
-      return handleElectricBreakdown(rules || [], vehicle, vehicleCategory, vehicleImmobilized, coordinates, address, user.id, adminClient);
+      return handleElectricBreakdown((rules || []) as EmergencyRule[], vehicle as Vehicle, vehicleCategory, vehicleImmobilized, coordinates, address, user.id, adminClient);
     }
 
     // === CAS E : CARROSSERIE ===
     if (breakdownType === 'bodywork') {
-      return handleBodyworkBreakdown(rules || [], vehicle, vehicleCategory, coordinates, address, user.id, adminClient);
+      return handleBodyworkBreakdown((rules || []) as EmergencyRule[], vehicle as Vehicle, vehicleCategory, coordinates, address, user.id, adminClient);
     }
 
     // === CAS F : MÉCANIQUE (DÉFAUT) ===
-    return handleMechanicalBreakdown(rules || [], vehicle, vehicleCategory, vehicleImmobilized, coordinates, address, user.id, adminClient);
+    return handleMechanicalBreakdown((rules || []) as EmergencyRule[], vehicle as Vehicle, vehicleCategory, vehicleImmobilized, coordinates, address, user.id, adminClient);
 
-  } catch (error: any) {
-    console.error('[SOS V3.2] Erreur:', error);
+  } catch (error) {
+    logger.error('[SOS V3.2] Erreur', { error: error instanceof Error ? error.message : String(error) });
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
     return NextResponse.json(
-      { error: 'Erreur serveur: ' + error.message },
+      { error: 'Erreur serveur: ' + errorMessage },
       { status: 500 }
     );
   }
@@ -158,16 +222,16 @@ export async function POST(request: NextRequest) {
 // ============ FONCTIONS D'ARBRE DE DÉCISION ============
 
 async function handleTireBreakdown(
-  rules: any[],
-  vehicle: any,
+  rules: EmergencyRule[],
+  vehicle: Vehicle,
   vehicleCategory: string,
   immobilized: boolean,
-  coordinates: any,
+  coordinates: Coordinates | undefined,
   address: string,
   userId: string,
-  adminClient: any
+  adminClient: SupabaseClient<Database>
 ) {
-  console.log('[SOS V3.2] Traitement panne PNEU');
+  logger.info('[SOS V3.2] Traitement panne PNEU');
 
   // 1. Chercher contrat pneu 24/7
   const tireContract = rules.find(r => r.rule_type === 'contract_24_7');
@@ -219,13 +283,13 @@ async function handleTireBreakdown(
 }
 
 async function handleTailgateBreakdown(
-  rules: any[],
-  vehicle: any,
+  rules: EmergencyRule[],
+  vehicle: Vehicle,
   vehicleCategory: string,
   userId: string,
-  adminClient: any
+  adminClient: SupabaseClient<Database>
 ) {
-  console.log('[SOS V3.2] Traitement panne HAYON');
+  logger.info('[SOS V3.2] Traitement panne HAYON');
 
   // 1. Chercher contrat hayon
   const contractRule = rules.find(r => r.rule_type === 'contract_24_7');
@@ -270,15 +334,15 @@ async function handleTailgateBreakdown(
 }
 
 async function handleFrigoBreakdown(
-  rules: any[],
-  vehicle: any,
+  rules: EmergencyRule[],
+  vehicle: Vehicle,
   vehicleCategory: string,
-  coordinates: any,
+  coordinates: Coordinates | undefined,
   address: string,
   userId: string,
-  adminClient: any
+  adminClient: SupabaseClient<Database>
 ) {
-  console.log('[SOS V3.2] Traitement panne FRIGO');
+  logger.info('[SOS V3.2] Traitement panne FRIGO');
 
   // 1. Chercher contrat frigo
   const frigoContract = rules.find(r => r.rule_type === 'contract_24_7');
@@ -301,16 +365,16 @@ async function handleFrigoBreakdown(
 }
 
 async function handleElectricBreakdown(
-  rules: any[],
-  vehicle: any,
+  rules: EmergencyRule[],
+  vehicle: Vehicle,
   vehicleCategory: string,
   immobilized: boolean,
-  coordinates: any,
+  coordinates: Coordinates | undefined,
   address: string,
   userId: string,
-  adminClient: any
+  adminClient: SupabaseClient<Database>
 ) {
-  console.log('[SOS V3.2] Traitement panne ÉLECTRIQUE');
+  logger.info('[SOS V3.2] Traitement panne ÉLECTRIQUE');
 
   // Électrique = souvent immobilisant, chercher contrat prioritaire
   const contractRule = rules.find(r => r.rule_type === 'contract_24_7');
@@ -332,31 +396,31 @@ async function handleElectricBreakdown(
 }
 
 async function handleBodyworkBreakdown(
-  rules: any[],
-  vehicle: any,
+  rules: EmergencyRule[],
+  vehicle: Vehicle,
   vehicleCategory: string,
-  coordinates: any,
+  coordinates: Coordinates | undefined,
   address: string,
   userId: string,
-  adminClient: any
+  adminClient: SupabaseClient<Database>
 ) {
-  console.log('[SOS V3.2] Traitement panne CARROSSERIE');
+  logger.info('[SOS V3.2] Traitement panne CARROSSERIE');
 
   // Carrosserie = pas urgent, recherche standard
   return await standardGarageSearch('bodywork', vehicle, vehicleCategory, coordinates, address, userId, adminClient, false);
 }
 
 async function handleMechanicalBreakdown(
-  rules: any[],
-  vehicle: any,
+  rules: EmergencyRule[],
+  vehicle: Vehicle,
   vehicleCategory: string,
   immobilized: boolean,
-  coordinates: any,
+  coordinates: Coordinates | undefined,
   address: string,
   userId: string,
-  adminClient: any
+  adminClient: SupabaseClient<Database>
 ) {
-  console.log('[SOS V3.2] Traitement panne MÉCANIQUE (défaut)');
+  logger.info('[SOS V3.2] Traitement panne MÉCANIQUE (défaut)');
 
   // 1. Chercher contrat mécanique
   const mechContract = rules.find(r => r.rule_type === 'contract_24_7');
@@ -381,15 +445,15 @@ async function handleMechanicalBreakdown(
 
 async function standardGarageSearch(
   breakdownType: string,
-  vehicle: any,
+  vehicle: Vehicle,
   vehicleCategory: string,
-  coordinates: any,
+  coordinates: Coordinates | undefined,
   address: string,
   userId: string,
-  adminClient: any,
+  adminClient: SupabaseClient<Database>,
   vehicleImmobilized: boolean = false
 ) {
-  console.log(`[SOS V3.2] Recherche garage standard pour ${breakdownType}`);
+  logger.info(`[SOS V3.2] Recherche garage standard`, { breakdownType });
 
   // 1. RECHERCHE PARTENAIRES INTERNES
   const { data: partners } = await adminClient
@@ -400,11 +464,13 @@ async function standardGarageSearch(
     .contains('vehicle_types_supported', [vehicleCategory]);
 
   // Calcul distance et filtrage
-  const partnersWithDistance = (partners || []).map((p: any) => {
-    const dist = coordinates ? calculateDistance(coordinates, { lat: p.lat, lng: p.lng }) : null;
-    return { ...p, distance_km: dist };
-  }).filter((p: any) => p.distance_km === null || p.distance_km <= (p.intervention_radius_km || 50))
-    .sort((a: any, b: any) => (a.distance_km || 999) - (b.distance_km || 999));
+  const partnersWithDistance = ((partners || []) as unknown as ServiceProvider[])
+    .map((p) => {
+      const dist = coordinates ? calculateDistance(coordinates, { lat: p.lat, lng: p.lng }) : null;
+      return { ...p, distance_km: dist };
+    })
+    .filter((p) => p.distance_km === null || p.distance_km <= (p.intervention_radius_km || 50))
+    .sort((a, b) => (a.distance_km || 999) - (b.distance_km || 999));
 
   // ✅ GARAGE PARTENAIRE TROUVÉ
   if (partnersWithDistance.length > 0) {
@@ -419,7 +485,7 @@ async function standardGarageSearch(
   }
 
   // 2. HORS PERIMÈTRE - Vérifier les règles d'urgence configurées
-  console.log(`[SOS V3.2] Hors périmètre - Recherche règles d'urgence`);
+  logger.info(`[SOS V3.2] Hors périmètre - Recherche règles d'urgence`);
   
   const { data: emergencyRules } = await adminClient
     .from('emergency_rules')
@@ -431,7 +497,7 @@ async function standardGarageSearch(
     .order('priority', { ascending: true });
 
   // 2a. CONTRAT 24/7 CONFIGURÉ → Afficher même hors périmètre
-  const contractRule = emergencyRules?.find((r: any) => r.rule_type === 'contract_24_7');
+  const contractRule = (emergencyRules as EmergencyRule[] | null)?.find((r) => r.rule_type === 'contract_24_7');
   if (contractRule) {
     await logEmergencySearch(adminClient, userId, vehicle, breakdownType, 'emergency_contract_out_of_range', contractRule.id);
     
@@ -451,7 +517,7 @@ async function standardGarageSearch(
   }
 
   // 2b. ASSURANCE CONFIGURÉE → Afficher pour remorquage
-  const insuranceRule = emergencyRules?.find((r: any) => r.rule_type === 'insurance');
+  const insuranceRule = (emergencyRules as EmergencyRule[] | null)?.find((r) => r.rule_type === 'insurance');
   if (insuranceRule && vehicleImmobilized) {
     await logEmergencySearch(adminClient, userId, vehicle, breakdownType, 'insurance_out_of_range', insuranceRule.id);
     
@@ -466,7 +532,7 @@ async function standardGarageSearch(
   }
 
   // 2c. DIRECTION CONFIGURÉE (cas hayon, etc.)
-  const managementRule = emergencyRules?.find((r: any) => r.rule_type === 'management');
+  const managementRule = (emergencyRules as EmergencyRule[] | null)?.find((r) => r.rule_type === 'management');
   if (managementRule) {
     await logEmergencySearch(adminClient, userId, vehicle, breakdownType, 'management_out_of_range', managementRule.id);
     
@@ -482,7 +548,7 @@ async function standardGarageSearch(
   }
 
   // 3. AUCUNE RÈGLE CONFIGURÉE → Fallback Google Maps
-  console.log(`[SOS V3.2] Aucune règle configurée - Fallback Google Maps`);
+  logger.info(`[SOS V3.2] Aucune règle configurée - Fallback Google Maps`);
   
   await logEmergencySearch(adminClient, userId, vehicle, breakdownType, 'no_partner_fallback');
   
@@ -520,7 +586,7 @@ function isCriticalHighwayBreakdown(breakdownType: string): boolean {
   return ['mechanical', 'tire', 'engine'].includes(breakdownType);
 }
 
-function calculateDistance(point1: any, point2: any): number | null {
+function calculateDistance(point1: Coordinates, point2: Coordinates): number | null {
   if (!point1?.lat || !point1?.lng || !point2?.lat || !point2?.lng) return null;
   
   const R = 6371;
@@ -533,7 +599,7 @@ function calculateDistance(point1: any, point2: any): number | null {
   return Math.round(R * c * 10) / 10;
 }
 
-function formatVehicle(vehicle: any, category: string) {
+function formatVehicle(vehicle: Vehicle, category: string) {
   return {
     id: vehicle.id,
     brand: vehicle.brand,
@@ -543,7 +609,7 @@ function formatVehicle(vehicle: any, category: string) {
   };
 }
 
-function formatRule(rule: any) {
+function formatRule(rule: EmergencyRule) {
   return {
     id: rule.id,
     name: rule.name,
@@ -557,15 +623,15 @@ function formatRule(rule: any) {
 }
 
 async function logEmergencySearch(
-  adminClient: any,
+  adminClient: SupabaseClient<Database>,
   userId: string,
-  vehicle: any,
+  vehicle: Vehicle,
   breakdownType: string,
   foundLevel: string,
   ruleId?: string
 ) {
   try {
-    await adminClient.from('emergency_searches').insert({
+    await (adminClient.from('emergency_searches' as any) as any).insert({
       user_id: userId,
       vehicle_id: vehicle.id,
       vehicle_registration: vehicle.registration_number,
@@ -576,6 +642,6 @@ async function logEmergencySearch(
       ai_reasoning: `V3.2 - ${foundLevel}`
     });
   } catch (e) {
-    console.error('[SOS] Erreur log historique:', e);
+    logger.error('[SOS] Erreur log historique', { error: e instanceof Error ? e.message : String(e) });
   }
 }

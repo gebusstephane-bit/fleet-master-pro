@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/server';
 import { SuperAdminSidebar } from '@/components/superadmin/sidebar';
 import { SuperAdminHeader } from '@/components/superadmin/header';
 import { getSuperadminEmail, isSuperadminEmail } from '@/lib/superadmin';
+import { logger } from '@/lib/logger';
 
 export const metadata = {
   title: 'SuperAdmin | Fleet Master Pro',
@@ -28,24 +29,24 @@ export default async function SuperAdminLayout({
   // Utiliser getUser() au lieu de getSession() pour plus de sécurité
   const { data: { user }, error } = await supabase.auth.getUser();
 
-  console.log('🔐 Layout SuperAdmin:', { 
+  logger.debug('Layout SuperAdmin:', { 
     hasUser: !!user, 
     email: user?.email,
     error: error?.message 
   });
 
   if (!user) {
-    console.log('❌ Layout: Pas d\'utilisateur, redirect 404');
+    logger.warn('Layout: Pas d\'utilisateur, redirect 404');
     redirect('/404');
   }
 
   // Utiliser l'utilitaire centralisé pour la vérification email (insensible à la casse)
   if (!isSuperadminEmail(user.email)) {
-    console.log('❌ Layout: Email non autorisé:', user.email);
+    logger.warn('Layout: Email non autorisé:', user.email);
     redirect('/404');
   }
 
-  console.log('✅ Layout: Accès SuperAdmin confirmé pour', user.email);
+  logger.debug('Layout: Accès SuperAdmin confirmé pour', user.email);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">

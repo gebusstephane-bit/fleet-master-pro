@@ -118,7 +118,7 @@ export function ActivityTable({
         {/* Header */}
         <div className="flex items-center gap-4 p-4 border-b border-slate-800 bg-slate-900/30">
           <div className="w-8" /> {/* Icon spacer */}
-          <div className="w-32 shrink-0 text-xs font-medium text-slate-500 uppercase tracking-wider">
+          <div className="w-36 shrink-0 text-xs font-medium text-slate-500 uppercase tracking-wider">
             Date
           </div>
           <div className="w-40 shrink-0 text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -192,15 +192,30 @@ export function ActivityTable({
         )}
       </div>
 
-      {/* Footer info */}
-      <p className="text-xs text-slate-600 text-center">
-        {filteredLogs.length} activité{filteredLogs.length > 1 ? "s" : ""}{" "}
-        affichée{filteredLogs.length > 1 ? "s" : ""}
-        {(filters.searchQuery ||
-          filters.actionTypes?.length ||
-          filters.entityTypes?.length) &&
-          ` (filtrées sur ${logs.length} total)`}
-      </p>
+      {/* Footer info avec pagination */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-600">
+        <p>
+          <span className="font-medium text-slate-400">{filteredLogs.length}</span> activité
+          {filteredLogs.length > 1 ? "s" : ""} affichée{filteredLogs.length > 1 ? "s" : ""}
+          {(filters.searchQuery ||
+            filters.actionTypes?.length ||
+            filters.entityTypes?.length ||
+            filters.userId) &&
+            ` (filtrées sur ${logs.length} total)`}
+        </p>
+        
+        {hasMore && onLoadMore && (
+          <p className="text-slate-500">
+            Faites défiler ou cliquez sur "Charger plus" pour voir plus d'activités
+          </p>
+        )}
+        
+        {!hasMore && logs.length > 0 && (
+          <p className="text-slate-500">
+            Toutes les activités sont affichées
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -223,7 +238,7 @@ function ActivityTableSkeleton({ className }: { className?: string }) {
         <div className="p-4 border-b border-slate-800">
           <div className="flex gap-4">
             <div className="w-8 h-4 bg-slate-800/50 rounded animate-pulse" />
-            <div className="w-32 h-4 bg-slate-800/50 rounded animate-pulse" />
+            <div className="w-36 h-4 bg-slate-800/50 rounded animate-pulse" />
             <div className="w-40 h-4 bg-slate-800/50 rounded animate-pulse" />
             <div className="w-28 h-4 bg-slate-800/50 rounded animate-pulse" />
             <div className="w-32 h-4 bg-slate-800/50 rounded animate-pulse" />
@@ -234,7 +249,7 @@ function ActivityTableSkeleton({ className }: { className?: string }) {
           <div key={i} className="p-4 border-b border-slate-800/50">
             <div className="flex gap-4 items-center">
               <div className="w-8 h-8 bg-slate-800/50 rounded-lg animate-pulse" />
-              <div className="w-32 h-4 bg-slate-800/50 rounded animate-pulse" />
+              <div className="w-36 h-4 bg-slate-800/50 rounded animate-pulse" />
               <div className="w-40 h-4 bg-slate-800/50 rounded animate-pulse" />
               <div className="w-28 h-4 bg-slate-800/50 rounded animate-pulse" />
               <div className="w-32 h-4 bg-slate-800/50 rounded animate-pulse" />

@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getUsers, getUserById, createUser, updateUser, toggleUserStatus, deleteUser, updateNotificationPreferences, type CreateUserData, type UpdateUserData } from '@/actions/users';
+import { getUsers, getUserById, createUser, updateUser, toggleUserStatus, deleteUser, updateNotificationPreferences, type CreateUserData, type UpdateUserData, type NotificationPreferences } from '@/actions/users';
 import { toast } from 'sonner';
+import { USER_ROLE } from '@/constants/enums';
+import { getReadableError } from '@/lib/error-messages';
 
 export interface User {
   id: string;
@@ -20,17 +22,7 @@ export interface User {
   last_login?: string;
 }
 
-export interface NotificationPreferences {
-  alert_maintenance: boolean;
-  alert_inspection: boolean;
-  alert_routes: boolean;
-  alert_documents_expiry: boolean;
-  alert_fuel: boolean;
-  alert_critical_only: boolean;
-  email_enabled: boolean;
-  sms_enabled: boolean;
-  push_enabled: boolean;
-}
+export { type NotificationPreferences } from '@/actions/users';
 
 // Hook pour récupérer tous les utilisateurs
 export function useUsers(companyId?: string) {
@@ -47,7 +39,7 @@ export function useUsers(companyId?: string) {
     
     if (result.error) {
       setError(result.error);
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
     } else if (result.data) {
       setUsers(result.data as User[]);
     }
@@ -88,7 +80,7 @@ export function useUser(userId: string | null) {
     
     if (result.error) {
       setError(result.error);
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
     } else if (result.data) {
       setUser(result.data as User);
       // @ts-ignore
@@ -125,7 +117,7 @@ export function useCreateUser() {
     const result = await createUser(data, creatorId);
     
     if (result.error) {
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
       setIsLoading(false);
       return { success: false, error: result.error };
     }
@@ -150,7 +142,7 @@ export function useUpdateUser() {
     const result = await updateUser(data, updaterId);
     
     if (result.error) {
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
       setIsLoading(false);
       return { success: false, error: result.error };
     }
@@ -175,7 +167,7 @@ export function useToggleUserStatus() {
     const result = await toggleUserStatus(userId, isActive, actorId);
     
     if (result.error) {
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
       setIsLoading(false);
       return { success: false, error: result.error };
     }
@@ -200,7 +192,7 @@ export function useDeleteUser() {
     const result = await deleteUser(userId, actorId);
     
     if (result.error) {
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
       setIsLoading(false);
       return { success: false, error: result.error };
     }
@@ -225,7 +217,7 @@ export function useUpdateNotificationPreferences() {
     const result = await updateNotificationPreferences(userId, preferences);
     
     if (result.error) {
-      toast.error(result.error);
+      toast.error(getReadableError(result.error));
       setIsLoading(false);
       return { success: false, error: result.error };
     }
@@ -252,9 +244,9 @@ export function useUserPermissions(currentUser: User | null) {
     };
   }
 
-  const isAdmin = currentUser.role === 'ADMIN';
-  const isDirecteur = currentUser.role === 'DIRECTEUR';
-  const isAgent = currentUser.role === 'AGENT_DE_PARC';
+  const isAdmin = currentUser.role === USER_ROLE.ADMIN;
+  const isDirecteur = currentUser.role === USER_ROLE.DIRECTEUR;
+  const isAgent = currentUser.role === USER_ROLE.AGENT_DE_PARC;
 
   return {
     canManageUsers: isAdmin || isDirecteur,
@@ -268,6 +260,6 @@ export function useUserPermissions(currentUser: User | null) {
     isAdmin,
     isDirecteur,
     isAgent,
-    isExploitant: currentUser.role === 'EXPLOITANT',
+    isExploitant: currentUser.role === USER_ROLE.EXPLOITANT,
   };
 }

@@ -104,26 +104,26 @@ export default function InspectionEntryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8">
+    <div className="min-h-screen py-8">
       <div className="max-w-4xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">Contrôle d&apos;état véhicule</h1>
-          <p className="text-slate-500 mt-2">
+          <h1 className="text-3xl font-bold text-white">Contrôle d&apos;état véhicule</h1>
+          <p className="text-slate-400 mt-2">
             Scanner le QR code du véhicule ou saisissez l&apos;immatriculation manuellement
           </p>
         </div>
 
         {error && (
-          <Alert variant="destructive" className="mb-6">
+          <Alert variant="destructive" className="mb-6 bg-red-950/40 border-red-700/50">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         {scanSuccess && (
-          <Alert className="mb-6 bg-green-50 border-green-200">
-            <AlertDescription className="text-green-800">{scanSuccess}</AlertDescription>
+          <Alert className="mb-6 bg-emerald-950/40 border-emerald-700/50">
+            <AlertDescription className="text-emerald-400">{scanSuccess}</AlertDescription>
           </Alert>
         )}
 
@@ -191,25 +191,25 @@ export default function InspectionEntryPage() {
 
               {/* Résultats de recherche */}
               {showResults && searchResults.length > 0 && (
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="bg-slate-50 px-4 py-2 border-b">
-                    <p className="text-sm font-medium">
+                <div className="border border-slate-700 rounded-lg overflow-hidden">
+                  <div className="bg-slate-800 px-4 py-2 border-b border-slate-700">
+                    <p className="text-sm font-medium text-slate-300">
                       {searchResults.length} véhicule(s) trouvé(s)
                     </p>
                   </div>
-                  <div className="divide-y">
+                  <div className="divide-y divide-slate-700">
                     {searchResults.map((vehicle) => (
                       <button
                         key={vehicle.id}
                         onClick={() => selectVehicle(vehicle.id)}
-                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left"
+                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-800/80 transition-colors text-left"
                       >
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                        <div className="w-10 h-10 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
                           {getVehicleIcon(vehicle.type)}
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold text-slate-900">{vehicle.registration_number}</p>
-                          <p className="text-sm text-slate-500">
+                          <p className="font-semibold text-slate-200">{vehicle.registration_number}</p>
+                          <p className="text-sm text-slate-400">
                             {vehicle.brand} {vehicle.model} • {vehicle.mileage?.toLocaleString('fr-FR')} km
                           </p>
                         </div>
@@ -220,12 +220,12 @@ export default function InspectionEntryPage() {
                 </div>
               )}
 
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <div className="rounded-xl p-3 bg-amber-950/40 border border-amber-700/50">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
-                  <div className="text-sm text-amber-800">
-                    <p className="font-medium">Véhicule non trouvé ?</p>
-                    <p className="text-amber-700">
+                  <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-300">Véhicule non trouvé ?</p>
+                    <p className="text-amber-400/70">
                       Contactez votre responsable flotte ou vérifiez la plaque d&apos;immatriculation.
                     </p>
                   </div>
@@ -250,9 +250,9 @@ export default function InspectionEntryPage() {
             {mockRecentInspections.length > 0 ? (
               <div className="space-y-2">
                 {mockRecentInspections.map((inspection) => (
-                  <div 
+                  <div
                     key={inspection.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-slate-50"
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-800 border border-slate-700 hover:border-slate-600 transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       {inspection.type === 'VOITURE' ? (
@@ -261,8 +261,8 @@ export default function InspectionEntryPage() {
                         <Truck className="h-5 w-5 text-slate-400" />
                       )}
                       <div>
-                        <p className="font-medium">{inspection.vehicle}</p>
-                        <p className="text-sm text-slate-500">{inspection.date}</p>
+                        <p className="font-medium text-slate-200">{inspection.vehicle}</p>
+                        <p className="text-sm text-slate-400">{inspection.date}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -280,7 +280,7 @@ export default function InspectionEntryPage() {
               </div>
             ) : (
               <div className="text-center py-8 text-slate-500">
-                <History className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                <History className="h-12 w-12 mx-auto mb-3 text-slate-600" />
                 <p>Aucun contrôle récent</p>
               </div>
             )}
@@ -289,32 +289,32 @@ export default function InspectionEntryPage() {
 
         {/* Guide rapide */}
         <div className="mt-8 grid gap-4 md:grid-cols-3">
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-              <span className="text-blue-600 font-bold">1</span>
+          <div className="rounded-xl p-4 bg-slate-800 border border-slate-700">
+            <div className="w-10 h-10 bg-cyan-500/20 border border-cyan-500/30 rounded-full flex items-center justify-center mb-3">
+              <span className="text-cyan-400 font-bold">1</span>
             </div>
-            <h3 className="font-medium mb-1">Scannez ou saisissez</h3>
-            <p className="text-sm text-slate-500">
+            <h3 className="font-medium text-slate-200 mb-1">Scannez ou saisissez</h3>
+            <p className="text-sm text-slate-400">
               Utilisez le QR code sur le pare-brise ou entrez la plaque manuellement.
             </p>
           </div>
-          
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-              <span className="text-blue-600 font-bold">2</span>
+
+          <div className="rounded-xl p-4 bg-slate-800 border border-slate-700">
+            <div className="w-10 h-10 bg-cyan-500/20 border border-cyan-500/30 rounded-full flex items-center justify-center mb-3">
+              <span className="text-cyan-400 font-bold">2</span>
             </div>
-            <h3 className="font-medium mb-1">Contrôlez le véhicule</h3>
-            <p className="text-sm text-slate-500">
+            <h3 className="font-medium text-slate-200 mb-1">Contrôlez le véhicule</h3>
+            <p className="text-sm text-slate-400">
               Remplissez tous les points de contrôle selon le type de véhicule.
             </p>
           </div>
-          
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-              <span className="text-blue-600 font-bold">3</span>
+
+          <div className="rounded-xl p-4 bg-slate-800 border border-slate-700">
+            <div className="w-10 h-10 bg-cyan-500/20 border border-cyan-500/30 rounded-full flex items-center justify-center mb-3">
+              <span className="text-cyan-400 font-bold">3</span>
             </div>
-            <h3 className="font-medium mb-1">Signez et validez</h3>
-            <p className="text-sm text-slate-500">
+            <h3 className="font-medium text-slate-200 mb-1">Signez et validez</h3>
+            <p className="text-sm text-slate-400">
               Le conducteur signe et le contrôle est enregistré automatiquement.
             </p>
           </div>

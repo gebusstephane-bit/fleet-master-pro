@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createVehicleSchema, validateSchema } from '@/lib/validation/schemas';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/vehicles - Récupérer tous les véhicules de l'entreprise
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(vehicles);
   } catch (error: any) {
-    console.error('[API Vehicles] GET error:', error);
+    logger.error('[API Vehicles] GET error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }
@@ -119,19 +120,21 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      console.error('[API Vehicles] POST error:', error);
+      logger.error('[API Vehicles] POST error', { error: error instanceof Error ? error.message : String(error) });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json(vehicle, { status: 201 });
   } catch (error: any) {
-    console.error('[API Vehicles] POST error:', error);
+    logger.error('[API Vehicles] POST error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }
 
 /**
  * PATCH /api/vehicles - Mettre à jour un véhicule
+ * 
+ * SÉCURISÉ : Vérifie que le véhicule appartient à l'entreprise de l'utilisateur
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -142,11 +145,37 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
+    // Récupérer le company_id de l'utilisateur
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile?.company_id) {
+      return NextResponse.json({ error: 'Entreprise non trouvée' }, { status: 404 });
+    }
+
     const body = await request.json();
     const { id, ...updates } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'ID du véhicule requis' }, { status: 400 });
+    }
+
+    // SÉCURITÉ : Vérifier que le véhicule existe et appartient à l'entreprise
+    const { data: existingVehicle } = await supabase
+      .from('vehicles')
+      .select('company_id')
+      .eq('id', id)
+      .single();
+
+    if (!existingVehicle) {
+      return NextResponse.json({ error: 'Véhicule non trouvé' }, { status: 404 });
+    }
+
+    if (existingVehicle.company_id !== profile.company_id) {
+      return NextResponse.json({ error: 'Non autorisé - Ce véhicule n\'appartient pas à votre entreprise' }, { status: 403 });
     }
 
     // Validation partielle des données
@@ -165,6 +194,7 @@ export async function PATCH(request: NextRequest) {
       .from('vehicles')
       .update(validation.data as any)
       .eq('id', id)
+      .eq('company_id', profile.company_id) // Double vérification sécurité
       .select()
       .single();
 
@@ -174,13 +204,15 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(vehicle);
   } catch (error: any) {
-    console.error('[API Vehicles] PATCH error:', error);
+    logger.error('[API Vehicles] PATCH error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }
 
 /**
  * DELETE /api/vehicles - Supprimer un véhicule
+ * 
+ * SÉCURISÉ : Vérifie que le véhicule appartient à l'entreprise de l'utilisateur
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -191,7 +223,18 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
-    // Récupérer l'ID depuis les search params ou le body
+    // Récupérer le company_id de l'utilisateur
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile?.company_id) {
+      return NextResponse.json({ error: 'Entreprise non trouvée' }, { status: 404 });
+    }
+
+    // Récupérer l'ID depuis les search params
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -207,10 +250,26 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ID invalide' }, { status: 400 });
     }
 
+    // SÉCURITÉ : Vérifier que le véhicule existe et appartient à l'entreprise
+    const { data: existingVehicle } = await supabase
+      .from('vehicles')
+      .select('company_id')
+      .eq('id', id)
+      .single();
+
+    if (!existingVehicle) {
+      return NextResponse.json({ error: 'Véhicule non trouvé' }, { status: 404 });
+    }
+
+    if (existingVehicle.company_id !== profile.company_id) {
+      return NextResponse.json({ error: 'Non autorisé - Ce véhicule n\'appartient pas à votre entreprise' }, { status: 403 });
+    }
+
     const { error } = await supabase
       .from('vehicles')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('company_id', profile.company_id); // Double vérification sécurité
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -218,7 +277,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('[API Vehicles] DELETE error:', error);
+    logger.error('[API Vehicles] DELETE error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }

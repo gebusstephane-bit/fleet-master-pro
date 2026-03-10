@@ -187,6 +187,82 @@
   margin-bottom: 20px;
 }
 
+/* ── Statuts maintenance_records ─────────────────────────────────────────── */
+
+/* RDV planifié - Ambre */
+.agenda-premium .rbc-event.event-rdv {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.9) 0%, rgba(217, 119, 6, 0.9) 100%);
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.agenda-premium .rbc-event.event-rdv:hover {
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+/* En cours - Bleu vif */
+.agenda-premium .rbc-event.event-en-cours {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9) 0%, rgba(37, 99, 235, 0.9) 100%);
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.agenda-premium .rbc-event.event-en-cours:hover {
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+/* ── Échéances réglementaires ────────────────────────────────────────────── */
+
+/* Contrôle Technique - Rouge */
+.agenda-premium .rbc-event.event-ct {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%);
+  border-color: rgba(239, 68, 68, 0.3);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+
+.agenda-premium .rbc-event.event-ct:hover {
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+/* Tachygraphe - Orange */
+.agenda-premium .rbc-event.event-tachy {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.9) 0%, rgba(234, 88, 12, 0.9) 100%);
+  border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
+}
+
+.agenda-premium .rbc-event.event-tachy:hover {
+  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+}
+
+/* ATP (Frigo) - Ambre/Jaune */
+.agenda-premium .rbc-event.event-atp {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.9) 0%, rgba(217, 119, 6, 0.9) 100%);
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+}
+
+.agenda-premium .rbc-event.event-atp:hover {
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+/* Urgent — J-7 : pulsation */
+.agenda-premium .rbc-event.event-urgent {
+  animation: deadline-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes deadline-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3); }
+  50%       { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0), 0 4px 12px rgba(0, 0, 0, 0.3); }
+}
+
+/* Expiré — Grisé + barré */
+.agenda-premium .rbc-event.event-overdue {
+  opacity: 0.55;
+  filter: grayscale(40%);
+  text-decoration: line-through;
+}
+
 /* Scrollbar personnalisée */
 .agenda-premium ::-webkit-scrollbar {
   width: 8px;

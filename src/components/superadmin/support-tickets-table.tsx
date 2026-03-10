@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { MessageSquare, Eye, Ticket } from 'lucide-react';
+import Link from 'next/link';
 
 interface Ticket {
   id: string;
@@ -22,6 +23,12 @@ interface SupportTicketsTableProps {
 }
 
 const statusColors: Record<string, string> = {
+  open: 'bg-red-500/20 text-red-300 border-red-500/30',
+  in_progress: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+  waiting_client: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  resolved: 'bg-green-500/20 text-green-300 border-green-500/30',
+  closed: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
+  // Legacy mapping
   OPEN: 'bg-red-500/20 text-red-300 border-red-500/30',
   IN_PROGRESS: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
   RESOLVED: 'bg-green-500/20 text-green-300 border-green-500/30',
@@ -29,6 +36,11 @@ const statusColors: Record<string, string> = {
 };
 
 const priorityColors: Record<string, string> = {
+  low: 'bg-blue-500/20 text-blue-300',
+  medium: 'bg-yellow-500/20 text-yellow-300',
+  high: 'bg-orange-500/20 text-orange-300',
+  critical: 'bg-red-500/20 text-red-300',
+  // Legacy mapping
   LOW: 'bg-blue-500/20 text-blue-300',
   MEDIUM: 'bg-yellow-500/20 text-yellow-300',
   HIGH: 'bg-orange-500/20 text-orange-300',
@@ -95,10 +107,12 @@ export function SupportTicketsTable({ tickets }: SupportTicketsTableProps) {
                 <p className="text-sm text-white/60">{formatDate(ticket.created_at)}</p>
               </td>
               <td className="px-6 py-4 text-right">
-                <Button variant="ghost" size="sm" className="text-white/60 hover:text-white">
-                  <Eye className="w-4 h-4 mr-2" />
-                  Voir
-                </Button>
+                <Link href={`/superadmin/support/${ticket.id}`}>
+                  <Button variant="ghost" size="sm" className="text-white/60 hover:text-white">
+                    <Eye className="w-4 h-4 mr-2" />
+                    Voir
+                  </Button>
+                </Link>
               </td>
             </tr>
           ))}

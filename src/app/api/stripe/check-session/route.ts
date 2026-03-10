@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe, isStripeConfigured } from '@/lib/stripe/stripe';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Check session error:', error);
+    logger.error('Check session error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to check session' },
       { status: 500 }

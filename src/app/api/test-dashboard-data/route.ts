@@ -48,7 +48,7 @@ export const GET = withDebugProtection(async () => {
     .eq('company_id', companyId);
 
   const { count: inspectCount, error: iError } = await supabase
-    .from('inspections')
+    .from('vehicle_inspections')
     .select('*', { count: 'exact', head: true })
     .eq('company_id', companyId);
 

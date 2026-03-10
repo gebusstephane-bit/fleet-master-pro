@@ -1,10 +1,12 @@
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { logger } from '@/lib/logger';
 
-export interface CompanyData {
+import { logger } from '@/lib/logger';
+import { createClient } from '@/lib/supabase/server';
+import { USER_ROLE } from '@/constants/enums';
+
+export interface ICompanyData {
   id?: string;
   name: string;
   siret: string;
@@ -21,10 +23,10 @@ export async function getCompany(userId: string) {
   try {
     logger.info('[getCompany] userId', { userId });
     
-    const adminSupabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Get user's company_id from profiles
-    const { data: profile, error: profileError } = await adminSupabase
+    // Get user's company_id from profiles (RLS gère la sécurité)
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('company_id')
       .eq('id', userId)
@@ -36,8 +38,8 @@ export async function getCompany(userId: string) {
       return { error: 'Entreprise non trouvée' };
     }
     
-    // Get company data
-    const { data: company, error: companyError } = await adminSupabase
+    // Get company data (RLS gère la sécurité)
+    const { data: company, error: companyError } = await supabase
       .from('companies')
       .select('*')
       .eq('id', profile.company_id)
@@ -50,18 +52,18 @@ export async function getCompany(userId: string) {
     }
     
     return { data: company };
-  } catch (error: any) {
-    logger.error('[getCompany] error', error);
-    return { error: 'Erreur serveur: ' + error.message };
+  } catch (error) {
+    logger.error('[getCompany] error', error instanceof Error ? error : new Error(String(error)));
+    return { error: 'Erreur serveur: ' + (error instanceof Error ? error.message : String(error)) };
   }
 }
 
-export async function updateCompany(userId: string, data: Partial<CompanyData>) {
+export async function updateCompany(userId: string, data: Partial<ICompanyData>) {
   try {
-    const adminSupabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Check permissions - only ADMIN or DIRECTEUR can update
-    const { data: profile, error: profileError } = await adminSupabase
+    // Check permissions - only ADMIN or DIRECTEUR can update (RLS gère la sécurité)
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role, company_id')
       .eq('id', userId)
@@ -71,12 +73,23 @@ export async function updateCompany(userId: string, data: Partial<CompanyData>) 
       return { error: 'Entreprise non trouvée' };
     }
     
-    if (!['ADMIN', 'DIRECTEUR'].includes(profile.role)) {
+    if (!(([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(profile.role))) {
       return { error: 'Permissions insuffisantes' };
     }
     
-    // Update company
-    const { data: company, error: companyError } = await adminSupabase
+    // Vérifier que l'entreprise existe (RLS gère la sécurité)
+    const { data: existing } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('id', profile.company_id)
+      .single();
+    
+    if (!existing) {
+      return { error: 'Entreprise non trouvée' };
+    }
+    
+    // Update company (sans .single() pour éviter PGRST116 si RLS bloque le retour)
+    const { error: companyError } = await supabase
       .from('companies')
       .update({
         name: data.name,
@@ -90,17 +103,28 @@ export async function updateCompany(userId: string, data: Partial<CompanyData>) 
         logo_url: data.logo_url,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', profile.company_id)
-      .select()
-      .single();
+      .eq('id', profile.company_id);
     
     if (companyError) {
       logger.error('Update error', companyError);
-      return { error: 'Erreur lors de la mise à jour' };
+      return { error: 'Erreur lors de la mise à jour: ' + companyError.message };
+    }
+    
+    // Re-fetch les données après update (pour être sûr de retourner les bonnes données)
+    const { data: company, error: fetchError } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', profile.company_id)
+      .maybeSingle();
+    
+    if (fetchError) {
+      logger.error('Fetch error after update', fetchError);
+      // On retourne quand même un succès car l'update a fonctionné
+      return { data: { ...data, id: profile.company_id } as ICompanyData };
     }
     
     revalidatePath('/settings/company');
-    return { data: company };
+    return { data: company || { ...data, id: profile.company_id } as ICompanyData };
   } catch (error) {
     logger.error('Server error', error as Error);
     return { error: 'Erreur serveur' };
@@ -109,10 +133,10 @@ export async function updateCompany(userId: string, data: Partial<CompanyData>) 
 
 export async function uploadCompanyLogo(userId: string, formData: FormData) {
   try {
-    const adminSupabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Check permissions
-    const { data: profile, error: profileError } = await adminSupabase
+    // Check permissions (RLS gère la sécurité)
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role, company_id')
       .eq('id', userId)
@@ -122,7 +146,7 @@ export async function uploadCompanyLogo(userId: string, formData: FormData) {
       return { error: 'Entreprise non trouvée' };
     }
     
-    if (!['ADMIN', 'DIRECTEUR'].includes(profile.role)) {
+    if (!(([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(profile.role))) {
       return { error: 'Permissions insuffisantes' };
     }
     
@@ -148,8 +172,8 @@ export async function uploadCompanyLogo(userId: string, formData: FormData) {
     const fileName = `${profile.company_id}-${Date.now()}.${fileExt}`;
     const filePath = `company-logos/${fileName}`;
     
-    // Upload to Supabase Storage
-    const { error: uploadError } = await adminSupabase.storage
+    // Upload to Supabase Storage (utilise le client standard avec RLS)
+    const { error: uploadError } = await supabase.storage
       .from('logos')
       .upload(filePath, file, {
         cacheControl: '3600',
@@ -162,12 +186,12 @@ export async function uploadCompanyLogo(userId: string, formData: FormData) {
     }
     
     // Get public URL
-    const { data: { publicUrl } } = adminSupabase.storage
+    const { data: { publicUrl } } = supabase.storage
       .from('logos')
       .getPublicUrl(filePath);
     
-    // Update company with new logo URL
-    const { error: updateError } = await adminSupabase
+    // Update company with new logo URL (RLS gère la sécurité)
+    const { error: updateError } = await supabase
       .from('companies')
       .update({ 
         logo_url: publicUrl,
@@ -182,18 +206,18 @@ export async function uploadCompanyLogo(userId: string, formData: FormData) {
     
     revalidatePath('/settings/company');
     return { data: { logo_url: publicUrl } };
-  } catch (error: any) {
-    logger.error('Server error', error as Error);
-    return { error: 'Erreur serveur: ' + error.message };
+  } catch (error) {
+    logger.error('Server error', error instanceof Error ? error : new Error(String(error)));
+    return { error: 'Erreur serveur: ' + (error instanceof Error ? error.message : String(error)) };
   }
 }
 
 export async function deleteCompanyLogo(userId: string) {
   try {
-    const adminSupabase = createAdminClient();
+    const supabase = await createClient();
     
-    // Check permissions
-    const { data: profile, error: profileError } = await adminSupabase
+    // Check permissions (RLS gère la sécurité)
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role, company_id')
       .eq('id', userId)
@@ -203,12 +227,23 @@ export async function deleteCompanyLogo(userId: string) {
       return { error: 'Entreprise non trouvée' };
     }
     
-    if (!['ADMIN', 'DIRECTEUR'].includes(profile.role)) {
+    if (!(([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(profile.role))) {
       return { error: 'Permissions insuffisantes' };
     }
     
+    // Vérifier que l'entreprise existe (RLS gère la sécurité)
+    const { data: existing } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('id', profile.company_id)
+      .single();
+    
+    if (!existing) {
+      return { error: 'Entreprise non trouvée' };
+    }
+    
     // Update company to remove logo
-    const { error: updateError } = await adminSupabase
+    const { error: updateError } = await supabase
       .from('companies')
       .update({ 
         logo_url: null,
@@ -222,8 +257,99 @@ export async function deleteCompanyLogo(userId: string) {
     
     revalidatePath('/settings/company');
     return { success: true };
-  } catch (error: any) {
-    logger.error('Server error', error as Error);
-    return { error: 'Erreur serveur: ' + error.message };
+  } catch (error) {
+    logger.error('Server error', error instanceof Error ? error : new Error(String(error)));
+    return { error: 'Erreur serveur: ' + (error instanceof Error ? error.message : String(error)) };
+  }
+}
+
+// ============================================
+// PARAMÈTRES DU RAPPORT MENSUEL
+// ============================================
+
+export interface IMonthlyReportSettings {
+  monthly_report_enabled: boolean;
+  monthly_report_day: number; // 1, 5, ou -1 (dernier)
+  monthly_report_recipients: 'ADMIN' | 'ADMIN_AND_DIRECTORS';
+}
+
+export async function updateMonthlyReportSettings(
+  userId: string, 
+  settings: IMonthlyReportSettings
+) {
+  try {
+    const supabase = await createClient();
+    
+    // Check permissions - only ADMIN or DIRECTEUR can update (RLS gère la sécurité)
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role, company_id')
+      .eq('id', userId)
+      .single();
+    
+    if (profileError || !profile?.company_id) {
+      return { error: 'Entreprise non trouvée' };
+    }
+    
+    if (!(([USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR] as string[]).includes(profile.role))) {
+      return { error: 'Permissions insuffisantes' };
+    }
+    
+    // Vérifier que l'entreprise existe (RLS gère la sécurité)
+    const { data: existing } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('id', profile.company_id)
+      .single();
+    
+    if (!existing) {
+      return { error: 'Entreprise non trouvée' };
+    }
+    
+    // Valider les valeurs
+    const validDays = [1, 5, -1];
+    const validRecipients = ['ADMIN', 'ADMIN_AND_DIRECTORS'];
+    
+    if (!validDays.includes(settings.monthly_report_day)) {
+      return { error: 'Jour d\'envoi invalide' };
+    }
+    
+    if (!validRecipients.includes(settings.monthly_report_recipients)) {
+      return { error: 'Destinataires invalides' };
+    }
+    
+    // Update company (sans .single() pour éviter PGRST116 si RLS bloque le retour)
+    const { error: companyError } = await supabase
+      .from('companies')
+      .update({
+        monthly_report_enabled: settings.monthly_report_enabled,
+        monthly_report_day: settings.monthly_report_day,
+        monthly_report_recipients: settings.monthly_report_recipients,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', profile.company_id);
+    
+    if (companyError) {
+      logger.error('Update monthly report settings error', companyError);
+      return { error: 'Erreur lors de la mise à jour des paramètres: ' + companyError.message };
+    }
+    
+    // Re-fetch les données après update
+    const { data: company, error: fetchError } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', profile.company_id)
+      .maybeSingle();
+    
+    if (fetchError) {
+      logger.error('Fetch error after update', fetchError);
+      return { data: settings as IMonthlyReportSettings };
+    }
+    
+    revalidatePath('/settings/company');
+    return { data: company || settings };
+  } catch (error) {
+    logger.error('Server error', error instanceof Error ? error : new Error(String(error)));
+    return { error: 'Erreur serveur: ' + (error instanceof Error ? error.message : String(error)) };
   }
 }

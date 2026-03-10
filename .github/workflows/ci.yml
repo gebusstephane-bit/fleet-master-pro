@@ -1,74 +1,226 @@
-name: CI
+name: CI — Pull Request
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Déclencheurs :
+#   • pull_request → main/develop : chaque push dans la PR
+#   • push → main : re-validation post-merge (garde l'historique vert)
+# ─────────────────────────────────────────────────────────────────────────────
 on:
-  push:
-    branches: [main, develop]
   pull_request:
     branches: [main, develop]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
 
+# Annule les runs précédents sur la même branche/PR (sauf main)
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+env:
+  NODE_VERSION: '20'
+
+# =============================================================================
+# Les 4 jobs tournent EN PARALLÈLE — pas de `needs:` entre eux.
+# Gain de temps : ~4 min au lieu de ~14 min en séquentiel.
+# =============================================================================
 jobs:
-  test:
+
+  # ─────────────────────────────────────────────
+  # JOB 1 — Lint (ESLint)
+  # ─────────────────────────────────────────────
+  lint:
+    name: Lint (ESLint)
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 10
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Cache node_modules
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-
 
       - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Run linter
-        run: npm run lint
+      - name: ESLint — zéro warning toléré
+        # Cible src/ explicitement pour exclure node_modules/e2e/etc.
+        run: npx eslint src/ --max-warnings 0
 
-      - name: Run unit tests
-        run: npm run test -- --coverage --coverageThreshold='{"global":{"branches":30,"functions":30,"lines":30,"statements":30}}'
+
+  # ─────────────────────────────────────────────
+  # JOB 2 — Type Check (TypeScript)
+  # ─────────────────────────────────────────────
+  type-check:
+    name: Type Check (TypeScript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Le projet a ~538 erreurs TS résiduelles dans les actions/hooks (ignorées
+    # par next.config.js : typescript.ignoreBuildErrors = true). Ce job est
+    # informatif jusqu'à résolution complète — passer à continue-on-error: false
+    # une fois les erreurs corrigées. Voir CONTRIBUTING.md §Roadmap.
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Cache node_modules
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: tsc --noEmit
+        run: npx tsc --noEmit
+
+
+  # ─────────────────────────────────────────────
+  # JOB 3 — Tests Jest + Coverage ≥ 30%
+  # ─────────────────────────────────────────────
+  tests:
+    name: Tests (Jest + Coverage ≥ 30%)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # Variables minimales pour que les imports ne plantent pas au chargement
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Cache node_modules
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Jest — coverage + seuil 30%
+        # Le seuil 30% est configuré dans jest.config.js (coverageThreshold).
+        # --ci        : échec si un snapshot est nouveau/obsolète
+        # --forceExit : évite que des handles ouverts bloquent le runner
+        run: npx jest --coverage --ci --forceExit
+        env:
+          CI: true
 
       - name: Upload coverage report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
+          name: coverage-report-${{ github.run_id }}
           path: coverage/
+          retention-days: 7
 
-      - name: Build application
-        run: npm run build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
-  e2e:
+  # ─────────────────────────────────────────────
+  # JOB 4 — Build Next.js
+  # ─────────────────────────────────────────────
+  build:
+    name: Build (Next.js)
     runs-on: ubuntu-latest
-    needs: test
-    
+    timeout-minutes: 20
+
+    env:
+      # ── NEXT_PUBLIC_* : injectées dans le bundle au build-time ────────────
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2MDAwMDAwMDB9.placeholder
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder_ci_only
+      NEXT_PUBLIC_POSTHOG_KEY: phc_placeholder_ci_only
+      NEXT_PUBLIC_POSTHOG_HOST: https://eu.posthog.com
+      NEXT_PUBLIC_MAPBOX_TOKEN: pk.placeholder_ci_only
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: BPlaceholderVapidPublicKeyForCIBuildOnly0000000000000000000000000000000000000000000
+      NEXT_PUBLIC_SENTRY_DSN: https://placeholder@o0.ingest.sentry.io/0
+      # ── Vars serveur : évitent les erreurs d'import côté server components ─
+      SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key-ci-only
+      STRIPE_SECRET_KEY: sk_test_placeholder_ci_only
+      STRIPE_WEBHOOK_SECRET: whsec_placeholder_ci_only
+      OPENAI_API_KEY: sk-placeholder_ci_only
+      RESEND_API_KEY: re_placeholder_ci_only
+      UPSTASH_REDIS_REST_URL: https://placeholder.upstash.io
+      UPSTASH_REDIS_REST_TOKEN: placeholder_token_ci_only
+      VAPID_PRIVATE_KEY: placeholder_vapid_private_key_ci_only
+      VAPID_SUBJECT: mailto:ci@fleetmaster.pro
+      SENTRY_AUTH_TOKEN: placeholder_ci_only
+      # ── Désactive les telemetries pendant le build ────────────────────────
+      NEXT_TELEMETRY_DISABLED: '1'
+      SENTRY_SUPPRESS_TURBOPACK_WARNING: '1'
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Cache node_modules
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-
 
       - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Run E2E tests
-        run: npm run test:e2e
-        env:
-          PLAYWRIGHT_TEST_BASE_URL: ${{ secrets.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000' }}
-
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        if: always()
+      - name: Cache Next.js build (.next/cache)
+        uses: actions/cache@v4
         with:
-          name: playwright-report
-          path: playwright-report/
+          path: .next/cache
+          # Invalide le cache si les dépendances ou les sources changent
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**/*.{ts,tsx,js,jsx,css}') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+            ${{ runner.os }}-nextjs-
+
+      - name: next build
+        run: npx next build

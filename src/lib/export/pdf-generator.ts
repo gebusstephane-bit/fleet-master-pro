@@ -30,9 +30,17 @@ function normalizeText(text: unknown): string {
     .replace(/[^\x00-\xFF]/g, '?');                 // tout autre hors Latin-1 → ?
 }
 
-interface PDFConfig {
-  type: ExportType;
-  data: any[];
+import { Vehicle, Driver, Maintenance } from '@/types';
+
+type ExportData<T extends ExportType> = T extends 'vehicles' 
+  ? Vehicle[] 
+  : T extends 'drivers' 
+  ? Driver[] 
+  : Maintenance[];
+
+interface PDFConfig<T extends ExportType = ExportType> {
+  type: T;
+  data: ExportData<T>;
   companyName: string;
 }
 
@@ -240,14 +248,17 @@ export async function generatePDF(config: PDFConfig): Promise<Buffer> {
 
   // ─── Serialize ────────────────────────────────────────────────────────────
   const pdfBytes = await pdfDoc.save();
-  return Buffer.from(pdfBytes);
+  return Buffer.from(pdfBytes) as unknown as Buffer;
 }
 
 // ─── Column definitions ────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ItemWithStringKeys = Record<string, any>;
+
 interface ColDef {
   header: string;
-  getValue: (item: any) => string;
+  getValue: (item: ItemWithStringKeys) => string;
   align?: 'left' | 'center' | 'right';
   bold?: boolean;
   highlight?: boolean;
@@ -272,11 +283,12 @@ function getColumns(type: ExportType): ColDef[] {
     return [
       { header: 'Prénom', getValue: (d) => d.first_name ?? '', bold: true },
       { header: 'Nom', getValue: (d) => d.last_name ?? '', bold: true },
-      { header: 'Email', getValue: (d) => d.email ?? '' },
-      { header: 'Téléphone', getValue: (d) => d.phone ?? '' },
       { header: 'N° Permis', getValue: (d) => d.license_number ?? '', highlight: true },
       { header: 'Type', getValue: (d) => d.license_type ?? '', align: 'center' },
-      { header: 'Expiration', getValue: (d) => formatDateFR(d.license_expiry), align: 'center' },
+      { header: 'Exp. permis', getValue: (d) => formatDateFR(d.license_expiry), align: 'center' },
+      { header: 'FCO', getValue: (d) => formatDateFR(d.fcos_expiry), align: 'center' },
+      { header: 'FIMO', getValue: (d) => formatDateFR(d.fimo_expiry), align: 'center' },
+      { header: 'CQC', getValue: (d) => formatDateFR(d.cqc_expiry_date ?? d.cqc_expiry), align: 'center' },
       { header: 'Statut', getValue: (d) => DRIVER_STATUS_LABELS[d.status] ?? d.status ?? '' },
       { header: 'Score', getValue: (d) => d.safety_score != null ? String(d.safety_score) : '', align: 'center' },
     ];

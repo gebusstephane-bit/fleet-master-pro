@@ -1,6 +1,7 @@
 /**
  * LocationForm - Formulaire de localisation V3.2
  * Simplifié : ne gère que l'adresse (le type de panne est géré par BreakdownTypeSelect)
+ * Aligné Design System FleetMaster Pro
  */
 
 'use client';
@@ -120,20 +121,20 @@ export function LocationForm({ onSubmit, loading, breakdownType }: LocationFormP
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
-          <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-          <p className="text-red-700 text-sm">{error}</p>
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-start gap-2">
+          <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+          <p className="text-red-400 text-sm">{error}</p>
         </div>
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="address">Votre position actuelle *</Label>
+        <Label htmlFor="address" className="text-foreground">Votre position actuelle *</Label>
         <Textarea
           id="address"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder="Ex: Aire de repos A6, km 245, direction Paris. Ou: 12 rue de Paris, Lyon"
-          className="min-h-[80px]"
+          className="min-h-[80px] bg-[#0f172a]/60 border-cyan-500/20 focus:border-cyan-500 focus:shadow-[0_0_0_3px_rgba(6,182,212,0.2)]"
           required
         />
         
@@ -144,7 +145,7 @@ export function LocationForm({ onSubmit, loading, breakdownType }: LocationFormP
             size="sm"
             onClick={handleGeolocation}
             disabled={isLocating}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/50"
           >
             {isLocating ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -156,25 +157,25 @@ export function LocationForm({ onSubmit, loading, breakdownType }: LocationFormP
         </div>
 
         {isHighway(address) && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
-            <p className="text-amber-800 text-sm font-medium">
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mt-2">
+            <p className="text-amber-400 text-sm font-medium">
               ⚠️ Détection autoroute possible
             </p>
-            <p className="text-amber-700 text-sm mt-1">
-              Cochez "Sur autoroute" si vous êtes sur une voie rapide.
+            <p className="text-amber-400/80 text-sm mt-1">
+              Cochez &quot;Sur autoroute&quot; si vous êtes sur une voie rapide.
             </p>
           </div>
         )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="additional">Informations complémentaires (optionnel)</Label>
+        <Label htmlFor="additional" className="text-foreground">Informations complémentaires (optionnel)</Label>
         <Textarea
           id="additional"
           value={additionalInfo}
           onChange={(e) => setAdditionalInfo(e.target.value)}
           placeholder="Ex: Camion sur la bande d'arrêt d'urgence, trafic dense, accès difficile..."
-          className="min-h-[60px]"
+          className="min-h-[60px] bg-[#0f172a]/60 border-cyan-500/20 focus:border-cyan-500 focus:shadow-[0_0_0_3px_rgba(6,182,212,0.2)]"
         />
       </div>
 

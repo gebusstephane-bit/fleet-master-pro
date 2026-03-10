@@ -65,6 +65,10 @@ export const cacheTimes = {
     staleTime: 30 * 1000,      // 30 sec
     gcTime: 2 * 60 * 1000,
   },
+  compliance: {
+    staleTime: 2 * 60 * 1000,  // 2 min - données importantes à jour
+    gcTime: 5 * 60 * 1000,
+  },
 };
 
 // Constantes de pagination

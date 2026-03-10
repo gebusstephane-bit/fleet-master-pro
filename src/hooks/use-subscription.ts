@@ -4,6 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { getReadableError } from '@/lib/error-messages';
 import {
   getCompanySubscription,
   checkSubscriptionLimits,
@@ -65,7 +66,7 @@ export function useCreateCheckout() {
       }
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -87,7 +88,7 @@ export function useRequestEnterpriseQuote() {
       toast.success('Votre demande a été envoyée à notre équipe commerciale');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -109,7 +110,7 @@ export function useCancelSubscription() {
       toast.success('Abonnement annulé. Vous resterez sur votre plan jusqu\'à la fin de la période.');
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -130,5 +131,5 @@ export function useCanAddUser() {
 export function useRemainingVehicles() {
   const { data: limits } = useSubscriptionLimits();
   if (!limits) return 0;
-  return Math.max(0, limits.vehicleLimit - limits.vehicleCount);
+  return Math.max(0, (limits.vehicleLimit ?? Infinity) - limits.vehicleCount);
 }

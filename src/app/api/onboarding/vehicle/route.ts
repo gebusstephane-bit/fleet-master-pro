@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { VehicleStepSchema } from "@/lib/onboarding/validation";
 
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.error("Error creating vehicle:", error);
+      logger.error("Error creating vehicle:", error);
       return NextResponse.json(
         { error: "Erreur création véhicule" },
         { status: 500 }
@@ -83,7 +84,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, vehicleId: vehicle.id });
   } catch (error) {
-    console.error("Error in vehicle onboarding:", error);
+    logger.error("Error in vehicle onboarding:", error);
     return NextResponse.json(
       { error: "Erreur serveur" },
       { status: 500 }

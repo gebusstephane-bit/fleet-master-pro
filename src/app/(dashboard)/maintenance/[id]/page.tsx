@@ -10,9 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   ArrowLeft, Calendar, MapPin, Phone, User, 
-  Clock, Euro, FileText, Wrench, CheckCircle2 
+  Clock, Euro, FileText, Wrench, CheckCircle2, AlertTriangle 
 } from 'lucide-react';
-import { getMaintenanceById, validateMaintenanceRequest, markMaintenanceInProgress } from '@/actions/maintenance-workflow';
+import { updateMaintenanceStatus, getMaintenanceById } from '@/actions/maintenance-workflow';
 import { MaintenanceStatusBadge } from '@/components/maintenance/maintenance-status-badge';
 import { MaintenanceTypeBadge } from '@/components/maintenance/maintenance-type-badge';
 import { MaintenanceTimeline } from '@/components/maintenance/maintenance-timeline';
@@ -21,6 +21,20 @@ import { CompleteMaintenanceDialog } from '@/components/maintenance/complete-mai
 import { useUser } from '@/hooks/use-user';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { USER_ROLE } from '@/constants/enums';
+import { getSupabaseClient } from '@/lib/supabase/client';
+
+interface LinkedIncident {
+  id: string;
+  incident_number: string | null;
+  incident_date: string;
+  incident_type: string;
+  severity: string | null;
+  status: string;
+  location_description: string | null;
+  estimated_damage: number | null;
+  drivers?: { first_name: string; last_name: string } | null;
+}
 
 interface MaintenanceDetail {
   id: string;
@@ -31,7 +45,7 @@ interface MaintenanceDetail {
   type: 'PREVENTIVE' | 'CORRECTIVE' | 'PNEUMATIQUE' | 'CARROSSERIE';
   description: string;
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
-  status: 'DEMANDE_CREEE' | 'VALIDEE_DIRECTEUR' | 'RDV_PRIS' | 'EN_COURS' | 'TERMINEE' | 'REFUSEE';
+  status: 'DEMANDE_CREEE' | 'VALIDEE' | 'VALIDEE_DIRECTEUR' | 'RDV_PRIS' | 'EN_COURS' | 'TERMINEE' | 'REFUSEE';
   requested_at: string;
   validated_at?: string;
   rdv_date?: string;
@@ -60,6 +74,7 @@ interface MaintenanceDetail {
     start_time: string;
     end_time: string;
   };
+  linkedIncidents?: LinkedIncident[];
 }
 
 export default function MaintenanceDetailPage() {
@@ -69,20 +84,43 @@ export default function MaintenanceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { data: user, isLoading: userLoading } = useUser();
 
-  const isDirector = user?.role === 'ADMIN' || user?.role === 'DIRECTEUR';
-  
-  console.log('Debug - User:', user);
-  console.log('Debug - Role:', user?.role);
-  console.log('Debug - isDirector:', isDirector);
+  // Rôles autorisés à voir les boutons de transition
+  const isManagerOrAbove = [USER_ROLE.ADMIN, 'MANAGER', USER_ROLE.DIRECTEUR].includes(user?.role || '');
 
   const loadMaintenance = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const result = await getMaintenanceById({ id });
       if (result?.data?.success) {
-        setMaintenance(result.data.data);
+        const maintenanceData = result.data.data;
+        
+        // Récupérer les incidents liés à cette maintenance
+        const supabase = getSupabaseClient();
+        const { data: linkedIncidents } = await supabase
+          .from('incidents')
+          .select(`
+            id,
+            incident_number,
+            incident_date,
+            incident_type,
+            severity,
+            status,
+            location_description,
+            estimated_damage,
+            drivers(first_name, last_name)
+          `)
+          .eq('maintenance_record_id', id)
+          .order('incident_date', { ascending: false });
+        
+        setMaintenance({
+          ...maintenanceData,
+          linkedIncidents: (linkedIncidents || []) as LinkedIncident[],
+        } as unknown as MaintenanceDetail);
       }
     } catch (error) {
       console.error('Erreur chargement:', error);
@@ -95,21 +133,21 @@ export default function MaintenanceDetailPage() {
     loadMaintenance();
   }, [id]);
 
-  const handleValidate = async (action: 'validate' | 'reject') => {
+  const handleStatusChange = async (newStatus: string, additionalData?: { notes?: string }) => {
+    setActionLoading(true);
+    setErrorMessage(null);
     try {
-      await validateMaintenanceRequest({ id, action });
-      loadMaintenance();
+      const result = await updateMaintenanceStatus(id, newStatus, additionalData);
+      if (result.success) {
+        loadMaintenance();
+      } else {
+        setErrorMessage(result.error || 'Erreur lors de la transition');
+      }
     } catch (error) {
       console.error('Erreur:', error);
-    }
-  };
-
-  const handleStartWork = async () => {
-    try {
-      await markMaintenanceInProgress({ id });
-      loadMaintenance();
-    } catch (error) {
-      console.error('Erreur:', error);
+      setErrorMessage('Erreur inattendue');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -134,10 +172,11 @@ export default function MaintenanceDetailPage() {
     );
   }
 
-  const showValidateButtons = maintenance.status === 'DEMANDE_CREEE' && isDirector;
-  const showScheduleButton = maintenance.status === 'VALIDEE_DIRECTEUR';
-  const showStartButton = maintenance.status === 'RDV_PRIS';
-  const showCompleteButton = ['RDV_PRIS', 'EN_COURS'].includes(maintenance.status);
+  // Déterminer quels boutons afficher selon le statut
+  const showValidateButtons = maintenance.status === 'DEMANDE_CREEE' && isManagerOrAbove;
+  const showScheduleButton = (maintenance.status === 'VALIDEE' || maintenance.status === 'VALIDEE_DIRECTEUR') && isManagerOrAbove;
+  const showStartButton = maintenance.status === 'RDV_PRIS' && isManagerOrAbove;
+  const showCompleteButton = maintenance.status === 'EN_COURS' && isManagerOrAbove;
 
   return (
     <div className="space-y-6 p-6">
@@ -160,24 +199,28 @@ export default function MaintenanceDetailPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* DEBUG INFO */}
-          <div className="text-xs text-gray-400 mr-4">
-            Role: {user?.role || 'N/A'} | Admin: {isDirector ? 'OUI' : 'NON'}
-          </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Message d'erreur */}
+          {errorMessage && (
+            <div className="text-sm text-red-400 mr-2">
+              {errorMessage}
+            </div>
+          )}
           
           {showValidateButtons && (
             <>
               <Button
                 variant="outline"
                 className="text-red-600"
-                onClick={() => handleValidate('reject')}
+                onClick={() => handleStatusChange('REFUSEE')}
+                disabled={actionLoading}
               >
                 Refuser
               </Button>
               <Button
-                className="bg-emerald-600 hover:bg-emerald-700"
-                onClick={() => handleValidate('validate')}
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => handleStatusChange('VALIDEE')}
+                disabled={actionLoading}
               >
                 <CheckCircle2 className="h-4 w-4 mr-1" />
                 Valider
@@ -186,16 +229,16 @@ export default function MaintenanceDetailPage() {
           )}
 
           {showScheduleButton && (
-            <Button onClick={() => setScheduleDialogOpen(true)}>
+            <Button onClick={() => setScheduleDialogOpen(true)} disabled={actionLoading}>
               <Calendar className="h-4 w-4 mr-1" />
               Prendre RDV
             </Button>
           )}
 
           {showStartButton && (
-            <Button onClick={handleStartWork}>
+            <Button onClick={() => handleStatusChange('EN_COURS')} disabled={actionLoading}>
               <Wrench className="h-4 w-4 mr-1" />
-              Marquer en cours
+              Commencer
             </Button>
           )}
 
@@ -203,9 +246,10 @@ export default function MaintenanceDetailPage() {
             <Button 
               className="bg-emerald-600 hover:bg-emerald-700"
               onClick={() => setCompleteDialogOpen(true)}
+              disabled={actionLoading}
             >
               <CheckCircle2 className="h-4 w-4 mr-1" />
-              Terminer
+              Marquer Terminée
             </Button>
           )}
         </div>
@@ -355,7 +399,7 @@ export default function MaintenanceDetailPage() {
               <div className="text-center py-8 text-gray-300">
                 <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>Aucun rendez-vous planifié</p>
-                {maintenance.status === 'VALIDEE_DIRECTEUR' && (
+                {(maintenance.status === 'VALIDEE' || maintenance.status === 'VALIDEE_DIRECTEUR') && isManagerOrAbove && (
                   <Button 
                     className="mt-4" 
                     onClick={() => setScheduleDialogOpen(true)}
@@ -385,6 +429,78 @@ export default function MaintenanceDetailPage() {
                 Terminée le {format(new Date(maintenance.completed_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}
               </p>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Incidents liés */}
+      {maintenance.linkedIncidents && maintenance.linkedIncidents.length > 0 && (
+        <Card className="border-amber-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-400">
+              <AlertTriangle className="h-5 w-5" />
+              Incidents liés ({maintenance.linkedIncidents.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {maintenance.linkedIncidents.map((incident) => (
+                <div
+                  key={incident.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-amber-500/5 border border-amber-500/10"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-white">
+                        {incident.incident_number || 'Sans numéro'}
+                      </span>
+                      <Badge 
+                        variant="outline" 
+                        className={
+                          incident.severity === 'très_grave' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                          incident.severity === 'grave' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                          incident.severity === 'moyen' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                          'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                        }
+                      >
+                        {incident.severity || 'Non classé'}
+                      </Badge>
+                      <Badge 
+                        variant="outline"
+                        className={
+                          incident.status === 'clôturé' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                          incident.status === 'en_cours' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                          'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                        }
+                      >
+                        {incident.status}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-slate-400 mt-1">
+                      {format(new Date(incident.incident_date), 'dd MMMM yyyy à HH:mm', { locale: fr })}
+                      {incident.drivers && ` — ${incident.drivers.first_name} ${incident.drivers.last_name}`}
+                    </p>
+                    {incident.location_description && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        {incident.location_description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right ml-4">
+                    {incident.estimated_damage !== null && incident.estimated_damage > 0 && (
+                      <p className="text-sm font-medium text-amber-400">
+                        {incident.estimated_damage.toLocaleString('fr-FR')} €
+                      </p>
+                    )}
+                    <Button variant="ghost" size="sm" asChild className="mt-1">
+                      <Link href={`/incidents/${incident.id}`}>
+                        Voir le sinistre →
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

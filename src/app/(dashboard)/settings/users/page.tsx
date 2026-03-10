@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { useUserContext } from '@/components/providers/user-provider';
 import { useUsers, useUserPermissions, useToggleUserStatus, useDeleteUser, type User } from '@/hooks/use-users';
+import { useSubscriptionLimits } from '@/hooks/use-subscription';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -90,6 +91,56 @@ function StatusBadge({ isActive }: { isActive: boolean }) {
       <XCircle className="w-3 h-3 mr-1" />
       Inactif
     </Badge>
+  );
+}
+
+/**
+ * Composant bouton d'ajout d'utilisateur avec vérification de limite
+ */
+function AddUserButton() {
+  const { data: limits, isLoading } = useSubscriptionLimits();
+  
+  if (isLoading) {
+    return (
+      <Button disabled>
+        <Plus className="h-4 w-4 mr-2" />
+        Ajouter un utilisateur
+      </Button>
+    );
+  }
+  
+  const canAdd = limits?.canAddUser ?? true;
+  const currentCount = limits?.userCount ?? 0;
+  const limit = limits?.userLimit ?? 0;
+  
+  if (!canAdd) {
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <Button 
+          disabled 
+          className="opacity-50 cursor-not-allowed"
+          title="Limite d'utilisateurs atteinte"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Ajouter un utilisateur
+        </Button>
+        <p className="text-xs text-amber-600">
+          Limite atteinte ({currentCount}/{limit}) — 
+          <Link href="/settings/billing" className="underline hover:text-amber-700 ml-1">
+            Passer au plan supérieur
+          </Link>
+        </p>
+      </div>
+    );
+  }
+  
+  return (
+    <Button asChild>
+      <Link href="/settings/users/new">
+        <Plus className="h-4 w-4 mr-2" />
+        Ajouter un utilisateur
+      </Link>
+    </Button>
   );
 }
 
@@ -174,14 +225,7 @@ export default function UsersManagementPage() {
             Gérez les collaborateurs de votre entreprise
           </p>
         </div>
-        {permissions.canCreateUsers && (
-          <Button asChild>
-            <Link href="/settings/users/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Ajouter un utilisateur
-            </Link>
-          </Button>
-        )}
+        {permissions.canCreateUsers && <AddUserButton />}
       </div>
 
       {/* Stats */}

@@ -1,123 +1,198 @@
 /**
  * Logger structuré pour FleetMaster Pro
- * Remplace les console.log sporadiques
- * 
- * En développement: logs détaillés dans la console
- * En production: envoi vers service de logging (Sentry, LogRocket, etc.)
+ * Conforme ISO 27001 - pas de données sensibles en clair
  */
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+import { sanitizeString, sanitizeObject, sanitizeError, createSecureLogContext } from './security/sanitize-logs';
 
-interface LogContext {
-  userId?: string;
-  companyId?: string | null;
-  path?: string;
-  action?: string;
+const isDev = process.env.NODE_ENV === 'development';
+
+// Type pour les logs structurés
+interface LogEntry {
+  level: 'debug' | 'info' | 'warn' | 'error';
+  timestamp: string;
+  msg: string;
   [key: string]: unknown;
 }
 
-interface LogEntry {
-  level: LogLevel;
-  message: string;
-  timestamp: string;
-  context?: LogContext;
-  error?: Error;
-}
-
-class Logger {
-  private isProduction: boolean;
-  private isClient: boolean;
-
-  constructor() {
-    this.isProduction = process.env.NODE_ENV === 'production';
-    this.isClient = typeof window !== 'undefined';
-  }
-
-  private log(level: LogLevel, message: string, context?: LogContext, error?: Error): void {
-    // Ne pas logger en production côté client (sauf erreurs)
-    if (this.isProduction && this.isClient && level !== 'error') {
-      return;
-    }
-
-    const entry: LogEntry = {
-      level,
-      message,
-      timestamp: new Date().toISOString(),
-      context,
-      error,
-    };
-
-    // En production, envoyer vers un service de logging
-    if (this.isProduction && !this.isClient) {
-      // TODO: Envoyer vers Sentry, Datadog, etc.
-      // Example: Sentry.captureMessage(message, { level, extra: context });
-      return;
-    }
-
-    // En développement, logger dans la console avec style
-    const styles = {
-      debug: 'color: #6b7280',
-      info: 'color: #3b82f6',
-      warn: 'color: #f59e0b',
-      error: 'color: #ef4444; font-weight: bold',
-    };
-
-    const prefix = `[${entry.timestamp.split('T')[1].split('.')[0]}] ${level.toUpperCase()}:`;
-    
-    if (error) {
-      console.groupCollapsed(`%c${prefix} ${message}`, styles[level]);
-      console.error(error);
-      if (context) console.log('Context:', context);
-      console.groupEnd();
-    } else {
-      console.log(`%c${prefix} ${message}`, styles[level]);
-      if (context) console.log('Context:', context);
-    }
-  }
-
-  debug(message: string, context?: LogContext): void {
-    this.log('debug', message, context);
-  }
-
-  info(message: string, context?: LogContext): void {
-    this.log('info', message, context);
-  }
-
-  warn(message: string, context?: LogContext): void {
-    this.log('warn', message, context);
-  }
-
-  error(message: string, errorOrContext?: Error | LogContext, context?: LogContext): void {
-    if (errorOrContext instanceof Error) {
-      this.log('error', message, context, errorOrContext);
-    } else {
-      this.log('error', message, errorOrContext, undefined);
-    }
-  }
-
-  // Logger spécifique pour les actions utilisateur
-  userAction(action: string, context: LogContext): void {
-    this.info(`User Action: ${action}`, context);
-  }
-
-  // Logger pour les performances
-  performance(operation: string, durationMs: number, context?: LogContext): void {
-    if (durationMs > 1000) {
-      this.warn(`Slow operation: ${operation} took ${durationMs}ms`, { ...context, durationMs });
-    } else {
-      this.debug(`Performance: ${operation} took ${durationMs}ms`, { ...context, durationMs });
-    }
-  }
-}
-
-// Singleton
-export const logger = new Logger();
-
-// Helper pour les Server Actions
-export function createActionLogger(actionName: string, userId?: string) {
-  return {
-    start: () => logger.info(`Action started: ${actionName}`, { userId, action: actionName }),
-    success: (data?: unknown) => logger.info(`Action success: ${actionName}`, { userId, action: actionName, data }),
-    error: (error: Error) => logger.error(`Action error: ${actionName}`, error, { userId, action: actionName }),
+/**
+ * Formatte une entrée de log en JSON structuré
+ */
+function formatLogEntry(level: LogEntry['level'], msg: string, meta?: Record<string, unknown>): string {
+  const entry: LogEntry = {
+    level,
+    timestamp: new Date().toISOString(),
+    msg,
+    ...meta,
   };
+  
+  return JSON.stringify(entry);
 }
+
+/**
+ * Logger structuré ISO 27001 compliant
+ * 
+ * Usage:
+ * ```typescript
+ * // Log simple
+ * logger.info('User logged in', { userId: 'uuid', email: 'user@example.com' });
+ * 
+ * // Log d'erreur
+ * logger.error('Database error', { error: err, code: 'DB_001' });
+ * 
+ * // Log sécurisé avec contexte
+ * logger.secure.info(ctx, 'Action performed');
+ * 
+ * // Log compatible ancien format (string interpolation)
+ * logger.info(`Message: ${value}`);
+ * logger.warn('Message', error); // error sera sanitizé
+ * logger.debug('File:', name, type, size); // multiple args supporté
+ * ```
+ */
+export const logger = {
+  /**
+   * Debug - uniquement en développement
+   */
+  debug: (msg: string, ...args: unknown[]) => { 
+    if (isDev) {
+      // Construire un objet meta à partir des arguments multiples
+      const meta: Record<string, unknown> = {};
+      args.forEach((arg, index) => {
+        if (typeof arg === 'object' && arg !== null) {
+          Object.assign(meta, sanitizeObject(arg as Record<string, unknown>));
+        } else {
+          meta[`arg${index}`] = sanitizeString(String(arg));
+        }
+      });
+      const safeMeta = Object.keys(meta).length > 0 ? meta : undefined;
+      console.debug('[DEBUG]', formatLogEntry('debug', msg, safeMeta));
+    }
+  },
+  
+  /**
+   * Info - logs informatifs
+   */
+  info: (msg: string, ...args: unknown[]) => { 
+    const meta: Record<string, unknown> = {};
+    args.forEach((arg, index) => {
+      if (typeof arg === 'object' && arg !== null) {
+        Object.assign(meta, sanitizeObject(arg as Record<string, unknown>));
+      } else {
+        meta[`arg${index}`] = sanitizeString(String(arg));
+      }
+    });
+    const safeMeta = Object.keys(meta).length > 0 ? meta : undefined;
+    console.info('[INFO]', formatLogEntry('info', msg, safeMeta));
+  },
+  
+  /**
+   * Warn - avertissements
+   */
+  warn: (msg: string, ...args: unknown[]) => { 
+    const meta: Record<string, unknown> = {};
+    args.forEach((arg, index) => {
+      if (typeof arg === 'object' && arg !== null) {
+        Object.assign(meta, sanitizeObject(arg as Record<string, unknown>));
+      } else {
+        meta[`arg${index}`] = sanitizeString(String(arg));
+      }
+    });
+    const safeMeta = Object.keys(meta).length > 0 ? meta : undefined;
+    console.warn('[WARN]', formatLogEntry('warn', msg, safeMeta));
+  },
+  
+  /**
+   * Error - erreurs (toujours loggées)
+   */
+  error: (msg: string, ...args: unknown[]) => { 
+    const meta: Record<string, unknown> = {};
+    args.forEach((arg, index) => {
+      if (typeof arg === 'object' && arg !== null) {
+        Object.assign(meta, sanitizeObject(arg as Record<string, unknown>));
+      } else {
+        meta[`arg${index}`] = sanitizeString(String(arg));
+      }
+    });
+    const safeMeta = Object.keys(meta).length > 0 ? meta : undefined;
+    console.error('[ERROR]', formatLogEntry('error', msg, safeMeta));
+  },
+  
+  /**
+   * Log d'erreur avec objet Error
+   * Sanitize automatiquement le message et la stack
+   */
+  errorWithError: (msg: string, error: Error | unknown, meta?: Record<string, unknown>) => {
+    const safeError = sanitizeError(error);
+    const safeMeta = meta ? sanitizeObject(meta) : undefined;
+    
+    console.error('[ERROR]', formatLogEntry('error', msg, {
+      error: safeError,
+      ...safeMeta,
+    }));
+  },
+  
+  /**
+   * Logger sécurisé avec contexte utilisateur
+   * Masque automatiquement les données sensibles
+   */
+  secure: {
+    /**
+     * Crée un logger avec contexte utilisateur
+     */
+    withContext: (context: {
+      userId?: string;
+      email?: string;
+      companyId?: string;
+      ip?: string;
+      requestId?: string;
+      [key: string]: unknown;
+    }) => {
+      const secureContext = createSecureLogContext(context);
+      
+      const sanitizeArgs = (args: unknown[]): Record<string, unknown> => {
+        const meta: Record<string, unknown> = {};
+        args.forEach((arg, index) => {
+          if (typeof arg === 'object' && arg !== null) {
+            Object.assign(meta, sanitizeObject(arg as Record<string, unknown>));
+          } else {
+            meta[`arg${index}`] = sanitizeString(String(arg));
+          }
+        });
+        return meta;
+      };
+      
+      return {
+        debug: (msg: string, ...args: unknown[]) => {
+          if (isDev) {
+            const safeMeta = sanitizeArgs(args);
+            console.debug('[DEBUG]', formatLogEntry('debug', msg, { ...secureContext, ...safeMeta }));
+          }
+        },
+        info: (msg: string, ...args: unknown[]) => {
+          const safeMeta = sanitizeArgs(args);
+          console.info('[INFO]', formatLogEntry('info', msg, { ...secureContext, ...safeMeta }));
+        },
+        warn: (msg: string, ...args: unknown[]) => {
+          const safeMeta = sanitizeArgs(args);
+          console.warn('[WARN]', formatLogEntry('warn', msg, { ...secureContext, ...safeMeta }));
+        },
+        error: (msg: string, ...args: unknown[]) => {
+          const safeMeta = sanitizeArgs(args);
+          console.error('[ERROR]', formatLogEntry('error', msg, { ...secureContext, ...safeMeta }));
+        },
+        errorWithError: (msg: string, error: Error | unknown, meta?: Record<string, unknown>) => {
+          const safeError = sanitizeError(error);
+          const safeMeta = meta ? sanitizeObject(meta) : undefined;
+          console.error('[ERROR]', formatLogEntry('error', msg, {
+            error: safeError,
+            ...secureContext,
+            ...safeMeta,
+          }));
+        },
+      };
+    },
+  },
+};
+
+// Export des utilitaires de sanitization pour usage direct
+export { sanitizeString, sanitizeObject, sanitizeError, createSecureLogContext };

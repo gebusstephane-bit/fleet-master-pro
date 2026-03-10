@@ -9,10 +9,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { useUserContext } from '@/components/providers/user-provider';
 import { logger } from '@/lib/logger';
-import { createVehicle, deleteVehicle as deleteVehicleAction } from '@/actions/vehicles';
+import { createVehicle, deleteVehicle as deleteVehicleAction, type CreateVehicleData } from '@/actions/vehicles';
 import { cacheTimes } from '@/lib/query-config';
 import { toast } from 'sonner';
-import { safeQuery } from '@/lib/supabase/client-safe';
+import { getReadableError } from '@/lib/error-messages';
+
 
 // Types
 export interface Vehicle {
@@ -33,6 +34,18 @@ export interface Vehicle {
   vin?: string;
   year?: number;
   color?: string;
+  technical_control_date?: string;
+  technical_control_expiry?: string;
+  tachy_control_date?: string;
+  tachy_control_expiry?: string;
+  atp_date?: string;
+  atp_expiry?: string;
+  // ADR (transport de marchandises dangereuses)
+  detailed_type?: string;
+  adr_certificate_date?: string;
+  adr_certificate_expiry?: string;
+  adr_equipment_check_date?: string;
+  adr_equipment_expiry?: string;
   drivers?: {
     id: string;
     first_name: string;
@@ -40,13 +53,13 @@ export interface Vehicle {
   };
 }
 
-export interface VehicleWithDriver extends Vehicle {
+export interface VehicleWithDriver extends Omit<Vehicle, 'drivers'> {
   drivers?: {
     id: string;
     first_name: string;
     last_name: string;
     email?: string;
-  } | null | undefined;
+  } | null;
 }
 
 // Clés de cache
@@ -61,13 +74,13 @@ export function useVehicles(options?: { enabled?: boolean }) {
   const { user } = useUserContext();
   const companyId = user?.company_id;
   
-  return useQuery({
+  return useQuery<VehicleWithDriver[]>({
     queryKey: vehicleKeys.lists(companyId || ''),
     queryFn: async () => {
-      console.log('[useVehicles] Fetching with companyId:', companyId?.slice(0, 8));
+      logger.debug('[useVehicles] Fetching with companyId:', companyId?.slice(0, 8));
       
       if (!companyId) {
-        console.warn('[useVehicles] No companyId available');
+        logger.warn('[useVehicles] No companyId available');
         return [];
       }
       
@@ -87,36 +100,13 @@ export function useVehicles(options?: { enabled?: boolean }) {
         .eq('company_id', companyId)
         .order('created_at', { ascending: false });
       
-      if (!error) {
-        console.log('[useVehicles] Direct query SUCCESS:', data?.length, 'records');
-        return (data || []) as VehicleWithDriver[];
+      if (error) {
+        logger.error('[useVehicles] Direct query failed:', error.code, error.message?.slice(0, 100));
+        throw new Error(error.message);
       }
       
-      // Tentative 2 : Fallback avec safeQuery si RLS error
-      console.warn('[useVehicles] Direct query failed:', error.code, error.message?.slice(0, 50));
-      
-      if (error.message?.includes('infinite recursion') || error.code === '42P17') {
-        console.warn('[useVehicles] RLS recursion, trying safeQuery fallback...');
-        
-        const { data: vehiclesData, error: vehiclesError, debug } = await safeQuery<Vehicle>('vehicles', companyId, {
-          orderBy: { column: 'created_at', ascending: false },
-          limit: 1000,
-        });
-        
-        console.log('[useVehicles] safeQuery result:', { 
-          count: vehiclesData?.length, 
-          error: vehiclesError?.message?.slice(0, 50),
-          debug 
-        });
-        
-        if (vehiclesError) {
-          throw new Error(vehiclesError.message);
-        }
-        
-        return vehiclesData || [];
-      }
-      
-      throw new Error(error.message);
+      logger.debug('[useVehicles] Direct query SUCCESS:', data?.length, 'records');
+      return (data || []) as unknown as VehicleWithDriver[];
     },
     enabled: options?.enabled !== false && !!companyId,
     retry: 1,
@@ -126,7 +116,13 @@ export function useVehicles(options?: { enabled?: boolean }) {
 }
 
 // Hook détail
-export function useVehicle(vehicleId: string, options?: any) {
+interface UseVehicleOptions {
+  enabled?: boolean;
+  refetchInterval?: number;
+  refetchOnWindowFocus?: boolean;
+}
+
+export function useVehicle(vehicleId: string, options?: UseVehicleOptions) {
   const { user } = useUserContext();
   const companyId = user?.company_id;
   
@@ -163,37 +159,72 @@ export function useCreateVehicle() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (vehicle: any) => {
+    mutationFn: async (vehicle: CreateVehicleData) => {
       const result = await createVehicle(vehicle);
+      const resultData = result as { success?: boolean; error?: string; data?: unknown } | undefined;
       
-      if (!(result as any)?.success) {
-        throw new Error((result as any)?.error || 'Erreur création');
+      if (!resultData?.success) {
+        throw new Error(resultData?.error || 'Erreur création');
       }
       
-      return (result as any).data;
+      return resultData.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: vehicleKeys.all });
       toast.success('Véhicule créé avec succès');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       logger.error('Error creating vehicle', error);
-      toast.error(error.message || 'Impossible de créer le véhicule');
+      toast.error(getReadableError(error));
     },
   });
+}
+
+// Champs DATE de la table vehicles (convertir "" → null avant envoi)
+const VEHICLE_DATE_FIELDS = [
+  'purchase_date',
+  'technical_control_date',
+  'technical_control_expiry',
+  'tachy_control_date',
+  'tachy_control_expiry',
+  'atp_date',
+  'atp_expiry',
+  // ADR (transport de marchandises dangereuses)
+  'adr_certificate_date',
+  'adr_certificate_expiry',
+  'adr_equipment_check_date',
+  'adr_equipment_expiry',
+] as const;
+
+function sanitizeVehicleDates(data: Record<string, unknown>): Record<string, unknown> {
+  const cleaned = { ...data };
+  // Convertir "" → null uniquement pour les champs déjà présents dans le payload
+  for (const field of VEHICLE_DATE_FIELDS) {
+    if (field in cleaned && cleaned[field] === '') {
+      cleaned[field] = null;
+    }
+  }
+  return cleaned;
 }
 
 // Hook mise à jour
 export function useUpdateVehicle() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async ({ id, ...data }: any) => {
+    mutationFn: async ({ id, ...data }: { id: string } & Partial<Vehicle>) => {
       const supabase = getSupabaseClient();
-      
+
+      let updateData: Record<string, unknown> = { ...data };
+      delete updateData.id;
+      delete updateData.drivers;
+
+      // Convertir les champs date vides ("") en null pour éviter l'erreur PostgreSQL 22007
+      updateData = sanitizeVehicleDates(updateData);
+
       const { data: updated, error } = await supabase
         .from('vehicles')
-        .update(data)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
@@ -210,8 +241,8 @@ export function useUpdateVehicle() {
       queryClient.invalidateQueries({ queryKey: vehicleKeys.all });
       toast.success('Véhicule mis à jour');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erreur mise à jour');
+    onError: (error: Error) => {
+      toast.error(getReadableError(error));
     },
   });
 }
@@ -223,9 +254,10 @@ export function useDeleteVehicle() {
   return useMutation({
     mutationFn: async ({ id }: { id: string }) => {
       const result = await deleteVehicleAction(id);
+      const resultData = result as { success?: boolean; error?: string } | undefined;
       
-      if (!(result as any)?.success) {
-        throw new Error((result as any)?.error || 'Erreur suppression');
+      if (!resultData?.success) {
+        throw new Error(resultData?.error || 'Erreur suppression');
       }
       
       return { success: true };
@@ -234,11 +266,9 @@ export function useDeleteVehicle() {
       queryClient.invalidateQueries({ queryKey: vehicleKeys.all });
       toast.success('Véhicule supprimé');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       logger.error('Error deleting vehicle', error);
-      toast.error(error.message || 'Impossible de supprimer');
+      toast.error(getReadableError(error));
     },
   });
 }
-
-export type { VehicleWithDriver };

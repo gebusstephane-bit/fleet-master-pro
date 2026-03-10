@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,7 +61,7 @@ export async function PUT(
     return NextResponse.json({ provider: data });
 
   } catch (error: any) {
-    console.error('[SOS Providers] PUT error:', error);
+    logger.error('[SOS Providers] PUT error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -103,7 +104,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
-    console.error('[SOS Providers] DELETE error:', error);
+    logger.error('[SOS Providers] DELETE error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

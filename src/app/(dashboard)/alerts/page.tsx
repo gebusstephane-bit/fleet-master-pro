@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertTriangle, AlertCircle, Info, Check, RefreshCw, Bell } from 'lucide-react';
+import { AlertTriangle, AlertCircle, Info, Check, RefreshCw, Bell, Inbox } from 'lucide-react';
 import { useAlerts, useCreateAlerts, useMarkAllAlertsAsRead } from '@/hooks/use-alerts';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const severityConfig = {
   critical: { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', label: 'Critique' },
@@ -74,10 +75,16 @@ export default function AlertsPage() {
             <Skeleton className="h-32 w-full" />
           ) : unreadAlerts.length === 0 ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Check className="h-12 w-12 text-green-500 mb-4" />
-                <p className="text-lg font-medium">Aucune alerte en cours</p>
-                <p className="text-muted-foreground">Toutes les alertes ont été traitées</p>
+              <CardContent className="pt-6">
+                <EmptyState
+                  icon={Inbox}
+                  title="Aucune alerte en cours"
+                  description="Toutes les alertes ont été traitées. Vous êtes à jour !"
+                  action={{
+                    label: 'Vérifier les alertes',
+                    onClick: () => createAlerts.mutate(),
+                  }}
+                />
               </CardContent>
             </Card>
           ) : (
@@ -121,6 +128,20 @@ export default function AlertsPage() {
         <TabsContent value="all" className="space-y-4">
           {isLoading ? (
             <Skeleton className="h-32 w-full" />
+          ) : alerts?.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <EmptyState
+                  icon={Inbox}
+                  title="Aucune alerte"
+                  description="Aucune alerte n'a été générée pour le moment."
+                  action={{
+                    label: 'Vérifier les alertes',
+                    onClick: () => createAlerts.mutate(),
+                  }}
+                />
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid gap-4">
               {[...unreadAlerts, ...readAlerts].map((alert: any) => {

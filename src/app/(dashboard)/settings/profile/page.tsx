@@ -1,32 +1,125 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useUserContext } from '@/components/providers/user-provider';
-import { ArrowLeft, User, Camera, Mail, Phone, Save, Building2, Shield } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  User, 
+  Camera, 
+  Mail, 
+  Phone, 
+  Save, 
+  Building2, 
+  Shield, 
+  Trash2, 
+  AlertTriangle,
+  X,
+  AlertCircle
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { updateUser } from '@/actions/users';
+import { deleteAccount } from '@/actions/account/delete-account';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function ProfilePage() {
   const { user } = useUserContext();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [formData, setFormData] = useState({
-    firstName: user?.first_name || 'Admin',
-    lastName: user?.last_name || 'User',
-    email: user?.email || 'gebus.stephane@gmail.com',
-    phone: '07 68 48 85 02',
-    jobTitle: 'Directeur',
-    department: 'Management',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    jobTitle: '',
+    department: ''
   });
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.first_name || '',
+        lastName: user.last_name || '',
+        email: user.email || '',
+        phone: user?.phone || '', // Le champ phone existe maintenant dans le type User
+        jobTitle: '', // Champ non présent dans SQL
+        department: '' // Champ non présent dans SQL
+      });
+    }
+  }, [user]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.id) return;
     setIsLoading(true);
-    // TODO: Save profile
-    setTimeout(() => setIsLoading(false), 1000);
+    try {
+      const result = await updateUser(
+        {
+          user_id: user.id,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+        },
+        user.id
+      );
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success('Profil mis à jour avec succès');
+        router.push('/settings?refresh=1');
+        
+      }
+    } catch (err) {
+      toast.error('Erreur lors de la mise à jour du profil');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user?.id) return;
+    
+    if (deleteConfirmation !== 'SUPPRIMER') {
+      toast.error('Vous devez saisir SUPPRIMER pour confirmer');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const result = await deleteAccount({ 
+        confirmation: 'SUPPRIMER',
+        reason: 'Demande utilisateur via interface web'
+      });
+
+      if (result?.success) {
+        toast.success(result.message || 'Compte supprimé avec succès');
+        // Déconnexion via API puis redirection
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/login?deleted=true';
+      } else {
+        throw new Error(result.error || 'Erreur lors de la suppression');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur lors de la suppression du compte');
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -129,7 +222,8 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Temporarily removing unused fields */}
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
@@ -159,6 +253,38 @@ export default function ProfilePage() {
               <Input value={user?.role || 'ADMIN'} disabled className="bg-slate-50" />
             </div>
           </CardContent>
+        </Card> */}
+
+        {/* Section Danger - Suppression de compte */}
+        <Card className="border-red-500/20 bg-red-500/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-400">
+              <AlertTriangle className="h-5 w-5" />
+              Zone de danger
+            </CardTitle>
+            <CardDescription className="text-red-300/70">
+              Ces actions sont irréversibles. Procédez avec prudence.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-[#0f172a]/50 rounded-lg border border-red-500/10">
+              <div className="space-y-1">
+                <h4 className="font-medium text-red-200">Supprimer mon compte</h4>
+                <p className="text-sm text-red-300/60">
+                  Supprime définitivement votre compte et toutes vos données. 
+                  Cette action est irréversible (Article 17 RGPD).
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                onClick={() => setShowDeleteDialog(true)}
+                className="flex-shrink-0"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Supprimer
+              </Button>
+            </div>
+          </CardContent>
         </Card>
 
         <div className="flex gap-4">
@@ -171,6 +297,81 @@ export default function ProfilePage() {
           </Button>
         </div>
       </form>
+
+      {/* Dialog de confirmation de suppression */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-md border-red-500/20">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-400">
+              <AlertTriangle className="h-5 w-5" />
+              Confirmer la suppression
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Cette action supprimera définitivement votre compte, votre entreprise, 
+              tous vos véhicules, chauffeurs et données associées. Cette action est 
+              <strong className="text-red-400"> irréversible</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <Alert className="bg-red-500/10 border-red-500/20">
+              <AlertCircle className="h-4 w-4 text-red-400" />
+              <AlertDescription className="text-red-200 text-sm">
+                <strong>Attention :</strong> Votre abonnement Stripe sera immédiatement annulé. 
+                Aucun remboursement ne sera effectué pour la période en cours.
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirm-delete" className="text-sm font-medium text-slate-300">
+                Pour confirmer, saisissez <span className="text-red-400 font-mono">SUPPRIMER</span> :
+              </Label>
+              <Input
+                id="confirm-delete"
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+                placeholder="SUPPRIMER"
+                className="border-red-500/30 focus:border-red-500/50"
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="text-xs text-slate-500 space-y-1">
+              <p>Données qui seront supprimées :</p>
+              <ul className="list-disc list-inside ml-2 space-y-0.5">
+                <li>Profil utilisateur et authentification</li>
+                <li>Informations de l&apos;entreprise</li>
+                <li>Véhicules, chauffeurs, maintenances</li>
+                <li>Documents et fichiers associés</li>
+                <li>Historique et logs d&apos;activité</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setDeleteConfirmation('');
+              }}
+              disabled={isDeleting}
+            >
+              <X className="h-4 w-4 mr-2" />
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deleteConfirmation !== 'SUPPRIMER' || isDeleting}
+              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {isDeleting ? 'Suppression...' : 'Supprimer définitivement'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

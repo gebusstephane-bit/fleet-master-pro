@@ -43,30 +43,35 @@ export function fileDateStamp(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Status label mappings */
+/** Status label mappings - Standard MAJUSCULE_UNDERSCORE */
 export const VEHICLE_STATUS_LABELS: Record<string, string> = {
-  active: 'Actif',
   ACTIF: 'Actif',
-  inactive: 'Inactif',
   INACTIF: 'Inactif',
-  maintenance: 'Maintenance',
-  EN_MAINTENANCE: 'Maintenance',
-  retired: 'Hors service',
-  HORS_SERVICE: 'Hors service',
+  EN_MAINTENANCE: 'En maintenance',
+  ARCHIVE: 'Archivé',
 };
 
 export const DRIVER_STATUS_LABELS: Record<string, string> = {
   active: 'Actif',
   inactive: 'Inactif',
   on_leave: 'En congé',
+  suspended: 'Suspendu',
   terminated: 'Terminé',
 };
 
 export const MAINTENANCE_STATUS_LABELS: Record<string, string> = {
+  // Generic statuses
   PENDING: 'En attente',
   IN_PROGRESS: 'En cours',
   COMPLETED: 'Terminé',
   CANCELLED: 'Annulé',
+  // Workflow statuses (maintenance_records DB values)
+  DEMANDE_CREEE: 'Demande créée',
+  VALIDEE_DIRECTEUR: 'Validée directeur',
+  RDV_PRIS: 'RDV pris',
+  EN_COURS: 'En cours',
+  TERMINEE: 'Terminée',
+  REFUSEE: 'Refusée',
 };
 
 export const VEHICLE_TYPE_LABELS: Record<string, string> = {

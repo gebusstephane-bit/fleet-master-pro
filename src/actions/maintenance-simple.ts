@@ -1,10 +1,11 @@
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { logger } from '@/lib/logger';
 
-interface CreateMaintenanceData {
+import { logger } from '@/lib/logger';
+import { createClient } from '@/lib/supabase/server';
+
+interface ICreateMaintenanceData {
   vehicleId: string;
   type: 'PREVENTIVE' | 'CORRECTIVE' | 'PNEUMATIQUE' | 'CARROSSERIE';
   description: string;
@@ -14,12 +15,12 @@ interface CreateMaintenanceData {
   notes?: string;
 }
 
-export async function createMaintenanceSimple(data: CreateMaintenanceData, userId: string, companyId: string) {
+export async function createMaintenanceSimple(data: ICreateMaintenanceData, userId: string, companyId: string) {
   try {
-    const adminClient = createAdminClient();
+    const supabase = await createClient();
     
     // Vérifier le véhicule
-    const { data: vehicle, error: vehicleError } = await adminClient
+    const { data: vehicle, error: vehicleError } = await supabase
       .from('vehicles')
       .select('id, registration_number, brand, model, company_id')
       .eq('id', data.vehicleId)
@@ -31,7 +32,7 @@ export async function createMaintenanceSimple(data: CreateMaintenanceData, userI
     }
     
     // Créer la maintenance directement avec admin (bypass triggers)
-    const { data: maintenance, error } = await adminClient
+    const { data: maintenance, error } = await supabase
       .from('maintenance_records')
       .insert({
         vehicle_id: data.vehicleId,
@@ -56,7 +57,7 @@ export async function createMaintenanceSimple(data: CreateMaintenanceData, userI
     
     // Logger l'activité manuellement
     try {
-      await adminClient.from('activity_logs').insert({
+      await supabase.from('activity_logs').insert({
         company_id: companyId,
         user_id: userId,
         action_type: 'MAINTENANCE_CREATED',
@@ -64,17 +65,17 @@ export async function createMaintenanceSimple(data: CreateMaintenanceData, userI
         entity_id: maintenance.id,
         entity_name: vehicle.registration_number,
         description: `Maintenance créée : ${data.type}`,
-      } as any);
-    } catch (logError: any) {
+      });
+    } catch (logError) {
       // On ignore l'erreur de logging
-      logger.warn('Activity log failed', logError);
+      logger.warn('Activity log failed', { error: logError instanceof Error ? logError.message : String(logError) });
     }
     
     revalidatePath('/maintenance');
     return { success: true, data: maintenance };
     
-  } catch (error: any) {
-    logger.error('createMaintenanceSimple: Exception', error);
-    return { success: false, error: error.message };
+  } catch (error) {
+    logger.error('createMaintenanceSimple: Exception', error instanceof Error ? error : new Error(String(error)));
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }

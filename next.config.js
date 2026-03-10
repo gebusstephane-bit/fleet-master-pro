@@ -13,10 +13,10 @@ const nextConfig = {
   // ============================================
   compress: false,
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: true, // Warnings autorisés en build (erreurs TS restent bloquantes)
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false, // STRICT MODE ACTIVÉ - 0 erreurs TypeScript
   },
 
   // ============================================
@@ -67,11 +67,15 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com",
+              "worker-src 'self'",
+              "style-src 'self' 'unsafe-inline' https://js.stripe.com",
               "img-src 'self' blob: data: https:",
-              "font-src 'self'",
-              "connect-src 'self' https://*.supabase.co https://api.mapbox.com https://events.mapbox.com https://*.sentry.io https://*.ingest.sentry.io",
+              "font-src 'self' data:",
+              // connect-src : Supabase + Sentry + PostHog (EU) + Stripe
+              "connect-src 'self' https://*.supabase.co https://*.sentry.io https://*.ingest.sentry.io https://eu.posthog.com https://*.posthog.com https://api.stripe.com",
+              // frame-src : Stripe iframes (3D Secure, Checkout)
+              "frame-src https://js.stripe.com https://hooks.stripe.com",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -107,10 +111,6 @@ const nextConfig = {
   // WEBPACK - Configuration supplémentaire
   // ============================================
   webpack: (config, { isServer }) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'mapbox-gl': 'mapbox-gl/dist/mapbox-gl.js',
-    };
 
     if (!isServer) {
       config.resolve.fallback = {

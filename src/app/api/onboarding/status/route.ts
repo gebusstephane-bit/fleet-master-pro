@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
 export const dynamic = 'force-dynamic';
@@ -48,7 +49,7 @@ export async function GET() {
       companyName: company?.name,
     });
   } catch (error) {
-    console.error("Error getting onboarding status:", error);
+    logger.error("Error getting onboarding status:", error);
     return NextResponse.json(
       { error: "Erreur serveur" },
       { status: 500 }

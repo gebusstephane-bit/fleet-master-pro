@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
       .order('priority', { ascending: true });
 
     if (error) {
-      console.error('[Protocols] Erreur:', error);
+      logger.error('[Protocols] Erreur:', error);
       return NextResponse.json(
         { error: 'Erreur lors de la récupération' },
         { status: 500 }
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, protocols: protocols || [] });
 
   } catch (error: any) {
-    console.error('[Protocols] Exception:', error);
+    logger.error('[Protocols] Exception:', error);
     return NextResponse.json(
       { error: 'Erreur serveur: ' + error.message },
       { status: 500 }
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('[Protocols] Erreur création:', error);
+      logger.error('[Protocols] Erreur création:', error);
       return NextResponse.json(
         { error: 'Erreur lors de la création: ' + error.message },
         { status: 500 }
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, protocol });
 
   } catch (error: any) {
-    console.error('[Protocols] Exception:', error);
+    logger.error('[Protocols] Exception:', error);
     return NextResponse.json(
       { error: 'Erreur serveur: ' + error.message },
       { status: 500 }

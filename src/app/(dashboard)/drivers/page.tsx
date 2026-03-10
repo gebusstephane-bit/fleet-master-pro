@@ -4,7 +4,8 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreHorizontal, Edit, Trash2, Users, Phone, Mail, Calendar, UserCheck, UserX, Award } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash2, Users, Phone, Mail, Calendar, UserCheck, UserX, Award, Upload } from 'lucide-react';
+import { ImportWizard } from '@/components/import/ImportWizard';
 import { GlassCard } from '@/components/ui/glass-card';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import { useDrivers, useDeleteDriver } from '@/hooks/use-drivers';
@@ -65,6 +66,7 @@ export default function DriversPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, string | null>>({
     status: null,
   });
+  const [importOpen, setImportOpen] = useState(false);
 
   // Filter drivers based on search and filters
   const filteredDrivers = useMemo(() => {
@@ -256,6 +258,14 @@ export default function DriversPage() {
         </div>
         <div className="flex items-center gap-2">
           <ExportButton type="drivers" count={filteredDrivers.length} />
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="gap-2 border-slate-600 text-slate-200 hover:bg-slate-800"
+          >
+            <Upload className="h-4 w-4" />
+            Importer
+          </Button>
           <Button asChild className="gap-2 bg-blue-600 hover:bg-blue-500">
             <Link href="/drivers/new">
               <Plus className="h-4 w-4" />
@@ -332,6 +342,9 @@ export default function DriversPage() {
         onFilterChange={(key, value) => setActiveFilters((prev) => ({ ...prev, [key]: value }))}
         onClearFilters={() => setActiveFilters({ status: null })}
       />
+
+      {/* Import Wizard */}
+      <ImportWizard type="drivers" open={importOpen} onClose={() => setImportOpen(false)} />
 
       {/* Table */}
       <GlassCard className="overflow-hidden">

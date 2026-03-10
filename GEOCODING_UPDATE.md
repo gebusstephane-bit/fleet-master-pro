@@ -23,7 +23,7 @@ Requête utilisateur
 
 ### 1. Clé Apify (déjà configurée)
 ```env
-APIFY_API_TOKEN=apify_api_N667F19mZHb9YYmeTwZpwmrC5cetft1k5XBa
+APIFY_API_TOKEN=your_apify_token_here
 ```
 
 ### 2. Installation du client

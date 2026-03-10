@@ -129,7 +129,7 @@ export default function BillingPage() {
           </div>
 
           {/* Actions */}
-          {!isUnlimited && subscription?.plan !== 'STARTER' && (
+          {!isUnlimited && (
             <div className="flex gap-3">
               <Button 
                 variant="outline" 

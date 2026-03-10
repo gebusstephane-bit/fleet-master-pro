@@ -53,7 +53,7 @@ export async function dispatchWebhook(
   const body = JSON.stringify(payload);
 
   const results = await Promise.allSettled(
-    (webhooks as Array<{ id: string; url: string; secret: string }>).map(
+    (webhooks as unknown as Array<{ id: string; url: string; secret: string }>).map(
       async (webhook) => {
         const signature = createHmac('sha256', webhook.secret)
           .update(body)

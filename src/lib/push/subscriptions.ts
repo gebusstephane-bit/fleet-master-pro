@@ -3,6 +3,7 @@
  * Toutes les opérations passent par le client admin (bypass RLS pour les envois server-side)
  */
 
+import { USER_ROLE } from '@/constants/enums';
 import { createAdminClient } from '@/lib/supabase/server';
 
 export interface PushSubscriptionRow {
@@ -99,7 +100,7 @@ export async function getCompanyAdminSubscriptions(
     .from('push_subscriptions')
     .select('*, profiles!inner(company_id, role)')
     .eq('profiles.company_id', companyId)
-    .in('profiles.role', ['ADMIN', 'DIRECTEUR']);
+    .in('profiles.role', [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR]);
 
   if (error) throw new Error(`[Push] company fetch failed: ${error.message}`);
   return (data ?? []) as PushSubscriptionRow[];

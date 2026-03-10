@@ -1,6 +1,7 @@
 /**
  * EmergencyContractCard - Carte Type A: Contrat 24/24 (Vert)
  * Affiche un contrat d'urgence avec numéro prioritaire
+ * Aligné Design System FleetMaster Pro
  */
 
 'use client';
@@ -40,26 +41,26 @@ export function EmergencyContractCard({ data, message }: EmergencyContractCardPr
   };
 
   return (
-    <Card className="border-green-500 shadow-lg">
-      {/* Header vert */}
-      <CardHeader className="bg-green-50 border-b border-green-200 pb-4">
+    <Card className="border-emerald-500/30 bg-[#0f172a]/60 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_20px_rgba(16,185,129,0.1)]">
+      {/* Header emerald */}
+      <CardHeader className="bg-emerald-500/10 border-b border-emerald-500/20 pb-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-600 rounded-lg">
-              <Clock className="w-6 h-6 text-white" />
+            <div className="p-2 bg-emerald-500/20 rounded-lg border border-emerald-500/30">
+              <Clock className="w-6 h-6 text-emerald-400" />
             </div>
             <div>
-              <h3 className="font-bold text-lg text-green-900">{data.name}</h3>
-              <Badge className="bg-green-100 text-green-800 border-green-300 mt-1">
+              <h3 className="font-bold text-lg text-foreground">{data.name}</h3>
+              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 mt-1">
                 {getServiceLabel(data.serviceType)}
               </Badge>
             </div>
           </div>
-          <CheckCircle className="w-6 h-6 text-green-600" />
+          <CheckCircle className="w-6 h-6 text-emerald-400" />
         </div>
         
         {message && (
-          <p className="text-green-800 text-sm mt-3 bg-green-100/50 p-2 rounded">
+          <p className="text-emerald-400 text-sm mt-3 bg-emerald-500/10 p-2 rounded border border-emerald-500/20">
             {message}
           </p>
         )}
@@ -67,14 +68,14 @@ export function EmergencyContractCard({ data, message }: EmergencyContractCardPr
 
       <CardContent className="p-6 space-y-4">
         {/* Numéro principal */}
-        <div className="bg-green-600 rounded-xl p-5 text-white">
-          <div className="text-green-100 text-sm mb-1">Numéro d'urgence</div>
+        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl p-5 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+          <div className="text-emerald-100 text-sm mb-1">Numéro d'urgence</div>
           <div className="flex items-center justify-between">
             <div className="text-3xl font-bold">{data.phone}</div>
             <Button 
               onClick={handleCall}
               size="lg"
-              className="bg-white text-green-700 hover:bg-green-50"
+              className="bg-white text-emerald-600 hover:bg-emerald-50"
             >
               <Phone className="w-5 h-5 mr-2" />
               Appeler
@@ -84,21 +85,21 @@ export function EmergencyContractCard({ data, message }: EmergencyContractCardPr
 
         {/* Référence contrat */}
         {data.contractRef && (
-          <div className="flex items-center gap-2 text-gray-600 bg-gray-50 p-3 rounded-lg">
-            <FileText className="w-5 h-5" />
+          <div className="flex items-center gap-2 text-muted-foreground bg-[#0f172a]/40 p-3 rounded-lg border border-cyan-500/20">
+            <FileText className="w-5 h-5 text-cyan-400" />
             <span className="text-sm">
-              Référence contrat : <strong>{data.contractRef}</strong>
+              Référence contrat : <strong className="text-foreground">{data.contractRef}</strong>
             </span>
           </div>
         )}
 
         {/* Instructions */}
         {data.instructions && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h4 className="font-semibold text-yellow-900 mb-2 flex items-center gap-2">
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+            <h4 className="font-semibold text-amber-400 mb-2 flex items-center gap-2">
               <span>📝</span> Instructions
             </h4>
-            <div className="text-sm text-yellow-800 whitespace-pre-line">
+            <div className="text-sm text-amber-400/90 whitespace-pre-line">
               {data.instructions}
             </div>
           </div>
@@ -107,13 +108,13 @@ export function EmergencyContractCard({ data, message }: EmergencyContractCardPr
         {/* Badges conditions */}
         <div className="flex flex-wrap gap-2">
           {data.forDistance && data.forDistance !== 'both' && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs border-cyan-500/30 text-cyan-400">
               <MapPin className="w-3 h-3 mr-1" />
               {data.forDistance === 'close' ? 'Moins de 50 km' : 'Plus de 50 km'}
             </Badge>
           )}
           {data.forImmobilized !== null && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs border-cyan-500/30 text-cyan-400">
               {data.forImmobilized ? 'Immobilisé uniquement' : 'Roulant uniquement'}
             </Badge>
           )}
