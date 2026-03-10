@@ -284,6 +284,11 @@ export const validateMaintenanceRequest = authActionClient
     );
     
     // 4. Email à l'agent de parc
+    // DEBUG TEMPORAIRE — à retirer après diagnostic
+    console.log('[EMAIL DEBUG step2] maintenance.requested_by:', maintenance.requested_by);
+    console.log('[EMAIL DEBUG step2] requesterData:', JSON.stringify(requesterData));
+    console.log('[EMAIL DEBUG step2] action:', parsedInput.action);
+
     if (parsedInput.action === 'validate') {
       await sendEmail({
         to: requesterData?.email || '',
