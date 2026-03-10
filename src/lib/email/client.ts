@@ -7,7 +7,8 @@ import { Resend } from 'resend';
 import { logger } from '@/lib/logger';
 
 const resendApiKey = process.env.RESEND_API_KEY;
-const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+// RESEND_FROM_EMAIL est la variable canonique — FROM_EMAIL conservé pour rétrocompatibilité
+const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.FROM_EMAIL || 'onboarding@resend.dev';
 const testEmail = process.env.RESEND_TEST_EMAIL; // Email vérifié pour les tests
 
 let resend: Resend | null = null;
