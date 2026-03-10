@@ -63,6 +63,17 @@ function sanitizeRecipients(to: string | string[]): string | string[] {
 }
 
 export async function sendEmail(options: EmailOptions, forceSimulate: boolean = false) {
+  // Guard : destinataire vide ou invalide → log et abandon silencieux
+  const toList = Array.isArray(options.to) ? options.to : [options.to];
+  const validTo = toList.filter(e => e && e.includes('@'));
+  if (validTo.length === 0) {
+    logger.error('[EMAIL] Destinataire vide ou invalide — email non envoyé', {
+      to: options.to,
+      subject: options.subject,
+    });
+    return { success: false, error: 'Destinataire email invalide' };
+  }
+
   // Mode simulation complet (pour tester sans Resend)
   if (!resend || forceSimulate) {
     logger.info('[SIMULATION] Email');

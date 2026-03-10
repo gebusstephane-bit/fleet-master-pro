@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { USER_ROLE } from '@/constants/enums';
 import { sendEmail } from '@/lib/email';
 import { authActionClient } from '@/lib/safe-action';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import type { Database } from '@/types/supabase';
 import { recalculatePredictionsForVehicle } from '@/lib/maintenance-predictor';
 import { logger } from '@/lib/logger';
@@ -228,8 +228,15 @@ export const validateMaintenanceRequest = authActionClient
     if (maintenance) {
       const { data: v } = await supabase.from('vehicles').select('registration_number, brand, model').eq('id', maintenance.vehicle_id).single();
       vehicleData = v;
-      const { data: r } = await supabase.from('profiles').select('email, first_name, last_name').eq('id', maintenance.requested_by!).single();
-      requesterData = r;
+      const adminClient = createAdminClient();
+      const { data: r } = await adminClient.from('profiles').select('email, first_name, last_name').eq('id', maintenance.requested_by!).single();
+      // Fallback vers auth.users si email absent du profil
+      if (r && !r.email) {
+        const { data: authUser } = await adminClient.auth.admin.getUserById(maintenance.requested_by!);
+        requesterData = { ...r, email: authUser?.user?.email || null };
+      } else {
+        requesterData = r;
+      }
     }
     
     // Maintenance query done
