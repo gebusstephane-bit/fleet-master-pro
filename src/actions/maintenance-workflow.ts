@@ -71,13 +71,13 @@ async function getUserCompanyData(userId: string) {
 }
 
 async function getCompanyDirectors(companyId: string) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('profiles')
     .select('id, email, first_name, last_name')
     .eq('company_id', companyId)
     .in('role', [USER_ROLE.ADMIN, USER_ROLE.DIRECTEUR]);
-  
+
   if (error) {return [];}
   return data || [];
 }
@@ -365,12 +365,18 @@ export const scheduleMaintenanceRDV = authActionClient
       .select('registration_number, brand, model')
       .eq('id', maintenance.vehicle_id)
       .single();
-    const { data: requesterData } = await supabase
-      .from('profiles')
-      .select('email, first_name, last_name')
-      .eq('id', maintenance.requested_by!)
-      .single();
-    
+    const adminClient = createAdminClient();
+    let requesterData: { email: string | null; first_name: string | null; last_name: string | null } | null = null;
+    {
+      const { data: r } = await adminClient.from('profiles').select('email, first_name, last_name').eq('id', maintenance.requested_by!).single();
+      if (r && !r.email) {
+        const { data: authUser } = await adminClient.auth.admin.getUserById(maintenance.requested_by!);
+        requesterData = { ...r, email: authUser?.user?.email || null };
+      } else {
+        requesterData = r;
+      }
+    }
+
     // 2. Calculer les heures de fin
     const [hours, minutes] = parsedInput.rdvTime.split(':').map(Number);
     const startDateTime = new Date(parsedInput.rdvDate);
@@ -504,12 +510,18 @@ export const completeMaintenance = authActionClient
       .select('registration_number, brand, model')
       .eq('id', maintenance.vehicle_id)
       .single();
-    const { data: requesterData } = await supabase
-      .from('profiles')
-      .select('email, first_name, last_name')
-      .eq('id', maintenance.requested_by!)
-      .single();
-    
+    const adminClientComplete = createAdminClient();
+    let requesterData: { email: string | null; first_name: string | null; last_name: string | null } | null = null;
+    {
+      const { data: r } = await adminClientComplete.from('profiles').select('email, first_name, last_name').eq('id', maintenance.requested_by!).single();
+      if (r && !r.email) {
+        const { data: authUser } = await adminClientComplete.auth.admin.getUserById(maintenance.requested_by!);
+        requesterData = { ...r, email: authUser?.user?.email || null };
+      } else {
+        requesterData = r;
+      }
+    }
+
     // 1. Mettre à jour la maintenance
     const { data: updated } = await supabase
       .from('maintenance_records')
