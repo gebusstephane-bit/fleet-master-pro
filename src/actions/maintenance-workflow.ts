@@ -283,35 +283,48 @@ export const validateMaintenanceRequest = authActionClient
       parsedInput.notes
     );
     
-    // 4. Email à l'agent de parc
-    // DEBUG TEMPORAIRE — à retirer après diagnostic
-    console.log('[EMAIL DEBUG step2] maintenance.requested_by:', maintenance.requested_by);
-    console.log('[EMAIL DEBUG step2] requesterData:', JSON.stringify(requesterData));
-    console.log('[EMAIL DEBUG step2] action:', parsedInput.action);
-
+    // 4. Email à l'agent de parc + tous les agents de parc de la company
     if (parsedInput.action === 'validate') {
-      await sendEmail({
-        to: requesterData?.email || '',
-        subject: `✅ Demande validée - Prenez RDV pour ${vehicleData?.registration_number}`,
-        html: `
+      const adminClientStep2 = createAdminClient();
+      const { data: agentsDeParc } = await adminClientStep2
+        .from('profiles')
+        .select('id, email, first_name, last_name')
+        .eq('company_id', maintenance.company_id)
+        .eq('role', USER_ROLE.AGENT_DE_PARC)
+        .eq('is_active', true);
+
+      // Destinataires : requester (requested_by) + tous les agents de parc (dédupliqués)
+      const step2Recipients = [requesterData, ...(agentsDeParc || [])].filter(Boolean);
+      const seenEmails2 = new Set<string>();
+      const step2Deduped = step2Recipients.filter(r => {
+        if (!r?.email) return false;
+        if (seenEmails2.has(r.email)) return false;
+        seenEmails2.add(r.email);
+        return true;
+      });
+
+      const validateHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #10b981;">Votre demande a été validée</h2>
-            
             <p>Le directeur a validé l'intervention pour <strong>${vehicleData?.registration_number}</strong>.</p>
-            
             <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
               <p style="margin: 0;"><strong>Prochaine étape :</strong> Prenez rendez-vous avec un garage.</p>
             </div>
-            
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.NEXT_PUBLIC_APP_URL}/maintenance/${maintenance.id}/schedule" 
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/maintenance/${maintenance.id}/schedule"
                  style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                 📅 Prendre RDV
               </a>
             </div>
-          </div>
-        `,
-      });
+          </div>`;
+
+      for (const r of step2Deduped) {
+        await sendEmail({
+          to: r!.email!,
+          subject: `✅ Demande validée - Prenez RDV pour ${vehicleData?.registration_number}`,
+          html: validateHtml,
+        });
+      }
     } else {
       // Email refus
       await sendEmail({
@@ -438,20 +451,21 @@ export const scheduleMaintenanceRDV = authActionClient
     );
     
     // 6. Emails de confirmation (ADMIN + DIRECTEUR + AGENT_DE_PARC + EXPLOITANT)
+    const adminClientStep3 = createAdminClient();
     const directors = await getCompanyDirectors(ctx.user.company_id);
-    const { data: exploitants } = await supabase
-      .from('profiles')
-      .select('id, email, first_name, last_name')
-      .eq('company_id', ctx.user.company_id)
-      .eq('role', USER_ROLE.EXPLOITANT);
-    const recipients = [...directors, ...(exploitants || []), requesterData];
+    const [{ data: exploitants }, { data: agentsDeParc3 }] = await Promise.all([
+      adminClientStep3.from('profiles').select('id, email, first_name, last_name').eq('company_id', ctx.user.company_id).eq('role', USER_ROLE.EXPLOITANT).eq('is_active', true),
+      adminClientStep3.from('profiles').select('id, email, first_name, last_name').eq('company_id', ctx.user.company_id).eq('role', USER_ROLE.AGENT_DE_PARC).eq('is_active', true),
+    ]);
 
-    // DEBUG TEMPORAIRE — à retirer après diagnostic
-    console.log('[EMAIL DEBUG] maintenance.requested_by:', maintenance.requested_by);
-    console.log('[EMAIL DEBUG] requesterData:', JSON.stringify(requesterData));
-    console.log('[EMAIL DEBUG] directors:', JSON.stringify(directors.map(d => ({ email: d.email, role: 'ADMIN/DIR' }))));
-    console.log('[EMAIL DEBUG] exploitants:', JSON.stringify((exploitants || []).map(e => ({ email: e.email }))));
-    console.log('[EMAIL DEBUG] recipients final:', JSON.stringify(recipients.map(r => r?.email)));
+    const rawRecipients = [...directors, ...(exploitants || []), ...(agentsDeParc3 || []), requesterData];
+    const seenEmails3 = new Set<string>();
+    const recipients = rawRecipients.filter(r => {
+      if (!r?.email) return false;
+      if (seenEmails3.has(r.email)) return false;
+      seenEmails3.add(r.email);
+      return true;
+    });
 
     const formattedDate = format(new Date(parsedInput.rdvDate), 'EEEE d MMMM yyyy', { locale: fr });
 
