@@ -13,6 +13,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { callAI, type AIMessage } from '@/lib/ai/openai-client';
+import * as Sentry from '@sentry/nextjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,7 +110,20 @@ export async function POST(request: NextRequest) {
       vehicle
     );
 
-    // 6. LOG HISTORIQUE (optionnel)
+    // 5b. DIAGNOSTIC IA (non-bloquant — Promise.race avec timeout 5s)
+    const aiDiagnostic = await getAIDiagnostic(
+      breakdownType,
+      vehicleState,
+      vehicle,
+      adminClient
+    );
+
+    // Enrichir le résultat avec le diagnostic IA (si disponible)
+    const enrichedResult = aiDiagnostic
+      ? { ...result, ai_diagnostic: aiDiagnostic }
+      : result;
+
+    // 6. LOG HISTORIQUE (optionnel — pas de stockage du diagnostic IA, RGPD)
     try {
       await adminClient.from('sos_history').insert({
         user_id: user.id,
@@ -125,7 +140,7 @@ export async function POST(request: NextRequest) {
       logger.error('[SOS V4] Erreur log historique', { error: e instanceof Error ? e.message : String(e) });
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(enrichedResult);
 
   } catch (error: any) {
     logger.error('[SOS V4] Erreur', { error: error instanceof Error ? error.message : String(error) });
@@ -416,4 +431,109 @@ function formatProvider(provider: any) {
     maxDistance: provider.max_distance_km,
     has24h: !!provider.phone_24h,
   };
+}
+
+// ==========================================
+// DIAGNOSTIC IA (non-bloquant)
+// ==========================================
+
+const SOS_AI_SYSTEM_PROMPT = `Tu es un expert mécanique automobile. Analyse la panne décrite et génère :
+1. Un diagnostic probable court (1 phrase max)
+2. 3 instructions concrètes et sécurisées pour le chauffeur (verbes d'action)
+3. 1-2 choses à NE PAS faire (sécurité)
+4. La sévérité : bloquant/roulable/urgent
+Réponds UNIQUEMENT en JSON valide, sans markdown, sans explication.
+Priorité absolue à la sécurité du chauffeur.`;
+
+interface SOSAIDiagnostic {
+  diagnostic_probable: string;
+  instructions_chauffeur: string[];
+  ne_pas_faire: string[];
+  severite: 'bloquant' | 'roulable' | 'urgent';
+}
+
+const BREAKDOWN_LABELS: Record<string, string> = {
+  pneu: 'Crevaison / pneu crevé',
+  mecanique: 'Panne mécanique (moteur, transmission)',
+  frigo: 'Groupe frigorifique en panne',
+  hayon: 'Hayon élévateur défaillant',
+  accident: 'Accident / choc',
+};
+
+/**
+ * Appelle l'IA pour un diagnostic SOS.
+ * Promise.race avec timeout 5s — retourne null si timeout ou erreur.
+ * Aucun stockage en BDD (RGPD).
+ */
+async function getAIDiagnostic(
+  breakdownType: BreakdownType,
+  vehicleState: VehicleState,
+  vehicle: any,
+  adminClient: any
+): Promise<SOSAIDiagnostic | null> {
+  try {
+    // Récupérer la dernière maintenance (optionnel, best-effort)
+    let lastMaintenance: string | null = null;
+    try {
+      const { data: maint } = await adminClient
+        .from('maintenance_records')
+        .select('created_at')
+        .eq('vehicle_id', vehicle.id)
+        .eq('status', 'TERMINEE')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (maint?.created_at) {
+        lastMaintenance = new Date(maint.created_at).toLocaleDateString('fr-FR');
+      }
+    } catch {
+      // Non-bloquant
+    }
+
+    const userPrompt = `Type de panne : ${BREAKDOWN_LABELS[breakdownType] || breakdownType}
+Type véhicule : ${vehicle.type || 'inconnu'} (${vehicle.brand} ${vehicle.model})
+Kilométrage : ${vehicle.mileage || 'inconnu'}
+État : ${vehicleState === 'immobilized' ? 'immobilisé' : 'roulant'}${lastMaintenance ? `\nDernière maintenance : ${lastMaintenance}` : ''}`;
+
+    const messages: AIMessage[] = [
+      { role: 'system', content: SOS_AI_SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ];
+
+    // Promise.race : callAI vs timeout 5s
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5_000));
+    const aiResult = await Promise.race([
+      callAI(messages, 200),
+      timeoutPromise,
+    ]);
+
+    if (!aiResult) return null;
+
+    // Parse JSON
+    const parsed = JSON.parse(aiResult) as SOSAIDiagnostic;
+
+    // Validate shape
+    if (
+      typeof parsed.diagnostic_probable !== 'string' ||
+      !Array.isArray(parsed.instructions_chauffeur) ||
+      !Array.isArray(parsed.ne_pas_faire) ||
+      !['bloquant', 'roulable', 'urgent'].includes(parsed.severite)
+    ) {
+      Sentry.captureMessage('[SOS AI] Invalid JSON shape from OpenAI', {
+        level: 'warning',
+        extra: { raw: aiResult.substring(0, 300) },
+      });
+      return null;
+    }
+
+    return parsed;
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { module: 'sos_ai_diagnostic' },
+    });
+    logger.error('[SOS AI] Diagnostic failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
 }

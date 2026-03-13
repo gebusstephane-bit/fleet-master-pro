@@ -25,6 +25,7 @@ import { PaginatedDataTable, Column } from '@/components/ui/paginated-data-table
 import { EmptyState } from '@/components/ui/data-table';
 import { StatsGridSkeleton, TableSkeleton, Skeleton } from '@/components/ui/skeletons';
 import { ExportButton } from '@/components/export/export-button';
+import { DriverScoreBadge } from '@/components/drivers/DriverScoreBadge';
 
 interface Driver {
   id: string;
@@ -37,6 +38,7 @@ interface Driver {
   license_type: string;
   license_expiry: string | null;
   safety_score: number | null;
+  ai_score: { score: number; resume: string | null } | null;
   vehicles?: {
     registration_number: string;
   };
@@ -115,9 +117,12 @@ export default function DriversPage() {
             {driver.last_name?.[0]}
           </div>
           <div>
-            <p className="font-medium text-white">
-              {driver.first_name} {driver.last_name}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-white">
+                {driver.first_name} {driver.last_name}
+              </p>
+              <DriverScoreBadge score={driver.ai_score?.score} resume={driver.ai_score?.resume} />
+            </div>
             <p className="text-xs text-slate-500">Permis {driver.license_type || 'B'}</p>
           </div>
         </div>

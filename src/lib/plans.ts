@@ -8,11 +8,12 @@
 // ============================================
 
 export type PlanType = 'ESSENTIAL' | 'PRO' | 'UNLIMITED';
-export type PlanFeature = 
-  | 'api_access' 
-  | 'ai_assistant' 
-  | 'webhooks' 
-  | 'advanced_reports' 
+export type PlanFeature =
+  | 'api_access'
+  | 'ai_assistant'
+  | 'ai_briefing'
+  | 'webhooks'
+  | 'advanced_reports'
   | 'compliance_basic'
   | 'compliance_advanced'
   | 'priority_support'
@@ -73,12 +74,13 @@ export const PLAN_PRICES: Record<PlanType, { monthly: number; yearly: number }> 
  */
 export const PLAN_FEATURES: Record<PlanType, PlanFeature[]> = {
   ESSENTIAL: ['compliance_basic'],
-  PRO: ['compliance_basic', 'webhooks', 'advanced_reports', 'priority_support'],
+  PRO: ['compliance_basic', 'ai_briefing', 'webhooks', 'advanced_reports', 'priority_support'],
   UNLIMITED: [
-    'compliance_basic', 
-    'compliance_advanced', 
-    'api_access', 
-    'ai_assistant', 
+    'compliance_basic',
+    'compliance_advanced',
+    'api_access',
+    'ai_assistant',
+    'ai_briefing',
     'webhooks', 
     'advanced_reports', 
     'priority_support', 

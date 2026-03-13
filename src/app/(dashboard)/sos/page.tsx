@@ -12,6 +12,7 @@ import { VehicleSelect } from '@/components/sos/VehicleSelect';
 import { EmergencyContractCard } from '@/components/sos/v4/EmergencyContractCard';
 import { InsuranceCard } from '@/components/sos/v4/InsuranceCard';
 import { GarageCard } from '@/components/sos/v4/GarageCard';
+import { AIDiagnostic } from '@/components/sos/AIDiagnostic';
 
 interface Vehicle {
   id: string;
@@ -307,6 +308,7 @@ export default function SOSPage() {
       {result && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-center text-foreground">Solution recommandée</h2>
+          {result.ai_diagnostic && <AIDiagnostic diagnostic={result.ai_diagnostic} />}
           {renderResult()}
         </div>
       )}

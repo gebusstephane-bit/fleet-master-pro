@@ -18,6 +18,10 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { CriticalVehiclesWidget } from "@/components/vehicles/ReliabilityScore";
+import { DailyBriefing } from "@/components/ai/DailyBriefing";
+import { CriticalFleetWidget } from "@/components/dashboard/CriticalFleetWidget";
+import { planHasFeature } from "@/lib/plans";
+import { Suspense } from "react";
 import { MaintenanceUrgenciesWidget } from "@/components/dashboard/MaintenanceUrgenciesWidget";
 import { IncidentStatsWidget } from "@/components/dashboard/IncidentStatsWidget";
 import { MaintenanceFleetOverview } from "@/components/dashboard/MaintenanceFleetOverview";
@@ -132,6 +136,22 @@ export default function DashboardPage() {
           Voici un aperçu de votre flotte aujourd&apos;hui
         </p>
       </motion.div>
+
+      {/* AI Daily Briefing */}
+      {user?.company_id && user?.companies?.plan && planHasFeature(user.companies.plan, 'ai_briefing') && (
+        <Suspense fallback={null}>
+          <motion.div variants={itemVariants}>
+            <DailyBriefing companyId={user.company_id} plan={user.companies.plan} />
+          </motion.div>
+        </Suspense>
+      )}
+
+      {/* Critical Fleet Widget — lecture BDD uniquement, 0 appel IA */}
+      {user?.company_id && user?.companies?.plan && (
+        <Suspense fallback={null}>
+          <CriticalFleetWidget companyId={user.company_id} plan={user.companies.plan as any} />
+        </Suspense>
+      )}
 
       {/* KPI Grid - 4 colonnes */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -69,6 +69,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { CriticalAlertBanner } from '@/components/vehicles/CriticalAlertBanner';
 import { RegulatoryTimelineCompact } from '@/components/vehicles/RegulatoryTimelineCompact';
 import { MaintenancePredictionsPanel } from '@/components/vehicles/MaintenancePredictionsPanel';
+import { VehicleScoreCard } from '@/components/vehicles/VehicleScoreCard';
 
 import { cn } from '@/lib/utils';
 
@@ -355,10 +356,18 @@ export default function VehicleDetailPage() {
       <MaintenancePredictionsPanel vehicleId={id} />
 
       {/* ═══════════════════════════════════════════════════════════════
-          ZONE 5 — BARRE WIDGETS : Score | Conducteur | QR Code
+          ZONE 5 — BARRE WIDGETS : Score IA | Score fiabilité | Conducteur | QR Code
           ═══════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Score de fiabilité (gauche) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Score IA Global (gauche) */}
+        <VehicleScoreCard
+          score={(vehicle as any).ai_global_score}
+          summary={(vehicle as any).ai_score_summary}
+          detail={(vehicle as any).ai_score_detail}
+          updatedAt={(vehicle as any).ai_score_updated_at}
+        />
+
+        {/* Score de fiabilité */}
         <ReliabilityScoreWidget vehicleId={id} />
         
         {/* Conducteur (centre) */}
