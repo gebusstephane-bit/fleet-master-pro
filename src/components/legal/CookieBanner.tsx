@@ -10,6 +10,7 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useCookieConsent } from '@/hooks/use-cookie-consent';
 import { Button } from '@/components/ui/button';
 import { Cookie, X, Shield, Info } from 'lucide-react';
@@ -17,10 +18,15 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function CookieBanner() {
+  const [mounted, setMounted] = useState(false);
   const { needsBanner, hasMadeChoice, acceptCookies, refuseCookies, isLoaded } = useCookieConsent();
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Ne pas afficher pendant le chargement ou si le choix est déjà fait
-  if (!isLoaded || hasMadeChoice) {
+  if (!mounted || !isLoaded || hasMadeChoice) {
     return null;
   }
 

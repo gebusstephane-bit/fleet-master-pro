@@ -171,7 +171,7 @@ export function RegulatoryAssistant({ plan = 'essential' }: RegulatoryAssistantP
         <SheetContent
           side="right"
           className={cn(
-            'flex flex-col p-0 gap-0 w-[480px] max-w-[95vw]',
+            'flex flex-col p-0 gap-0 w-full sm:w-[480px] max-w-[95vw]',
             'bg-[#0a0f1a] border-l border-cyan-500/15'
           )}
         >

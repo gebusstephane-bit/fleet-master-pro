@@ -139,7 +139,7 @@ export function FleetStatusChart({ vehicles }: FleetStatusChartProps) {
 
       {/* Résumé texte */}
       <div className="mt-4 pt-4 border-t border-slate-700/50">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {data.slice(0, 4).map((item) => (
             <div key={item.name} className="flex items-center gap-2">
               <div

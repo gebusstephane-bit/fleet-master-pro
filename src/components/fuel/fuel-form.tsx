@@ -156,7 +156,7 @@ export function FuelForm({ onSubmit, isSubmitting = false }: FuelFormProps) {
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="date"
@@ -197,7 +197,7 @@ export function FuelForm({ onSubmit, isSubmitting = false }: FuelFormProps) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="quantity_liters"
@@ -207,6 +207,7 @@ export function FuelForm({ onSubmit, isSubmitting = false }: FuelFormProps) {
                 <FormControl>
                   <Input
                     type="number"
+                    inputMode="decimal"
                     step="0.01"
                     {...field}
                     onChange={(e) => field.onChange(Number(e.target.value))}
@@ -226,6 +227,7 @@ export function FuelForm({ onSubmit, isSubmitting = false }: FuelFormProps) {
                 <FormControl>
                   <Input
                     type="number"
+                    inputMode="decimal"
                     step="0.01"
                     {...field}
                     onChange={(e) => field.onChange(Number(e.target.value))}
@@ -259,6 +261,7 @@ export function FuelForm({ onSubmit, isSubmitting = false }: FuelFormProps) {
               <FormControl>
                 <Input
                   type="number"
+                  inputMode="numeric"
                   min={selectedVehicle?.mileage || 0}
                   placeholder={selectedVehicle?.mileage ? `Min: ${selectedVehicle.mileage.toLocaleString('fr-FR')} km` : 'Ex: 125000'}
                   aria-invalid={form.formState.errors.mileage_at_fill ? 'true' : 'false'}

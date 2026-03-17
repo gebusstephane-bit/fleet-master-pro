@@ -1,7 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(ls -la /c/Users/gebus/Fleet-master-pro/src/app/\\\\\\(dashboard\\\\\\)/)",
+      "Read(//c/Users/gebus/Fleet-master-pro/**)",
+      "Bash(find /c/Users/gebus/Fleet-master-pro/src/app -name *billing* -o -name *pricing* -o -name *settings* -type f)",
+      "Bash(ls -la /c/Users/gebus/Fleet-master-pro/src/app/\\\\\\(dashboard\\\\\\)/settings/billing/)",
+      "Bash(ls -la /c/Users/gebus/Fleet-master-pro/src/app/\\\\\\(marketing\\\\\\)/pricing/)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(find /c/Users/gebus/Fleet-master-pro -name .env* -type f)",
+      "Bash(find /c/Users/gebus/Fleet-master-pro/src -type f \\\\\\(-name *scoring* -o -name *activity* -o -name *tenant* \\\\\\))",
+      "Bash(xargs basename:*)",
+      "Bash(ls -la \"/c/Users/gebus/Fleet-master-pro/src/app/\\(dashboard\\)/\")",
+      "Bash(ls -la \"/c/Users/gebus/Fleet-master-pro/src/app/\\(dashboard\\)/dashboard/\")",
+      "Bash(cat \"/c/Users/gebus/Fleet-master-pro/src/app/\\(dashboard\\)/dashboard/page.tsx\")",
+      "Bash(find c:UsersgebusFleet-master-pro -name tsconfig.json -o -name .eslintrc*)",
+      "Bash(grep -l \"catch\\\\|toast\\\\.error\\\\|try\\\\s*{\" /c/Users/gebus/Fleet-master-pro/src/app/\\\\\\(driver-app\\\\\\)/**/*.tsx)",
+      "Bash(git add:*)"
     ]
   }
 }
