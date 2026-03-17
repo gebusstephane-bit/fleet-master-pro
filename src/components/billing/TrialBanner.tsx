@@ -14,9 +14,14 @@ interface TrialBannerProps {
 const getStorageKey = (companyId: string) => `trial_banner_dismissed_${companyId}`;
 
 export function TrialBanner({ trialEndsAt, companyId }: TrialBannerProps) {
+  const [mounted, setMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [daysRemaining, setDaysRemaining] = useState(0);
   const [urgencyLevel, setUrgencyLevel] = useState<'low' | 'medium' | 'high'>('low');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Calculer les jours restants et le niveau d'urgence
   useEffect(() => {
@@ -78,8 +83,8 @@ export function TrialBanner({ trialEndsAt, companyId }: TrialBannerProps) {
     setIsVisible(false);
   }, [companyId]);
 
-  if (!isVisible || daysRemaining <= 0) {
-    return null;
+  if (!mounted || !isVisible || daysRemaining <= 0) {
+    return <div className="sticky top-0 z-50" />;
   }
 
   // Configuration selon le niveau d'urgence
