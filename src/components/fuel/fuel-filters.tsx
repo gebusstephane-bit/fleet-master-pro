@@ -165,7 +165,7 @@ export function FuelFiltersPanel({ filters, onFiltersChange, vehicles }: FuelFil
           {/* Type de carburant */}
           <div className="space-y-3">
             <Label>Type de carburant</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {FUEL_TYPES.map((type) => (
                 <div key={type} className="flex items-center space-x-2">
                   <Checkbox

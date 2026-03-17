@@ -17,22 +17,16 @@ const SidebarContext = createContext<SidebarContextType | null>(null);
 const STORAGE_KEY = "fleetmaster-sidebar-pinned";
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-  const [isPinned, setIsPinned] = useState(false);
+  const [isPinned, setIsPinned] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored !== null) {
       setIsPinned(stored === "true");
-    } else {
-      setIsPinned(true);
     }
   }, []);
-
-  if (!mounted) return null;
 
   const togglePin = useCallback(() => {
     setIsPinned((prev) => {

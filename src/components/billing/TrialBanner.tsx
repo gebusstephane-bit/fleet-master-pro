@@ -14,27 +14,20 @@ interface TrialBannerProps {
 const getStorageKey = (companyId: string) => `trial_banner_dismissed_${companyId}`;
 
 export function TrialBanner({ trialEndsAt, companyId }: TrialBannerProps) {
-  const [mounted, setMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [daysRemaining, setDaysRemaining] = useState(0);
   const [urgencyLevel, setUrgencyLevel] = useState<'low' | 'medium' | 'high'>('low');
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   // Calculer les jours restants et le niveau d'urgence
   useEffect(() => {
-    if (!mounted) return;
-
     const calculateRemaining = () => {
       const endDate = new Date(trialEndsAt);
       const now = new Date();
       const diffTime = endDate.getTime() - now.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
+      
       setDaysRemaining(Math.max(0, diffDays));
-
+      
       if (diffDays > 7) {
         setUrgencyLevel('low');
       } else if (diffDays >= 3) {
@@ -48,21 +41,19 @@ export function TrialBanner({ trialEndsAt, companyId }: TrialBannerProps) {
     // Recalculer toutes les minutes
     const interval = setInterval(calculateRemaining, 60000);
     return () => clearInterval(interval);
-  }, [trialEndsAt, mounted]);
+  }, [trialEndsAt]);
 
   // Vérifier si le bandeau a été fermé aujourd'hui
   useEffect(() => {
-    if (!mounted) return;
-
     const storageKey = getStorageKey(companyId);
     const dismissedData = localStorage.getItem(storageKey);
-
+    
     if (dismissedData) {
       try {
         const { date } = JSON.parse(dismissedData);
         const dismissedDate = new Date(date);
         const today = new Date();
-
+        
         // Réinitialiser si c'est un nouveau jour
         if (
           dismissedDate.getDate() !== today.getDate() ||
@@ -78,9 +69,7 @@ export function TrialBanner({ trialEndsAt, companyId }: TrialBannerProps) {
         setIsVisible(true);
       }
     }
-  }, [companyId, mounted]);
-
-  if (!mounted) return null;
+  }, [companyId]);
 
   // Fermer le bandeau (réapparaît demain)
   const handleDismiss = useCallback(() => {
