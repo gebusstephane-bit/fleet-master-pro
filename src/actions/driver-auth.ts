@@ -118,23 +118,7 @@ export const createDriverAccount = authActionClient
         throw new Error('Ce conducteur a déjà un accès à l\'application');
       }
       
-      // 4. Vérifier que l'email n'est pas déjà utilisé dans auth.users
-      const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
-      
-      if (listError) {
-        logger.error('[createDriverAccount] Erreur listUsers:', listError);
-        throw new Error('Erreur lors de la vérification de l\'email');
-      }
-      
-      const emailExists = existingUsers.users.some(u => 
-        u.email?.toLowerCase() === email.toLowerCase()
-      );
-      
-      if (emailExists) {
-        throw new Error('Cet email est déjà utilisé par un autre compte');
-      }
-      
-      // 5. Créer le compte Supabase Auth
+      // 4. Créer le compte Supabase Auth (Supabase gère le doublon d'email nativement)
       const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
         email: email.toLowerCase(),
         password,
@@ -153,6 +137,10 @@ export const createDriverAccount = authActionClient
       
       if (authError || !authData.user) {
         logger.error('[createDriverAccount] Erreur création auth:', authError);
+        // Supabase retourne "User already registered" si l'email existe
+        if (authError?.message?.includes('already registered')) {
+          throw new Error('Cet email est déjà utilisé par un autre compte');
+        }
         throw new Error(authError?.message || 'Erreur lors de la création du compte');
       }
       
