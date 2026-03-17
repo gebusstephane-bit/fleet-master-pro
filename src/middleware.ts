@@ -545,6 +545,7 @@ export async function middleware(request: NextRequest) {
     const isAllowedRoute = 
       pathname.startsWith('/driver-app') ||
       pathname.startsWith('/api/driver') ||
+      pathname.startsWith('/api/sos') ||
       pathname.startsWith('/auth') ||
       pathname === '/login' ||
       pathname === '/unauthorized' ||

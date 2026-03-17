@@ -124,8 +124,8 @@ export default function DriverIncidentPage() {
         .from('drivers')
         .select('id, current_vehicle_id, company_id')
         .eq('user_id', user?.id || '')
-        .single();
-      
+        .maybeSingle();
+
       if (!driver) {
         toast.error('Conducteur non trouvé');
         return;

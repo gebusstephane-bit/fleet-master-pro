@@ -52,8 +52,8 @@ export default function DriverFuelPage() {
         .from('drivers')
         .select('id, current_vehicle_id')
         .eq('user_id', user?.id || '')
-        .single();
-      
+        .maybeSingle();
+
       if (!driver?.current_vehicle_id) {
         toast.error('Aucun véhicule assigné');
         return;
@@ -64,7 +64,7 @@ export default function DriverFuelPage() {
         .from('vehicles')
         .select('company_id')
         .eq('id', driver.current_vehicle_id)
-        .single();
+        .maybeSingle();
       
       // Créer l'enregistrement de carburant
       const { error } = await supabase

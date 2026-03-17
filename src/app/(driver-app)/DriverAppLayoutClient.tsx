@@ -7,8 +7,8 @@ import {
   Home,
   ClipboardCheck,
   Fuel,
-  Bell,
   AlertTriangle,
+  Phone,
   LogOut,
   Download,
   X,
@@ -289,11 +289,10 @@ export function DriverAppLayoutClient({
             isActive={pathname.includes('/fuel')}
           />
           <NavItem
-            href="/driver-app/driver-app/alerts"
-            icon={Bell}
-            label="Alertes"
-            badge={unreadAlerts > 0 ? unreadAlerts : undefined}
-            isActive={pathname.includes('/alerts')}
+            href="/driver-app/driver-app/sos"
+            icon={Phone}
+            label="SOS"
+            isActive={pathname.includes('/sos')}
           />
           <NavItem
             href="/driver-app/driver-app/incident"

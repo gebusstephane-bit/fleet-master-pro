@@ -53,8 +53,12 @@ export default async function DriverAppLayout({
     .from('profiles')
     .select('id, role, company_id, first_name, last_name')
     .eq('id', user.id)
-    .single();
-  
+    .maybeSingle();
+
+  if (!profile) {
+    redirect('/login');
+  }
+
   // Récupérer les infos du conducteur
   const { data: driver } = await supabase
     .from('drivers')
