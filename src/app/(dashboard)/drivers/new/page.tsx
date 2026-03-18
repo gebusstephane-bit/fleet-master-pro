@@ -70,13 +70,19 @@ export default function NewDriverPage() {
           return;
         }
         
+        if (!user?.company_id) {
+          toast.error('Erreur : entreprise non trouvée. Reconnectez-vous.');
+          setIsCreatingAccount(false);
+          return;
+        }
+
         const accountResult = await createDriverAccount({
           driverId: newDriver.id,
           email: appAccess.email,
           password: appAccess.password,
           firstName: formData.first_name,
           lastName: formData.last_name,
-          companyId: user?.company_id || '',
+          companyId: user.company_id,
         });
         
         if (accountResult?.data?.success) {
