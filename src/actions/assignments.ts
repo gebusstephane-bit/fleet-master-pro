@@ -86,6 +86,13 @@ export const assignDriver = authActionClient
         .update({ assigned_driver_id: parsedInput.driver_id })
         .eq('id', parsedInput.vehicle_id)
         .eq('company_id', companyId);
+
+      // 4. Sync drivers.current_vehicle_id (driver-app en dépend)
+      await supabase
+        .from('drivers')
+        .update({ current_vehicle_id: parsedInput.vehicle_id })
+        .eq('id', parsedInput.driver_id)
+        .eq('company_id', companyId);
     }
 
     revalidatePath(`/vehicles/${parsedInput.vehicle_id}`);
@@ -132,6 +139,13 @@ export const unassignDriver = authActionClient
         .from('vehicles')
         .update({ assigned_driver_id: null })
         .eq('id', parsedInput.vehicle_id)
+        .eq('company_id', companyId);
+
+      // Sync drivers.current_vehicle_id (driver-app en dépend)
+      await supabase
+        .from('drivers')
+        .update({ current_vehicle_id: null })
+        .eq('id', assignment.driver_id)
         .eq('company_id', companyId);
     }
 
