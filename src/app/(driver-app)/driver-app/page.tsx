@@ -274,7 +274,7 @@ export default async function DriverHomePage() {
           className="h-auto py-5 bg-green-600 hover:bg-green-500 flex flex-col items-center gap-2 text-white"
           asChild
         >
-          <Link href="/driver-app/driver-app/checklist">
+          <Link href="/driver-app/checklist">
             <ListChecks className="h-7 w-7" />
             <span className="text-sm font-semibold">Checklist départ</span>
           </Link>
@@ -283,7 +283,7 @@ export default async function DriverHomePage() {
           className="h-auto py-5 bg-red-600 hover:bg-red-500 flex flex-col items-center gap-2 text-white"
           asChild
         >
-          <Link href="/driver-app/driver-app/incident/new">
+          <Link href="/driver-app/incident/new">
             <TriangleAlert className="h-7 w-7" />
             <span className="text-sm font-semibold">Signaler incident</span>
           </Link>
@@ -296,7 +296,7 @@ export default async function DriverHomePage() {
           className="h-auto py-4 bg-blue-600 hover:bg-blue-500 flex flex-col items-center gap-2"
           asChild
         >
-          <Link href="/driver-app/driver-app/inspection">
+          <Link href="/driver-app/inspection">
             <ClipboardCheck className="h-6 w-6" />
             <span>Nouvelle inspection</span>
           </Link>
@@ -305,7 +305,7 @@ export default async function DriverHomePage() {
           className="h-auto py-4 bg-emerald-600 hover:bg-emerald-500 flex flex-col items-center gap-2"
           asChild
         >
-          <Link href="/driver-app/driver-app/fuel">
+          <Link href="/driver-app/fuel">
             <Fuel className="h-6 w-6" />
             <span>Saisir un plein</span>
           </Link>

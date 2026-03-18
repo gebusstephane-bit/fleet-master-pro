@@ -274,28 +274,28 @@ export function DriverAppLayoutClient({
             href="/driver-app"
             icon={Home}
             label="Accueil"
-            isActive={pathname === '/driver-app' || pathname === '/driver-app/driver-app'}
+            isActive={pathname === '/driver-app'}
           />
           <NavItem
-            href="/driver-app/driver-app/inspection"
+            href="/driver-app/inspection"
             icon={ClipboardCheck}
             label="Inspection"
             isActive={pathname.includes('/inspection')}
           />
           <NavItem
-            href="/driver-app/driver-app/fuel"
+            href="/driver-app/fuel"
             icon={Fuel}
             label="Carburant"
             isActive={pathname.includes('/fuel')}
           />
           <NavItem
-            href="/driver-app/driver-app/sos"
+            href="/driver-app/sos"
             icon={Phone}
             label="SOS"
             isActive={pathname.includes('/sos')}
           />
           <NavItem
-            href="/driver-app/driver-app/incident"
+            href="/driver-app/incident"
             icon={AlertTriangle}
             label="Incident"
             isActive={pathname.includes('/incident')}
