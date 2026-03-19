@@ -105,8 +105,8 @@ export default function RegisterForm() {
         throw new Error(result.error || 'Erreur lors de l\'inscription');
       }
 
-      // Redirection vers onboarding après création réussie
-      router.push('/onboarding');
+      // Redirection vers dashboard après création réussie
+      router.push('/dashboard');
 
     } catch (err: any) {
       let errorMessage = err.message || 'Une erreur est survenue. Veuillez réessayer.';
