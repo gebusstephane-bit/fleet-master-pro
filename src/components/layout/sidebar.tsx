@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   TrendingUp,
   FileWarning,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
@@ -51,6 +52,7 @@ const navItems: NavItem[] = [
 ];
 
 const sosItem: NavItem = { label: "SOS Garage", href: "/sos", icon: Siren };
+const docsItem: NavItem = { label: "Documentation", href: "/docs", icon: BookOpen };
 
 interface SidebarProps {
   user?: {
@@ -360,6 +362,59 @@ export function Sidebar({ user }: SidebarProps) {
               {!isExpanded && (
                 <div className="absolute left-full ml-2 hidden rounded-lg bg-red-500/20 px-3 py-2 text-sm text-red-300 opacity-0 shadow-xl transition-opacity group-hover:block group-hover:opacity-100 z-50 whitespace-nowrap">
                   {sosItem.label}
+                </div>
+              )}
+            </Link>
+          );
+        })()}
+
+        {/* Documentation Item */}
+        {(() => {
+          const isActive = pathname.startsWith('/docs');
+          const Icon = docsItem.icon;
+          return (
+            <Link
+              key={docsItem.href}
+              href={docsItem.href}
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                "group relative flex items-center gap-3 rounded-xl px-3 py-3 transition-all duration-200",
+                isActive
+                  ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
+                  : "text-slate-400 hover:bg-[#0f172a]/80 hover:text-cyan-300"
+              )}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="docsActiveIndicator"
+                  className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-full bg-gradient-to-b from-cyan-400 to-blue-500 shadow-[0_0_15px_rgba(6,182,212,0.8)]"
+                />
+              )}
+              <div
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-lg transition-all shrink-0",
+                  isActive
+                    ? "bg-gradient-to-br from-cyan-500 to-blue-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+                    : "bg-transparent group-hover:bg-cyan-500/10 group-hover:text-cyan-400"
+                )}
+              >
+                <Icon className="h-5 w-5" strokeWidth={1.5} />
+              </div>
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="flex-1 text-sm font-medium truncate"
+                  >
+                    {docsItem.label}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              {!isExpanded && (
+                <div className="absolute left-full ml-2 hidden rounded-lg bg-[#27272a] px-3 py-2 text-sm text-white opacity-0 shadow-xl transition-opacity group-hover:block group-hover:opacity-100 z-50 whitespace-nowrap">
+                  {docsItem.label}
                 </div>
               )}
             </Link>
