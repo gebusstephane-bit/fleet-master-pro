@@ -118,7 +118,7 @@ export const unassignDriver = authActionClient
     // Récupérer l'affectation pour connaître is_primary
     const { data: assignment } = await supabase
       .from('vehicle_driver_assignments')
-      .select('is_primary')
+      .select('is_primary, driver_id')
       .eq('id', parsedInput.assignment_id)
       .eq('company_id', companyId)
       .single();
