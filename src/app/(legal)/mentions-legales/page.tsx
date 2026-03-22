@@ -38,14 +38,13 @@ export default function MentionsLegalesPage() {
               <h2 className="text-xl font-semibold text-white">1. Éditeur du site</h2>
             </div>
             <div className="space-y-2 pl-9">
-              <p><span className="text-slate-400">Raison sociale :</span> <strong className="text-white">GEBUS DIGITAL SAS</strong></p>
-              <p><span className="text-slate-400">Forme juridique :</span> Société par Actions Simplifiée (SAS)</p>
-              <p><span className="text-slate-400">Capital social :</span> 1000 €</p>
-              <p><span className="text-slate-400">Numéro SIRET :</span> 123 456 789 00012</p>
-              <p><span className="text-slate-400">Numéro TVA :</span> FR12 123 456 789</p>
-              <p><span className="text-slate-400">RCS :</span> COUME B 123 456 789</p>
-              <p><span className="text-slate-400">Siège social :</span> 11 Rue de verierres, 57220 COUME, France</p>
-              <p><span className="text-slate-400">Directeur de publication :</span> Stéphane GEBUS, Président</p>
+              <p><span className="text-slate-400">Raison sociale :</span> <strong className="text-white">EI Stéphane GEBUS</strong></p>
+              <p><span className="text-slate-400">Forme juridique :</span> Entreprise Individuelle (EI)</p>
+              <p><span className="text-slate-400">Capital social :</span> 1000 € </p>
+              <p><span className="text-slate-400">Numéro SIRET :</span> 10274184000015 </p>
+              <p><span className="text-slate-400">Numéro TVA :</span> TVA non applicable, art. 293 B du CGI </p>
+              <p><span className="text-slate-400">Siège social :</span> 11 Rue de verierres, 57220 COUME, France </p>
+              <p><span className="text-slate-400">Directeur de publication :</span> Stéphane GEBUS  </p>
             </div>
           </section>
 
@@ -69,7 +68,7 @@ export default function MentionsLegalesPage() {
               <p className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-slate-500" />
                 <span className="text-slate-400">Site web :</span>
-                <a href="https://fleetmaster.fr" className="text-cyan-400 hover:underline">https://fleetmaster.fr</a>
+                <a href="https://fleet-master.fr" className="text-cyan-400 hover:underline">https://fleet-master.fr</a>
               </p>
             </div>
           </section>
@@ -80,12 +79,12 @@ export default function MentionsLegalesPage() {
             <div className="space-y-4 pl-2">
               <div className="bg-[#0a0f1a] p-4 rounded-lg border-l-4 border-cyan-400">
                 <p className="font-semibold text-white">Vercel Inc.</p>
-                <p className="text-sm text-slate-400">340 S Lemon Ave #4133, Walnut, CA 91789, USA</p>
+                <p className="text-sm text-slate-400">UE (Dublin)</p>
                 <p className="text-sm text-slate-400">Site web : <a href="https://vercel.com" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">vercel.com</a></p>
               </div>
               <div className="bg-[#0a0f1a] p-4 rounded-lg border-l-4 border-cyan-400">
                 <p className="font-semibold text-white">Supabase Inc.</p>
-                <p className="text-sm text-slate-400">970 Toomey Ave, San Francisco, CA 94110, USA</p>
+                <p className="text-sm text-slate-400">UE (Francfort)</p>
                 <p className="text-sm text-slate-400">Site web : <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">supabase.com</a></p>
               </div>
             </div>
@@ -96,8 +95,8 @@ export default function MentionsLegalesPage() {
             <h2 className="text-xl font-semibold text-white mb-4">4. Propriété intellectuelle</h2>
             <div className="space-y-3 text-sm leading-relaxed pl-2">
               <p>
-                L'ensemble du contenu du site FleetMaster Pro (textes, images, logos, icônes, graphismes, logiciels, base de données) 
-                est la propriété exclusive de <strong>GEBUS DIGITAL SAS</strong> ou de ses partenaires.
+                L'ensemble du contenu du site FleetMaster (textes, images, logos, icônes, graphismes, logiciels, base de données) 
+                est la propriété exclusive de <strong>EI Stéphane GEBUS</strong> ou de ses partenaires.
               </p>
               <p>
                 Toute reproduction, représentation, modification, publication, transmission, dénaturation, totale ou partielle 
@@ -135,7 +134,7 @@ export default function MentionsLegalesPage() {
 
         {/* Footer */}
         <div className="mt-12 pt-8 border-t border-slate-800 text-center text-slate-500 text-sm">
-          <p>© {new Date().getFullYear()} FleetMaster Pro - Tous droits réservés</p>
+          <p>© {new Date().getFullYear()} Fleet-Master - Tous droits réservés</p>
           <div className="mt-4 flex justify-center gap-6">
             <Link href="/politique-confidentialite" className="hover:text-cyan-400 transition-colors">Politique de confidentialité</Link>
             <Link href="/cgv" className="hover:text-cyan-400 transition-colors">CGV</Link>

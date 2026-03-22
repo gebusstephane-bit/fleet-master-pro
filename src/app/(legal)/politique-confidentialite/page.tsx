@@ -39,7 +39,7 @@ export default function PolitiqueConfidentialitePage() {
             <div>
               <h2 className="text-lg font-semibold text-white mb-2">Engagement RGPD</h2>
               <p className="text-slate-300 leading-relaxed">
-                FleetMaster Pro s&apos;engage à protéger vos données personnelles conformément au 
+                Fleet-Master s&apos;engage à protéger vos données personnelles conformément au 
                 <strong className="text-cyan-300"> Règlement Général sur la Protection des Données (RGPD)</strong> 
                 (Règlement UE 2016/679) et à la <strong className="text-cyan-300">Loi Informatique et Libertés</strong> modifiée. 
                 Cette politique détaille comment nous collectons, utilisons et protégeons vos informations.
@@ -58,26 +58,26 @@ export default function PolitiqueConfidentialitePage() {
               1. Responsable du traitement
             </h2>
             <div className="bg-[#0f172a]/50 p-5 rounded-lg border border-slate-700/50 space-y-3">
-              <p className="font-medium text-white">FleetMaster Pro</p>
+              <p className="font-medium text-white">Fleet-Master </p>
               <div className="space-y-2 text-sm">
                 <p className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-slate-500" />
-                  <span>123 Avenue de la Logistique, 75012 Paris, France</span>
+                  <span>11 rue de verrieres,57220 COUME, France</span>
                 </p>
                 <p className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-slate-500" />
-                  <a href="mailto:privacy@fleetmaster.fr" className="text-cyan-400 hover:text-cyan-300">
-                    privacy@fleetmaster.fr
+                  <a href="mailto:contact@fleet-master.fr" className="text-cyan-400 hover:text-cyan-300">
+                    contact@fleet-master.fr
                   </a>
                 </p>
                 <p className="flex items-center gap-2">
                   <Phone className="w-4 h-4 text-slate-500" />
-                  <span>+33 1 23 45 67 89</span>
+                  <span>+33 6 58 08 27 25</span>
                 </p>
               </div>
               <p className="text-sm text-slate-400 mt-3 pt-3 border-t border-slate-700/50">
-                <strong>SIRET :</strong> 123 456 789 00012 | 
-                <strong>RCS :</strong> Paris B 123 456 789
+                <strong>SIRET :</strong> 10274184000015 | 
+                <strong>SIREN :</strong> 102741840
               </p>
             </div>
           </section>
@@ -427,8 +427,8 @@ export default function PolitiqueConfidentialitePage() {
               <div className="space-y-2">
                 <p className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-cyan-400" />
-                  <a href="mailto:privacy@fleetmaster.fr" className="text-cyan-400 hover:text-cyan-300 font-medium">
-                    privacy@fleetmaster.fr
+                  <a href="mailto:contact@fleet-master.fr" className="text-cyan-400 hover:text-cyan-300 font-medium">
+                    contact@fleet-master.fr
                   </a>
                 </p>
                 <p className="text-sm text-slate-400">
@@ -504,7 +504,7 @@ export default function PolitiqueConfidentialitePage() {
               Toute modification substantielle vous sera notifiée par email.
             </p>
             <p className="mt-2">
-              © {new Date().getFullYear()} FleetMaster Pro. Tous droits réservés.
+              © {new Date().getFullYear()} Fleet-Master. Tous droits réservés.
             </p>
           </div>
         </div>
