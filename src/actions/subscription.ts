@@ -121,29 +121,36 @@ export const createCheckoutSession = authActionClient
   .action(async ({ parsedInput, ctx }) => {
     const { plan, yearly } = parsedInput;
     const supabase = await createClient();
-    
-    // Récupérer l'entreprise (RLS filtre automatiquement)
+    const companyId = ctx.user.company_id;
+
+    if (!companyId) {
+      throw new Error('Aucune entreprise associée au compte');
+    }
+
+    // Récupérer l'entreprise
     const { data: company } = await supabase
       .from('companies')
       .select('id, name, email')
-      .single();
-    
+      .eq('id', companyId)
+      .maybeSingle();
+
     if (!company) {
       throw new Error('Entreprise non trouvée');
     }
-    
-    // Récupérer ou créer le customer Stripe (RLS filtre automatiquement)
+
+    // Récupérer ou créer le customer Stripe
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('stripe_customer_id')
-      .single();
-    
+      .eq('company_id', companyId)
+      .maybeSingle();
+
     let customerId = subscription?.stripe_customer_id;
-    
+
     if (!customerId) {
       // Créer un customer Stripe
       const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY!));
-      
+
       const customer = await stripe.customers.create({
         email: company.email,
         name: company.name,
@@ -151,13 +158,14 @@ export const createCheckoutSession = authActionClient
           company_id: company.id,
         },
       } as any);
-      
+
       customerId = customer.id;
-      
-      // Sauvegarder le customer_id (RLS filtre automatiquement)
+
+      // Sauvegarder le customer_id
       await supabase
         .from('subscriptions')
-        .update({ stripe_customer_id: customerId });
+        .update({ stripe_customer_id: customerId })
+        .eq('company_id', companyId);
     }
     
     // Créer la session de checkout
@@ -212,12 +220,17 @@ export const requestEnterpriseQuote = authActionClient
   .action(async ({ parsedInput, ctx }) => {
     const { message, phone } = parsedInput;
     const supabase = await createClient();
-    
-    // Récupérer les infos de l'entreprise (RLS filtre automatiquement)
+    const companyId = ctx.user.company_id;
+
+    if (!companyId) {
+      throw new Error('Aucune entreprise associée au compte');
+    }
+
     const { data: company } = await supabase
       .from('companies')
       .select('id, name, email, siret')
-      .single();
+      .eq('id', companyId)
+      .maybeSingle();
     
     if (!company) {
       throw new Error('Entreprise non trouvée');
@@ -259,29 +272,35 @@ export const requestEnterpriseQuote = authActionClient
 export const cancelSubscription = authActionClient
   .action(async ({ ctx }) => {
     const supabase = await createClient();
-    
-    // RLS filtre automatiquement par company_id
+    const companyId = ctx.user.company_id;
+
+    if (!companyId) {
+      throw new Error('Aucune entreprise associée au compte');
+    }
+
     const { data: sub } = await supabase
       .from('subscriptions')
       .select('stripe_subscription_id, plan')
-      .single();
-    
+      .eq('company_id', companyId)
+      .maybeSingle();
+
     if (!sub?.stripe_subscription_id) {
       throw new Error('Aucun abonnement actif à annuler');
     }
-    
+
     // Annuler chez Stripe
     const stripe = await import('stripe').then(m => new m.default(process.env.STRIPE_SECRET_KEY!));
-    
+
     await stripe.subscriptions.cancel(sub.stripe_subscription_id);
-    
-    // Mettre à jour en base (le webhook confirmera, mais on prépare) - RLS filtre automatiquement
+
+    // Mettre à jour en base
     await supabase
       .from('subscriptions')
       .update({
         status: 'CANCELED',
         canceled_at: new Date().toISOString(),
-      });
+      })
+      .eq('company_id', companyId);
     
     revalidatePath('/settings/billing');
     
