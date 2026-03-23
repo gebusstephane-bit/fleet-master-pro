@@ -225,15 +225,39 @@ export default function BillingPage() {
                       <span className="text-gray-500">/mois</span>
                     </div>
 
-                    {isCurrent ? (
+                    {isCurrent && (subscription as any)?.status === 'TRIALING' ? (
+                      <Button
+                        className="w-full bg-emerald-600 hover:bg-emerald-500"
+                        onClick={() => createCheckout.mutate({ plan: dbPlanName as any, yearly: false })}
+                        disabled={createCheckout.isPending}
+                      >
+                        {createCheckout.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <>
+                            Activer maintenant
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                          </>
+                        )}
+                      </Button>
+                    ) : isCurrent ? (
                       <Button disabled className="w-full">
                         Plan actuel
                       </Button>
                     ) : planKey === 'unlimited' ? (
-                      <Button asChild className="w-full bg-white text-gray-900 hover:bg-gray-100">
-                        <Link href="/pricing">
-                          Contacter les ventes
-                        </Link>
+                      <Button
+                        className="w-full bg-white text-gray-900 hover:bg-gray-100"
+                        onClick={() => createCheckout.mutate({ plan: 'UNLIMITED' as any, yearly: false })}
+                        disabled={createCheckout.isPending}
+                      >
+                        {createCheckout.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <>
+                            Upgrader vers Unlimited
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                          </>
+                        )}
                       </Button>
                     ) : canUpgrade ? (
                       <Button 
