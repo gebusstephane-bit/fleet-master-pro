@@ -32,17 +32,38 @@ const upgradeSchema = z.object({
 export const getCompanySubscription = authActionClient
   .action(async ({ ctx }) => {
     const supabase = await createClient();
-    
-    // RLS filtre automatiquement par company_id
-    const { data, error } = await supabase
+    const companyId = ctx.user.company_id;
+
+    if (!companyId) {
+      throw new Error('Aucune entreprise associée au compte');
+    }
+
+    const { data } = await supabase
       .from('subscriptions')
       .select('*')
-      .single();
-    
-    if (error) {
-      throw new Error('Abonnement non trouvé');
+      .eq('company_id', companyId)
+      .maybeSingle();
+
+    if (!data) {
+      // Retourner un plan TRIALING par défaut si pas encore de ligne
+      return {
+        success: true,
+        data: {
+          company_id: companyId,
+          plan: 'PRO',
+          status: 'TRIALING',
+          vehicle_limit: 20,
+          user_limit: 50,
+          features: [],
+          trial_ends_at: null,
+          current_period_start: null,
+          current_period_end: null,
+          stripe_customer_id: null,
+          stripe_subscription_id: null,
+        },
+      };
     }
-    
+
     return { success: true, data };
   });
 
@@ -50,15 +71,33 @@ export const getCompanySubscription = authActionClient
 export const checkSubscriptionLimits = authActionClient
   .action(async ({ ctx }) => {
     const supabase = await createClient();
-    
-    // Récupérer l'abonnement avec les compteurs (RLS filtre automatiquement)
+    const companyId = ctx.user.company_id;
+
+    if (!companyId) {
+      throw new Error('Aucune entreprise associée au compte');
+    }
+
     const { data: sub } = await supabase
       .from('company_subscription')
       .select('*')
-      .single();
+      .eq('company_id', companyId)
+      .maybeSingle();
 
     if (!sub) {
-      throw new Error('Abonnement non trouvé');
+      // Fallback pour les comptes en trial sans vue matérialisée
+      return {
+        success: true,
+        data: {
+          plan: 'PRO',
+          vehicleLimit: 20,
+          vehicleCount: 0,
+          canAddVehicle: true,
+          userLimit: 50,
+          userCount: 0,
+          canAddUser: true,
+          periodEnd: null,
+        }
+      };
     }
 
     return {
