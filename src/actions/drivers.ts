@@ -124,22 +124,27 @@ export const updateDriver = authActionClient
   .action(async ({ parsedInput, ctx }) => {
     const { id, ...updates } = parsedInput;
     const supabase = await createClient();
-    
+
     // Vérifier que le chauffeur existe et appartient à la company (RLS)
     const { data: existing } = await supabase
       .from('drivers')
       .select('id')
       .eq('id', id)
-      .single();
-    
+      .maybeSingle();
+
     if (!existing) {
       throw new Error('Chauffeur non trouvé ou accès non autorisé');
     }
-    
+
+    // Nettoyer les champs vides → null (évite les erreurs Zod min(1) sur les champs optionnels)
+    const cleanUpdates = Object.fromEntries(
+      Object.entries(updates).map(([k, v]) => [k, v === '' ? null : v])
+    );
+
     const { data, error } = await supabase
       .from('drivers')
       .update({
-        ...updates,
+        ...cleanUpdates,
         ...(updates.status !== undefined && {
           is_active: updates.status === 'active' || updates.status === 'on_leave',
         }),
@@ -150,12 +155,13 @@ export const updateDriver = authActionClient
       })
       .eq('id', id)
       .select()
-      .single();
-    
+      .maybeSingle();
+
     if (error) {
+      console.error('DRIVER_UPDATE_ERROR:', error);
       throw new Error(`Erreur mise à jour: ${error.message}`);
     }
-    
+
     revalidatePath('/drivers');
     revalidatePath(`/drivers/${id}`);
     return { success: true, data };
