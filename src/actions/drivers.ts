@@ -141,18 +141,21 @@ export const updateDriver = authActionClient
       Object.entries(updates).map(([k, v]) => [k, v === '' ? null : v])
     );
 
+    // Retirer cqc_expiry du spread (n'existe pas en DB, seul cqc_expiry_date existe)
+    const { cqc_expiry, ...safeUpdates } = cleanUpdates;
+    const payload = {
+      ...safeUpdates,
+      ...(updates.status !== undefined && {
+        is_active: updates.status === 'active' || updates.status === 'on_leave',
+      }),
+      ...(updates.cqc_expiry !== undefined && {
+        cqc_expiry_date: updates.cqc_expiry,
+      }),
+    };
+
     const { data, error } = await supabase
       .from('drivers')
-      .update({
-        ...cleanUpdates,
-        ...(updates.status !== undefined && {
-          is_active: updates.status === 'active' || updates.status === 'on_leave',
-        }),
-        // Synchroniser les deux champs CQC pour rétrocompatibilité
-        ...(updates.cqc_expiry !== undefined && {
-          cqc_expiry_date: updates.cqc_expiry,
-        }),
-      })
+      .update(payload)
       .eq('id', id)
       .select()
       .maybeSingle();
