@@ -232,12 +232,15 @@ function buildEmailContent(
 // ============================================================
 
 export async function GET(request: NextRequest) {
+  console.log('[CRON] vehicle-documents-check démarré', new Date().toISOString());
+
   // --- Authentification cron ---
   const secret =
+    request.headers.get('x-vercel-cron-secret') ||
     request.headers.get('x-cron-secret') ||
     request.nextUrl.searchParams.get('secret');
 
-  if (!CRON_SECRET || secret !== CRON_SECRET) {
+  if (secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -338,6 +341,7 @@ export async function GET(request: NextRequest) {
           );
 
           for (const email of recipients) {
+            console.log('[CRON] Envoi email à', email, 'pour', doc.type, vehicle.registration_number);
             await sendEmail({ to: email, subject, html });
           }
 

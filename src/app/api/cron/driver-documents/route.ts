@@ -507,15 +507,15 @@ function buildEmailContent(
 // ============================================================
 
 export async function GET(request: NextRequest) {
+  console.log('[CRON] driver-documents démarré', new Date().toISOString());
+
   // --- Authentification cron ---
-  // Vercel envoie automatiquement "Authorization: Bearer <CRON_SECRET>" en production
-  const authHeader = request.headers.get('authorization');
   const secret =
-    (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null) ||
+    request.headers.get('x-vercel-cron-secret') ||
     request.headers.get('x-cron-secret') ||
     request.nextUrl.searchParams.get('secret');
 
-  if (!CRON_SECRET || secret !== CRON_SECRET) {
+  if (secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -651,6 +651,7 @@ export async function GET(request: NextRequest) {
               true, // isDriverRecipient
               doc.label
             );
+            console.log('[CRON] Envoi email à', driverEmail, 'pour', doc.type, driver.first_name, driver.last_name);
             await sendEmailWithRetry({ to: driverEmail!, ...driverContent });
           }
 
@@ -661,6 +662,7 @@ export async function GET(request: NextRequest) {
               ? buildEmailContent(doc.type, alertLevel, driver, daysLeft, expiryDate, false, doc.label)
               : buildNoEmailWarningContent(doc.label, alertLevel, driver, daysLeft, expiryDate);
 
+            console.log('[CRON] Envoi email à', manager.email, 'pour', doc.type, driver.first_name, driver.last_name);
             await sendEmailWithRetry({ to: manager.email, ...managerContent });
           }
 

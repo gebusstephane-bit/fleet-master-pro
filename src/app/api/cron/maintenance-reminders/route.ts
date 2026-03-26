@@ -171,12 +171,15 @@ function buildReminderEmail(params: {
 // ============================================================
 
 export async function GET(request: NextRequest) {
+  console.log('[CRON] maintenance-reminders démarré', new Date().toISOString());
+
   // ── Authentification ──────────────────────────────────────
   const secret =
+    request.headers.get('x-vercel-cron-secret') ||
     request.headers.get('x-cron-secret') ||
     request.nextUrl.searchParams.get('secret');
 
-  if (!CRON_SECRET || secret !== CRON_SECRET) {
+  if (secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -292,6 +295,7 @@ export async function GET(request: NextRequest) {
         let errorMessage: string | undefined;
 
         try {
+          console.log('[CRON] Envoi email à', recipient.email, 'pour maintenance', vehicle.registration_number);
           await sendEmail({ to: recipient.email, subject, html });
           stats.emails_sent++;
           logger.info(`✅ Reminder sent: ${vehicle.registration_number} → ${recipient.email}`);
