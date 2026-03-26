@@ -79,7 +79,6 @@ export function useCompliance(options?: { enabled?: boolean }) {
       const supabase = getSupabaseClient();
 
       // Récupérer les véhicules avec leurs dates réglementaires
-      // NOTE: Les champs ADR sont optionnels - la migration SQL doit être appliquée
       const vehiclesPromise = supabase
         .from('vehicles')
         .select(`
@@ -94,11 +93,7 @@ export function useCompliance(options?: { enabled?: boolean }) {
           tachy_control_expiry,
           atp_date,
           atp_expiry,
-          insurance_expiry,
-          adr_certificate_date,
-          adr_certificate_expiry,
-          adr_equipment_check_date,
-          adr_equipment_expiry
+          insurance_expiry
         `)
         .eq('company_id', companyId)
         .order('created_at', { ascending: false });
@@ -178,11 +173,6 @@ export function useCompliance(options?: { enabled?: boolean }) {
         atp_date: v.atp_date,
         atp_expiry: v.atp_expiry,
         insurance_expiry: v.insurance_expiry,
-        // Champs ADR optionnels - disponibles après migration SQL
-        adr_certificate_date: v.adr_certificate_date || null,
-        adr_certificate_expiry: v.adr_certificate_expiry || null,
-        adr_equipment_check_date: v.adr_equipment_check_date || null,
-        adr_equipment_expiry: v.adr_equipment_expiry || null,
       }));
 
       const drivers: DriverComplianceData[] = driverData.map((d: any) => ({

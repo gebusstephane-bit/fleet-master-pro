@@ -141,6 +141,7 @@ export async function getVehicleComplianceStatus(
 
     return { success: true, data: formatted };
   } catch (error) {
+    console.error('CONFORMITE_ERROR [getVehicleComplianceStatus]:', error);
     logger.error('getVehicleComplianceStatus: Exception', error instanceof Error ? error : new Error(String(error)));
     const message = error instanceof Error ? error.message : 'Erreur inconnue';
     return { success: false, error: message };
@@ -268,6 +269,7 @@ export async function getCompanyComplianceDashboard(
 
     return { success: true, data: allDeadlines };
   } catch (error) {
+    console.error('CONFORMITE_ERROR [getCompanyComplianceDashboard]:', error);
     logger.error('getCompanyComplianceDashboard: Exception', error instanceof Error ? error : new Error(String(error)));
     const message = error instanceof Error ? error.message : 'Erreur inconnue';
     return { success: false, error: message };
@@ -305,6 +307,7 @@ export async function checkVehicleADRActivity(
       } 
     };
   } catch (error) {
+    console.error('CONFORMITE_ERROR [checkVehicleADRActivity]:', error);
     logger.error('checkVehicleADRActivity: Exception', error instanceof Error ? error : new Error(String(error)));
     const message = error instanceof Error ? error.message : 'Erreur inconnue';
     return { success: false, error: message };
