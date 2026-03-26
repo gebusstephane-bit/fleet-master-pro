@@ -165,7 +165,12 @@ async function applyRateLimit(
   } else if (pathname.includes("/api/cron")) {
     // Les cron jobs doivent avoir un header spécial de Vercel
     const vercelCronSecret = request.headers.get("x-vercel-cron-secret");
-    const isVercelCron = vercelCronSecret === process.env.CRON_SECRET;
+    const legacySecret = request.headers.get("x-cron-secret");
+    const urlSecret = request.nextUrl.searchParams.get("secret");
+    const isVercelCron =
+      vercelCronSecret === process.env.CRON_SECRET ||
+      legacySecret === process.env.CRON_SECRET ||
+      urlSecret === process.env.CRON_SECRET;
 
     if (!isVercelCron && process.env.NODE_ENV === "production") {
       logger.warn('Unauthorized cron access attempt', {
