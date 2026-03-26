@@ -1,6 +1,6 @@
 /**
  * Dashboard SuperAdmin
- * Vue d'ensemble de la plateforme Fleet Master Pro
+ * Vue d'ensemble de la plateforme Fleet-Master
  */
 
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 export const metadata = {
-  title: 'Dashboard SuperAdmin | Fleet Master Pro',
+  title: 'Dashboard SuperAdmin | Fleet-Master',
 };
 
 interface Company {
@@ -103,7 +103,7 @@ export default async function SuperAdminDashboard() {
       <div>
         <h1 className="text-3xl font-bold text-white">Dashboard</h1>
         <p className="text-white/50 mt-1">
-          Vue d&apos;ensemble de votre plateforme Fleet Master Pro
+          Vue d&apos;ensemble de votre plateforme Fleet-Master
         </p>
       </div>
 

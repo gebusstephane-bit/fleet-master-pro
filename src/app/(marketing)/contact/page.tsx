@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Page Contact — FleetMaster Pro
+ * Page Contact — Fleet-Master
  * ─────────────────────────────────────────────────────────────────────────────
  * Coordonnées :
  *   Email      : contact@fleet-master.fr
@@ -178,7 +178,7 @@ export default function ContactPage() {
               Parlons de votre flotte
             </h1>
             <p className="text-lg text-slate-400 max-w-xl mx-auto">
-              Une question sur FleetMaster Pro, une demande de démo ou un projet
+              Une question sur Fleet-Master, une demande de démo ou un projet
               de partenariat ? Notre équipe vous répond sous 24h ouvrées.
             </p>
           </motion.div>

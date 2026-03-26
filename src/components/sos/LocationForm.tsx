@@ -1,7 +1,7 @@
 /**
  * LocationForm - Formulaire de localisation V3.2
  * Simplifié : ne gère que l'adresse (le type de panne est géré par BreakdownTypeSelect)
- * Aligné Design System FleetMaster Pro
+ * Aligné Design System Fleet-Master
  */
 
 'use client';

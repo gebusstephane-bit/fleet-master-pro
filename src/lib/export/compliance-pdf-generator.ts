@@ -1,5 +1,5 @@
 /**
- * Rapport de Conformité PDF — FleetMaster Pro v2
+ * Rapport de Conformité PDF — Fleet-Master v2
  * Design professionnel 4 pages pour inspections DREAL
  */
 
@@ -186,7 +186,7 @@ function drawCoverPage(page: PDFPage, fonts: FontSet, data: CompliancePDFData, s
   rect(page, 0, PAGE_H - HEADER_H, PAGE_W, HEADER_H, C.primary);
 
   // Logo
-  txt(page, 'FleetMaster Pro', CONTENT_X, PAGE_H - 45, 22, fonts.bold, C.white);
+  txt(page, 'Fleet-Master', CONTENT_X, PAGE_H - 45, 22, fonts.bold, C.white);
   txt(page, 'Gestion de flotte professionnelle', CONTENT_X, PAGE_H - 65, 10, fonts.regular, C.primaryBg);
 
   // Badge "DOCUMENT CONFIDENTIEL"
@@ -762,7 +762,7 @@ function drawActionsPage(
   if (missing.length > 0 && y - 32 > BOTTOM) {
     rect(page, MARGIN, y - 28, CONTENT_W + SIDEBAR_W - 5, 28, C.infoBg);
     rect(page, MARGIN, y - 28, 4, 28, C.info);
-    txt(page, 'DONNEES MANQUANTES - A completer dans FleetMaster Pro', MARGIN + 12, y - 10, 10, fonts.bold, C.infoText);
+    txt(page, 'DONNEES MANQUANTES - A completer dans Fleet-Master', MARGIN + 12, y - 10, 10, fonts.bold, C.infoText);
     txt(page, 'Connectez-vous sur app.fleetmaster.fr pour completer votre dossier', MARGIN + 12, y - 22, 8, fonts.regular, C.infoText);
     y -= 32;
 
@@ -800,7 +800,7 @@ function drawActionsPage(
   page.drawLine({ start: { x: SIG_DIV_X, y: SIG_Y }, end: { x: SIG_DIV_X, y: SIG_Y + SIG_H }, thickness: 0.5, color: C.border });
 
   // Colonne gauche : informations document
-  txt(page, 'Rapport valide par FleetMaster Pro', MARGIN + 10, SIG_Y + SIG_H - 14, 9, fonts.bold, C.primary);
+  txt(page, 'Rapport valide par Fleet-Master', MARGIN + 10, SIG_Y + SIG_H - 14, 9, fonts.bold, C.primary);
   txt(page, `Genere le ${data.generatedAt.toLocaleDateString('fr-FR')}`, MARGIN + 10, SIG_Y + SIG_H - 28, 8, fonts.regular, C.text);
   txt(page, `Document ID : ${generateDocHash(data)}`, MARGIN + 10, SIG_Y + SIG_H - 42, 8, fonts.regular, C.neutral);
 
@@ -815,7 +815,7 @@ function drawActionsPage(
   hLine(page, SIG_Y - 4, C.border, 0.3, MARGIN, PAGE_W - MARGIN);
   drawWrappedText(
     page,
-    'Ce document a ete genere automatiquement par FleetMaster Pro. Il constitue un etat de conformite a la date de generation et ne saurait se substituer a un audit reglementaire professionnel.',
+    'Ce document a ete genere automatiquement par Fleet-Master. Il constitue un etat de conformite a la date de generation et ne saurait se substituer a un audit reglementaire professionnel.',
     MARGIN, SIG_Y - 9, PAGE_W - MARGIN * 2, 9, fonts.regular, 6, C.neutralLight,
   );
 
@@ -826,7 +826,7 @@ function drawActionsPage(
 export async function generateCompliancePDF(data: CompliancePDFData): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create();
   pdfDoc.setTitle(nt(`Rapport de Conformite - ${data.company.name}`));
-  pdfDoc.setAuthor('FleetMaster Pro');
+  pdfDoc.setAuthor('Fleet-Master');
   pdfDoc.setSubject('Rapport de conformite reglementaire');
   pdfDoc.setCreationDate(data.generatedAt);
   pdfDoc.setKeywords(['conformite', 'DREAL', 'transport', 'flotte']);

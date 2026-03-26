@@ -1,5 +1,5 @@
 /**
- * Template email pour le rapport hebdomadaire IA — FleetMaster Pro
+ * Template email pour le rapport hebdomadaire IA — Fleet-Master
  * Design cohérent avec monthly-report.ts (styles inline, max-width 600px)
  * Aucun appel IA — données pré-calculées par le cron vehicle-scoring
  */
@@ -94,7 +94,7 @@ export function weeklyFleetReportTemplate(data: WeeklyFleetReportData): string {
         <!-- Header -->
         <tr>
           <td style="background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:28px 32px;text-align:center;">
-            <div style="color:#ffffff;font-size:20px;font-weight:700;">🚛 FleetMaster Pro</div>
+            <div style="color:#ffffff;font-size:20px;font-weight:700;">🚛 Fleet-Master</div>
             <div style="color:#bfdbfe;font-size:13px;margin-top:4px;">Rapport Hebdomadaire IA — ${reportDate}</div>
           </td>
         </tr>
@@ -167,7 +167,7 @@ export function weeklyFleetReportTemplate(data: WeeklyFleetReportData): string {
           <td style="background:#f8fafc;padding:20px 32px;border-top:1px solid #e2e8f0;">
             <p style="color:#9ca3af;font-size:11px;margin:0;text-align:center;">
               Ce rapport est généré automatiquement chaque lundi pour ${companyName}.
-              <br>Les scores sont calculés par l'IA de FleetMaster Pro (maintenance, inspections, consommation).
+              <br>Les scores sont calculés par l'IA de Fleet-Master (maintenance, inspections, consommation).
             </p>
             <p style="text-align:center;margin:8px 0 0;">
               <a href="${unsubscribeUrl}" style="color:#9ca3af;font-size:11px;text-decoration:underline;">
@@ -186,7 +186,7 @@ export function weeklyFleetReportTemplate(data: WeeklyFleetReportData): string {
 
 export function weeklyFleetReportText(data: WeeklyFleetReportData): string {
   const lines = [
-    `FleetMaster Pro — Rapport Hebdomadaire IA (${data.reportDate})`,
+    `Fleet-Master — Rapport Hebdomadaire IA (${data.reportDate})`,
     '',
     `Bonjour ${data.recipientFirstName},`,
     `Voici le bilan de votre flotte de ${data.totalVehicles} véhicules.`,

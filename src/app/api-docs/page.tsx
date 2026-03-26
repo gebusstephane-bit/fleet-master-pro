@@ -12,7 +12,7 @@ export default function ApiDocsPage() {
       <div className="border-b bg-white px-6 py-4 shadow-sm">
         <div className="mx-auto max-w-6xl flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">FleetMaster Pro — API Documentation</h1>
+            <h1 className="text-xl font-semibold text-gray-900">Fleet-Master — API Documentation</h1>
             <p className="text-sm text-gray-500 mt-0.5">
               Gérez votre flotte programmatiquement via l&apos;API publique v1
             </p>

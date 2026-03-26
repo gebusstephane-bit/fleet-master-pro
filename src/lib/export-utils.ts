@@ -275,7 +275,7 @@ export function generateFuelPDF(
 </head>
 <body>
   <div class="header">
-    <div class="logo">Fleet Master Pro</div>
+    <div class="logo">Fleet-Master</div>
     <div class="meta">
       <div>${new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
       <div>${new Date().toLocaleTimeString('fr-FR')}</div>
@@ -344,7 +344,7 @@ export function generateFuelPDF(
   </table>
   
   <div class="footer">
-    <div>Généré par Fleet Master Pro</div>
+    <div>Généré par Fleet-Master</div>
     <div>Page 1/1</div>
   </div>
   

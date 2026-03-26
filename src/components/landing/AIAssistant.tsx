@@ -92,7 +92,7 @@ export function AIAssistant() {
                     Assistant IA réglementaire
                   </p>
                   <p className="text-xs text-slate-500">
-                    FleetMaster Pro · Claude AI
+                    Fleet-Master · Claude AI
                   </p>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5">

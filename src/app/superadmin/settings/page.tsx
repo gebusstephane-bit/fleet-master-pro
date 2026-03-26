@@ -19,7 +19,7 @@ export default function SettingsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-white">Paramètres</h1>
-        <p className="text-white/50 mt-1">Configuration de la plateforme Fleet Master Pro</p>
+        <p className="text-white/50 mt-1">Configuration de la plateforme Fleet-Master</p>
       </div>
 
       <div className="grid gap-6">

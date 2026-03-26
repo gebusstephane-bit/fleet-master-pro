@@ -1,5 +1,5 @@
 /**
- * API Key Authentication — FleetMaster Pro
+ * API Key Authentication — Fleet-Master
  *
  * Validates x-api-key (or Authorization: Bearer) header against the api_keys table.
  * Applies per-plan rate limiting:

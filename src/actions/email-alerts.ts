@@ -120,10 +120,10 @@ export const testEmailConfig = authActionClient
   .action(async ({ ctx }) => {
     const result = await sendEmail({
       to: ctx.user.email,
-      subject: '✅ Test - FleetMaster Pro',
+      subject: '✅ Test - Fleet-Master',
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563eb;">FleetMaster Pro</h1>
+          <h1 style="color: #2563eb;">Fleet-Master</h1>
           <p>Ceci est un email de test pour vérifier la configuration.</p>
           <p>Si vous recevez cet email, la configuration est correcte !</p>
           <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
@@ -132,7 +132,7 @@ export const testEmailConfig = authActionClient
           </p>
         </div>
       `,
-      text: 'Test de configuration email - FleetMaster Pro',
+      text: 'Test de configuration email - Fleet-Master',
     });
     
     return { success: true, result };

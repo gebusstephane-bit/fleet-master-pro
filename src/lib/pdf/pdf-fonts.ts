@@ -1,5 +1,5 @@
 /**
- * Chargement des polices pour le PDF FleetMaster Pro
+ * Chargement des polices pour le PDF Fleet-Master
  * Charge Inter (OTF) via fontkit, avec fallback sur Helvetica
  */
 

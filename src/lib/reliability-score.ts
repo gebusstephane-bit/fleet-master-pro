@@ -1,5 +1,5 @@
 /**
- * Algorithme de scoring de fiabilité véhicule — FleetMaster Pro
+ * Algorithme de scoring de fiabilité véhicule — Fleet-Master
  * Calcul pur, sans accès DB. Les données sont injectées par le hook.
  */
 

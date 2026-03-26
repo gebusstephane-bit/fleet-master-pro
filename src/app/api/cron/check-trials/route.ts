@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
 
           await sendEmail({
             to: recipientEmail,
-            subject: `Votre essai FleetMaster Pro se termine dans 3 jours`,
+            subject: `Votre essai Fleet-Master se termine dans 3 jours`,
             html: trialEndingEmailTemplate({
               firstName: admin?.first_name ?? undefined,
               companyName: company.name,

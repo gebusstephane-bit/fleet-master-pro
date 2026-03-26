@@ -1,5 +1,5 @@
 /**
- * OpenAPI 3.0 specification — FleetMaster Pro public API
+ * OpenAPI 3.0 specification — Fleet-Master public API
  * Delegates to the canonical swagger.ts definition.
  */
 

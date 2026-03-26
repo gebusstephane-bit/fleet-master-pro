@@ -20,12 +20,12 @@ export async function POST(request: NextRequest) {
     const { error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
       to: email,
-      subject: 'Bienvenue sur FleetMaster Pro — Accédez à votre compte',
+      subject: 'Bienvenue sur Fleet-Master — Accédez à votre compte',
       html: `
         <!DOCTYPE html>
         <html>
           <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h1 style="color: #1a1a1a;">Bienvenue sur FleetMaster Pro !</h1>
+            <h1 style="color: #1a1a1a;">Bienvenue sur Fleet-Master !</h1>
             <p>Bonjour,</p>
             <p>Votre compte pour <strong>${companyName || 'votre entreprise'}</strong> a été créé avec succès.</p>
             <p>Cliquez sur le bouton ci-dessous pour accéder à votre dashboard :</p>
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
               Ce lien expire dans 24 heures. Si vous n'avez pas créé ce compte, ignorez cet email.
             </p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-            <p style="color: #999; font-size: 12px;">FleetMaster Pro — Gestion de flotte intelligente</p>
+            <p style="color: #999; font-size: 12px;">Fleet-Master — Gestion de flotte intelligente</p>
           </body>
         </html>
       `,

@@ -133,7 +133,7 @@ export default function AppearancePage() {
         <div>
           <h1 className="text-2xl font-bold">Thème et personnalisation</h1>
           <p className="text-muted-foreground">
-            Personnalisez l&apos;apparence de FleetMaster Pro
+            Personnalisez l&apos;apparence de Fleet-Master
           </p>
         </div>
       </div>
@@ -156,7 +156,7 @@ export default function AppearancePage() {
               Thème de l&apos;interface
             </CardTitle>
             <CardDescription>
-              Choisissez l&apos;apparence générale de FleetMaster Pro
+              Choisissez l&apos;apparence générale de Fleet-Master
             </CardDescription>
           </CardHeader>
           <CardContent>

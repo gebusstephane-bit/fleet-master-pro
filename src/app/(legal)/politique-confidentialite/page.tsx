@@ -3,8 +3,8 @@ import { ArrowLeft, Shield, Mail, MapPin, Phone, FileText, Clock, Trash2, Downlo
 import { CookieResetButton } from './CookieResetButton';
 
 export const metadata = {
-  title: 'Politique de Confidentialité | FleetMaster Pro',
-  description: 'Politique de confidentialité et protection des données personnelles conforme au RGPD - FleetMaster Pro',
+  title: 'Politique de Confidentialité | Fleet-Master',
+  description: 'Politique de confidentialité et protection des données personnelles conforme au RGPD - Fleet-Master',
 };
 
 export default function PolitiqueConfidentialitePage() {

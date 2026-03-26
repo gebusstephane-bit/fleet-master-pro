@@ -13,7 +13,7 @@ import { DriverAppLayoutClient } from './DriverAppLayoutClient';
 
 export const metadata: Metadata = {
   title: 'FleetMaster — Conducteur',
-  description: 'Application mobile pour les conducteurs FleetMaster Pro',
+  description: 'Application mobile pour les conducteurs Fleet-Master',
   manifest: '/manifest-driver.json',
   appleWebApp: {
     capable: true,

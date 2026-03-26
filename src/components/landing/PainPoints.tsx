@@ -72,7 +72,7 @@ export function PainPoints() {
             <span className="text-cosmic-gradient">ces situations ?</span>
           </h2>
           <p className="text-lg text-slate-400">
-            FleetMaster Pro a été conçu pour ça.
+            Fleet-Master a été conçu pour ça.
           </p>
         </motion.div>
 

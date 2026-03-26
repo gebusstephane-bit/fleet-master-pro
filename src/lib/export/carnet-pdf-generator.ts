@@ -215,7 +215,7 @@ function drawPageHeader(
   rect(page, 0, PAGE_H - HDR_H, PAGE_W, HDR_H, K.primary);
 
   // Left: company name (bold white) + separator + section title (muted)
-  const coStr = nt(companyName || 'FleetMaster Pro');
+  const coStr = nt(companyName || 'Fleet-Master');
   const coW   = fonts.bold.widthOfTextAtSize(coStr, 9);
   page.drawText(coStr, { x: MARGIN, y: PAGE_H - 23, size: 9, font: fonts.bold, color: K.white });
   if (sectionTitle) {
@@ -224,8 +224,8 @@ function drawPageHeader(
     });
   }
 
-  // Right: "FleetMaster Pro" pill badge
-  const badgeLabel = 'FleetMaster Pro';
+  // Right: "Fleet-Master" pill badge
+  const badgeLabel = 'Fleet-Master';
   const badgeLW    = fonts.bold.widthOfTextAtSize(badgeLabel, 8);
   const badgeW     = badgeLW + 14;
   const badgeX     = PAGE_W - MARGIN - badgeW;
@@ -291,7 +291,7 @@ function drawCover(page: PDFPage, fonts: FontSet, data: VehicleCarnetData, first
   rect(page, 0, PAGE_H - HEADER_H, PAGE_W, HEADER_H, K.primary);
 
   // Logo + tagline
-  page.drawText('FleetMaster Pro', { x: MARGIN, y: PAGE_H - 48, size: 18, font: fonts.bold, color: K.white });
+  page.drawText('Fleet-Master', { x: MARGIN, y: PAGE_H - 48, size: 18, font: fonts.bold, color: K.white });
   page.drawText('Systeme de gestion de flotte', { x: MARGIN, y: PAGE_H - 68, size: 9, font: fonts.regular, color: K.headerText });
 
   // "DOCUMENT OFFICIEL" badge top-right
@@ -913,7 +913,7 @@ function drawLegal(page: PDFPage, fonts: FontSet, data: VehicleCarnetData, gener
 
   const infoRows: [string, string, string, string][] = [
     ['Document genere le', `${dateStr} a ${timeStr}`, 'Reference document', docRef],
-    ['Logiciel',           'FleetMaster Pro',          'SIRET gestionnaire',  company.siret ?? 'Non renseigne'],
+    ['Logiciel',           'Fleet-Master',          'SIRET gestionnaire',  company.siret ?? 'Non renseigne'],
     ['Gestionnaire',       nt(company.name),            'Vehicule',            nt(`${vehicle.registration_number} - ${vehicle.brand ?? ''} ${vehicle.model ?? ''}`.trim())],
   ];
 
@@ -963,7 +963,7 @@ function drawLegal(page: PDFPage, fonts: FontSet, data: VehicleCarnetData, gener
     txt(page, 'AVERTISSEMENT', MARGIN + 14, y - 16, 9, fonts.bold, K.warningText, 'left', CONTENT_W - 24, 0);
     wrapText(
       page,
-      "Ce document est genere automatiquement par FleetMaster Pro a partir des donnees enregistrees par les gestionnaires de flotte. L'exactitude des informations releve de la responsabilite de l'entreprise gestionnaire. FleetMaster Pro ne saurait etre tenu responsable d'eventuelles inexactitudes.",
+      "Ce document est genere automatiquement par Fleet-Master a partir des donnees enregistrees par les gestionnaires de flotte. L'exactitude des informations releve de la responsabilite de l'entreprise gestionnaire. Fleet-Master ne saurait etre tenu responsable d'eventuelles inexactitudes.",
       MARGIN + 14, y - 32, CONTENT_W - 28, 10, fonts.regular, 8, K.warningText, 3,
     );
     y -= warnH + 16;
@@ -979,7 +979,7 @@ function drawLegal(page: PDFPage, fonts: FontSet, data: VehicleCarnetData, gener
   vLine(page, MARGIN + SIG_DIV, SIG_Y + 4, SIG_Y + SIG_H - 4);
 
   // Left: document info
-  txt(page, 'Rapport etabli par FleetMaster Pro', MARGIN + 10, SIG_Y + SIG_H - 14, 9, fonts.bold, K.primary, 'left', SIG_DIV - 16, 0);
+  txt(page, 'Rapport etabli par Fleet-Master', MARGIN + 10, SIG_Y + SIG_H - 14, 9, fonts.bold, K.primary, 'left', SIG_DIV - 16, 0);
   txt(page, nt(company.name), MARGIN + 10, SIG_Y + SIG_H - 28, 8, fonts.regular, K.text, 'left', SIG_DIV - 16, 0);
   txt(page, `Ref. : ${docRef}`, MARGIN + 10, SIG_Y + SIG_H - 42, 7, fonts.regular, K.textMuted, 'left', SIG_DIV - 16, 0);
 
@@ -995,7 +995,7 @@ export async function generateCarnetPDF(data: VehicleCarnetData): Promise<Buffer
   const generatedAt = new Date();
 
   pdfDoc.setTitle(nt(`Carnet d'Entretien - ${data.vehicle.registration_number}`));
-  pdfDoc.setAuthor('FleetMaster Pro');
+  pdfDoc.setAuthor('Fleet-Master');
   pdfDoc.setSubject(nt(`Carnet numerique - ${data.vehicle.registration_number}`));
   pdfDoc.setCreationDate(generatedAt);
 

@@ -1,5 +1,5 @@
 /**
- * Design System FleetMaster Pro
+ * Design System Fleet-Master
  * Standards 2024 - Inspiré Notion, Linear, Samsara
  */
 

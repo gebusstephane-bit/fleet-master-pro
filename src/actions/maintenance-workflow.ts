@@ -189,7 +189,7 @@ export const createMaintenanceRequest = authActionClient
               </div>
 
               <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">
-                Cet email a été envoyé automatiquement par FleetMaster Pro.
+                Cet email a été envoyé automatiquement par Fleet-Master.
               </p>
             </div>
           `,

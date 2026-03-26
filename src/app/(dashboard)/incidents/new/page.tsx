@@ -1,7 +1,7 @@
 import { IncidentForm } from '@/components/incidents/incident-form';
 
 export const metadata = {
-  title: 'Déclarer un sinistre — FleetMaster Pro',
+  title: 'Déclarer un sinistre — Fleet-Master',
 };
 
 export default function NewIncidentPage() {

@@ -1,6 +1,6 @@
 /**
  * HighwaySwitch - Indique si on est sur une autoroute
- * Aligné Design System FleetMaster Pro
+ * Aligné Design System Fleet-Master
  */
 
 'use client';

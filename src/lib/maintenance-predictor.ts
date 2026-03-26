@@ -1,6 +1,6 @@
 /**
  * Moteur de prédiction de maintenance préventive
- * Prompt #13 V2 — FleetMaster Pro
+ * Prompt #13 V2 — Fleet-Master
  *
  * - Lit les règles de maintenance (système + personnalisées)
  * - Cherche la dernière maintenance correspondante par mots-clés dans `description`

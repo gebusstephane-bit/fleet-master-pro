@@ -28,7 +28,7 @@ export function trialEndingEmailTemplate(data: TrialEndingEmailData): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Votre essai se termine dans 3 jours — FleetMaster Pro</title>
+  <title>Votre essai se termine dans 3 jours — Fleet-Master</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f3f4f6; }
     .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.07); }
@@ -54,11 +54,11 @@ export function trialEndingEmailTemplate(data: TrialEndingEmailData): string {
   <div class="container">
     <div class="header">
       <h1>Votre essai se termine bientôt</h1>
-      <p>${data.companyName} — FleetMaster Pro</p>
+      <p>${data.companyName} — Fleet-Master</p>
     </div>
     <div class="content">
       <p style="font-size:16px;font-weight:600;color:#111827;margin-bottom:4px;">${greeting}</p>
-      <p style="color:#4b5563;">Votre période d'essai gratuit arrive à son terme. Pour continuer à utiliser FleetMaster Pro sans interruption, activez votre abonnement avant la date d'expiration.</p>
+      <p style="color:#4b5563;">Votre période d'essai gratuit arrive à son terme. Pour continuer à utiliser Fleet-Master sans interruption, activez votre abonnement avant la date d'expiration.</p>
 
       <div class="countdown-box">
         <div class="days">3</div>
@@ -85,7 +85,7 @@ export function trialEndingEmailTemplate(data: TrialEndingEmailData): string {
       <p style="font-size:13px;color:#6b7280;margin-top:20px;">Une question ? Répondez à cet email ou contactez-nous à <a href="mailto:contact@fleet-master.fr" style="color:#2563eb;">contact@fleet-master.fr</a>.</p>
     </div>
     <div class="footer">
-      FleetMaster Pro · Gestion de flotte professionnelle<br>
+      Fleet-Master · Gestion de flotte professionnelle<br>
       Cet email est envoyé au contact administrateur du compte.
     </div>
   </div>
@@ -103,7 +103,7 @@ export function trialEndingEmailText(data: TrialEndingEmailData): string {
   const greeting = data.firstName ? `Bonjour ${data.firstName},` : 'Bonjour,';
 
   return `
-Votre essai FleetMaster Pro se termine dans 3 jours
+Votre essai Fleet-Master se termine dans 3 jours
 
 ${greeting}
 
@@ -118,6 +118,6 @@ Sans activation, votre compte sera rétrogradé au plan Essentiel (5 véhicules)
 
 Une question ? Répondez à cet email.
 
-FleetMaster Pro
+Fleet-Master
 `.trim();
 }

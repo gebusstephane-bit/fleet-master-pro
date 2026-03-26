@@ -1,5 +1,5 @@
 /**
- * Root Layout - FleetMaster Pro
+ * Root Layout - Fleet-Master
  * Configuration globale de l'application
  */
 
@@ -24,12 +24,12 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'FleetMaster Pro - Gestion de flotte intelligente',
-    template: '%s | FleetMaster Pro',
+    default: 'Fleet-Master - Gestion de flotte intelligente',
+    template: '%s | Fleet-Master',
   },
   description: 'SaaS de gestion de flotte pour transporteurs. Maintenance prédictive, tournées optimisées, conformité réglementaire. Réduisez vos coûts de 30%.',
   keywords: ['gestion flotte', 'transport', 'logistique', 'maintenance prédictive', 'GPS', 'véhicules', 'fleet management', 'SaaS transport'],
-  authors: [{ name: 'FleetMaster Pro' }],
+  authors: [{ name: 'Fleet-Master' }],
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://fleet-master.fr'),
 
   // ── PWA manifest ──────────────────────────────────────────────────────────
@@ -51,22 +51,22 @@ export const metadata: Metadata = {
   // ── Apple Web App (Add to Home Screen iOS) ────────────────────────────────
   appleWebApp: {
     capable: true,
-    title: 'FleetMaster Pro',
+    title: 'Fleet-Master',
     statusBarStyle: 'black-translucent',
   },
 
   // ── Open Graph ────────────────────────────────────────────────────────────
   openGraph: {
-    title: 'FleetMaster Pro - Gestion de flotte intelligente',
+    title: 'Fleet-Master - Gestion de flotte intelligente',
     description: 'SaaS de gestion de flotte pour transporteurs. Maintenance, tournées, conformité réglementaire.',
     url: process.env.NEXT_PUBLIC_APP_URL || 'https://fleet-master.fr',
-    siteName: 'FleetMaster Pro',
+    siteName: 'Fleet-Master',
     images: [
       {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'FleetMaster Pro - Tableau de bord de gestion de flotte',
+        alt: 'Fleet-Master - Tableau de bord de gestion de flotte',
       },
     ],
     locale: 'fr_FR',
@@ -76,7 +76,7 @@ export const metadata: Metadata = {
   // ── Twitter Card ──────────────────────────────────────────────────────────
   twitter: {
     card: 'summary_large_image',
-    title: 'FleetMaster Pro - Gestion de flotte intelligente',
+    title: 'Fleet-Master - Gestion de flotte intelligente',
     description: 'SaaS de gestion de flotte pour transporteurs. Réduisez vos coûts de 30% avec la maintenance prédictive.',
     images: ['/og-image.jpg'],
   },

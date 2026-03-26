@@ -132,7 +132,7 @@ function buildEmailContent(
             </table>
           </div>
           <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">
-            FleetMaster Pro — Alerte automatique documents véhicules
+            Fleet-Master — Alerte automatique documents véhicules
           </div>
         </div>
       `,
@@ -177,7 +177,7 @@ function buildEmailContent(
             </table>
           </div>
           <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">
-            FleetMaster Pro — Alerte automatique documents véhicules
+            Fleet-Master — Alerte automatique documents véhicules
           </div>
         </div>
       `,
@@ -220,7 +220,7 @@ function buildEmailContent(
           </p>
         </div>
         <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">
-          FleetMaster Pro — Alerte automatique documents véhicules
+          Fleet-Master — Alerte automatique documents véhicules
         </div>
       </div>
     `,

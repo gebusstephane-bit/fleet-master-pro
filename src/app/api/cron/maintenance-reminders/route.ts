@@ -114,7 +114,7 @@ function buildReminderEmail(params: {
             🔔 Rappel — RDV maintenance demain
           </h2>
           <p style="color:#3730a3;margin:6px 0 0;font-size:14px;">
-            FleetMaster Pro · Rappel automatique J-1
+            Fleet-Master · Rappel automatique J-1
           </p>
         </div>
 
@@ -159,7 +159,7 @@ function buildReminderEmail(params: {
         </div>
 
         <div style="background:#f9fafb;padding:14px 24px;font-size:12px;color:#6b7280;border-top:1px solid #e5e7eb;">
-          FleetMaster Pro · Rappel automatique — Ne pas répondre à cet email
+          Fleet-Master · Rappel automatique — Ne pas répondre à cet email
         </div>
       </div>
     `,

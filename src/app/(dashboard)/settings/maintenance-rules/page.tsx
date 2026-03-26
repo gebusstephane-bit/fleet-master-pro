@@ -443,7 +443,7 @@ export default function MaintenanceRulesSettingsPage() {
           <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 mb-6">
             <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
             <p className="text-sm text-blue-300">
-              Ces règles sont fournies par FleetMaster Pro et basées sur les préconisations constructeurs.
+              Ces règles sont fournies par Fleet-Master et basées sur les préconisations constructeurs.
               Elles s&apos;appliquent automatiquement à toute votre flotte et ne peuvent pas être modifiées ou supprimées.
             </p>
           </div>

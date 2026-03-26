@@ -1,5 +1,5 @@
 /**
- * Bibliothèque de configurations d'essieux — FleetMaster Pro
+ * Bibliothèque de configurations d'essieux — Fleet-Master
  *
  * Définit les configurations réelles pour chaque type de véhicule
  * dans la flotte française (PL, VUL, remorques, semi-remorques).

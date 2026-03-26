@@ -117,7 +117,7 @@ export function SocialProof() {
           className="text-center"
         >
           <p className="text-xs text-slate-600 uppercase tracking-widest font-medium mb-6">
-            Transporteurs qui ont choisi FleetMaster Pro
+            Transporteurs qui ont choisi Fleet-Master
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
             {[

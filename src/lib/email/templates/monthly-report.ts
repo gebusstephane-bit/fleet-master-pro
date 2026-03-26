@@ -1,5 +1,5 @@
 /**
- * Template email pour le rapport mensuel FleetMaster Pro
+ * Template email pour le rapport mensuel Fleet-Master
  * Design compact et professionnel
  */
 
@@ -280,7 +280,7 @@ export function monthlyReportTemplate(data: MonthlyFleetReport, unsubscribeUrl?:
                 ${unsubscribeUrl ? ` | <a href="${unsubscribeUrl}" style="color: ${COLORS.primary}; text-decoration: none;">Se désabonner</a>` : ''}
               </p>
               <p style="font-size: 11px; color: #9ca3af; margin: 8px 0 0 0;">
-                Cet email a été envoyé automatiquement par FleetMaster Pro<br>
+                Cet email a été envoyé automatiquement par Fleet-Master<br>
                 ${data.company.name}
               </p>
             </td>
@@ -335,6 +335,6 @@ ${data.urgentActions.map(a => `   ⚠️ ${a}`).join('\n')}
 Voir le rapport complet: ${appUrl}/dashboard
 
 ---
-FleetMaster Pro
+Fleet-Master
 ${unsubscribeUrl ? `Se désabonner: ${unsubscribeUrl}` : ''}`;
 }

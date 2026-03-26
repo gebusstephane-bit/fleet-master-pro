@@ -189,7 +189,7 @@ export default function WebhooksPage() {
         <div>
           <h1 className="text-2xl font-bold text-white">API & Webhooks</h1>
           <p className="text-slate-400 text-sm mt-0.5">
-            Intégrez FleetMaster Pro avec vos systèmes externes
+            Intégrez Fleet-Master avec vos systèmes externes
           </p>
         </div>
         <Link

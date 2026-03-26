@@ -39,7 +39,7 @@ export function maintenanceAlertTemplate(data: MaintenanceAlertData): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alerte Maintenance - FleetMaster Pro</title>
+  <title>Alerte Maintenance - Fleet-Master</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -58,7 +58,7 @@ export function maintenanceAlertTemplate(data: MaintenanceAlertData): string {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🔧 FleetMaster Pro</h1>
+      <h1>🔧 Fleet-Master</h1>
       <p>Alerte Maintenance</p>
     </div>
     
@@ -96,7 +96,7 @@ export function maintenanceAlertTemplate(data: MaintenanceAlertData): string {
       </center>
       
       <div class="footer">
-        <p>Cet email a été envoyé automatiquement par FleetMaster Pro</p>
+        <p>Cet email a été envoyé automatiquement par Fleet-Master</p>
         <p>${data.companyName}</p>
       </div>
     </div>
@@ -110,7 +110,7 @@ export function maintenanceAlertText(data: MaintenanceAlertData): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   
   return `
-ALERTE MAINTENANCE - FleetMaster Pro
+ALERTE MAINTENANCE - Fleet-Master
 =====================================
 
 ${severityLabels[data.severity]}: ${data.vehicleName}
@@ -123,6 +123,6 @@ ${data.dueDate ? `Date prévue: ${format(new Date(data.dueDate), 'dd/MM/yyyy', {
 Planifier une intervention: ${appUrl}/maintenance/new
 
 ---
-${data.companyName} - FleetMaster Pro
+${data.companyName} - Fleet-Master
 `;
 }

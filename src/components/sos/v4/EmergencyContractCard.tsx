@@ -1,7 +1,7 @@
 /**
  * EmergencyContractCard - Carte Type A: Contrat 24/24 (Vert)
  * Affiche un contrat d'urgence avec numéro prioritaire
- * Aligné Design System FleetMaster Pro
+ * Aligné Design System Fleet-Master
  */
 
 'use client';

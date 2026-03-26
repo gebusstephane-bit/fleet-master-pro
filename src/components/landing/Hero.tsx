@@ -37,7 +37,7 @@ function DashboardMockup() {
         <div className="flex items-center gap-3">
           <div className="h-2 w-2 rounded-full bg-[#00d4ff] animate-pulse shadow-[0_0_10px_#00d4ff]" />
           <span className="text-xs font-medium uppercase tracking-[0.2em] text-slate-400">
-            FleetMaster Pro
+            Fleet-Master
           </span>
         </div>
         <div className="flex gap-1.5">
@@ -192,7 +192,7 @@ export function Hero() {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="text-lg text-slate-400 max-w-lg mb-8 leading-relaxed"
             >
-              FleetMaster Pro centralise vos documents, inspections et maintenances.
+              Fleet-Master centralise vos documents, inspections et maintenances.
               <span className="text-white font-semibold">
                 {" "}En 10 secondes, vous savez si chaque véhicule est conforme.
               </span>

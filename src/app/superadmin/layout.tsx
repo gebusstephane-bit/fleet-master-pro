@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 /**
- * Layout SuperAdmin - Fleet Master Pro
+ * Layout SuperAdmin - Fleet-Master
  * Style dark mode professionnel (Vercel/Stripe Dashboard inspired)
  */
 
@@ -14,8 +14,8 @@ import { getSuperadminEmail, isSuperadminEmail } from '@/lib/superadmin';
 import { logger } from '@/lib/logger';
 
 export const metadata = {
-  title: 'SuperAdmin | Fleet Master Pro',
-  description: 'Espace d\'administration Fleet Master Pro',
+  title: 'SuperAdmin | Fleet-Master',
+  description: 'Espace d\'administration Fleet-Master',
 };
 
 export default async function SuperAdminLayout({

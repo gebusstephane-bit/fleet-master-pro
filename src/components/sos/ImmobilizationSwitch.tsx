@@ -1,6 +1,6 @@
 /**
  * ImmobilizationSwitch - Indique si le véhicule est immobilisé
- * Aligné Design System FleetMaster Pro
+ * Aligné Design System Fleet-Master
  */
 
 'use client';

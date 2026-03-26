@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(
       htmlPage(
         'Désabonnement confirmé',
-        'Vous ne recevrez plus les rapports hebdomadaires IA de FleetMaster Pro.<br><br>Vous pouvez vous réabonner à tout moment depuis les paramètres de votre compte.'
+        'Vous ne recevrez plus les rapports hebdomadaires IA de Fleet-Master.<br><br>Vous pouvez vous réabonner à tout moment depuis les paramètres de votre compte.'
       ),
       { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
     );
@@ -54,7 +54,7 @@ function htmlPage(title: string, message: string): string {
   return `<!DOCTYPE html>
 <html lang="fr">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>${title} — FleetMaster Pro</title></head>
+<title>${title} — Fleet-Master</title></head>
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;">
   <div style="max-width:400px;background:#ffffff;border-radius:12px;padding:40px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
     <h1 style="font-size:20px;color:#111827;margin:0 0 12px;">${title}</h1>

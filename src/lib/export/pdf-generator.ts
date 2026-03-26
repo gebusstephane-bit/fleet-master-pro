@@ -69,7 +69,7 @@ export async function generatePDF(config: PDFConfig): Promise<Buffer> {
 
   const pdfDoc = await PDFDocument.create();
   pdfDoc.setTitle(`Rapport ${typeLabel(type)} — ${companyName}`);
-  pdfDoc.setAuthor('FleetMaster Pro');
+  pdfDoc.setAuthor('Fleet-Master');
   pdfDoc.setCreationDate(new Date());
 
   const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -135,7 +135,7 @@ export async function generatePDF(config: PDFConfig): Promise<Buffer> {
     });
 
     // Branding right
-    const brandText = 'FleetMaster Pro';
+    const brandText = 'Fleet-Master';
     const brandW = bold.widthOfTextAtSize(brandText, 13);
     page.drawText(brandText, {
       x: PAGE_W - MARGIN - brandW, y: PAGE_H - 38, size: 13, font: bold, color: C.blue,
@@ -183,7 +183,7 @@ export async function generatePDF(config: PDFConfig): Promise<Buffer> {
       color: C.card,
     });
 
-    page.drawText(normalizeText(`FleetMaster Pro - ${companyName} - Confidentiel`), {
+    page.drawText(normalizeText(`Fleet-Master - ${companyName} - Confidentiel`), {
       x: MARGIN, y: footerY, size: 7, font: regular, color: C.subtle,
     });
 

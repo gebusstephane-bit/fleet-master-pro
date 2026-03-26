@@ -25,7 +25,7 @@ export function paymentFailedEmailTemplate(data: PaymentFailedEmailData): string
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Échec de paiement — FleetMaster Pro</title>
+  <title>Échec de paiement — Fleet-Master</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f3f4f6; }
     .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.07); }
@@ -50,7 +50,7 @@ export function paymentFailedEmailTemplate(data: PaymentFailedEmailData): string
   <div class="container">
     <div class="header">
       <h1>⚠️ Échec de paiement</h1>
-      <p>Votre abonnement FleetMaster Pro</p>
+      <p>Votre abonnement Fleet-Master</p>
     </div>
     <div class="content">
       <p style="font-size:16px;font-weight:600;color:#111827;">${greeting}</p>
@@ -68,7 +68,7 @@ export function paymentFailedEmailTemplate(data: PaymentFailedEmailData): string
 
       <div class="steps">
         <h3>Que faire maintenant ?</h3>
-        <div class="step"><span class="step-num">1</span>Connectez-vous à votre espace client FleetMaster Pro</div>
+        <div class="step"><span class="step-num">1</span>Connectez-vous à votre espace client Fleet-Master</div>
         <div class="step"><span class="step-num">2</span>Accédez à <strong>Paramètres → Abonnement & Facturation</strong></div>
         <div class="step"><span class="step-num">3</span>Mettez à jour votre carte bancaire ou IBAN</div>
       </div>
@@ -78,13 +78,13 @@ export function paymentFailedEmailTemplate(data: PaymentFailedEmailData): string
       </div>
 
       <div class="warning">
-        Si le paiement n'est pas régularisé, l'accès à FleetMaster Pro sera suspendu. Vos données restent conservées pendant 30 jours.
+        Si le paiement n'est pas régularisé, l'accès à Fleet-Master sera suspendu. Vos données restent conservées pendant 30 jours.
       </div>
 
       <p style="font-size:13px;color:#6b7280;">Besoin d'aide ? Répondez à cet email ou contactez-nous à <a href="mailto:support@fleetmaster.pro" style="color:#2563eb;">support@fleetmaster.pro</a>.</p>
     </div>
     <div class="footer">
-      FleetMaster Pro · Gestion de flotte professionnelle<br>
+      Fleet-Master · Gestion de flotte professionnelle<br>
       Cet email est envoyé au contact administrateur du compte.
     </div>
   </div>
@@ -98,7 +98,7 @@ export function paymentFailedEmailText(data: PaymentFailedEmailData): string {
   const greeting = data.adminFirstName ? `Bonjour ${data.adminFirstName},` : 'Bonjour,';
 
   return `
-Échec de paiement — FleetMaster Pro
+Échec de paiement — Fleet-Master
 
 ${greeting}
 
@@ -113,6 +113,6 @@ Sans régularisation, l'accès sera suspendu. Vos données sont conservées 30 j
 
 Besoin d'aide ? Répondez à cet email.
 
-FleetMaster Pro
+Fleet-Master
 `.trim();
 }

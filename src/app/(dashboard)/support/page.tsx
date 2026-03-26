@@ -55,7 +55,7 @@ const kbArticles = [
   {
     icon: FileText,
     title: 'Guide de démarrage rapide',
-    description: 'Premiers pas avec FleetMaster Pro',
+    description: 'Premiers pas avec Fleet-Master',
     href: '#',
   },
   {

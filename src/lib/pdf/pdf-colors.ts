@@ -1,5 +1,5 @@
 /**
- * Palette de couleurs FleetMaster Pro — PDF
+ * Palette de couleurs Fleet-Master — PDF
  * Toutes les couleurs normalisées 0-1 pour pdf-lib
  */
 

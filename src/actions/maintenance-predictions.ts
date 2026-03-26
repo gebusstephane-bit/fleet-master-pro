@@ -2,7 +2,7 @@
 
 /**
  * Actions serveur pour l'initialisation manuelle de l'historique maintenance
- * PROMPT #13-C — FleetMaster Pro
+ * PROMPT #13-C — Fleet-Master
  *
  * Cas d'usage : véhicule neuf ou repris sans historique.
  * Permet de remettre le compteur à zéro sans créer de faux maintenance_records.

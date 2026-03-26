@@ -1,5 +1,5 @@
 /**
- * Fonctions utilitaires de dessin pour le PDF FleetMaster Pro
+ * Fonctions utilitaires de dessin pour le PDF Fleet-Master
  */
 
 import { PDFPage, RGB } from 'pdf-lib';
@@ -195,7 +195,7 @@ export function drawPageBrand(
   fonts: FontSet,
 ) {
   rect(page, 0, PAGE_H - 22, PAGE_W, 22, C.primary);
-  txt(page, 'FleetMaster Pro', 20, PAGE_H - 15, 8, fonts.bold, C.white);
+  txt(page, 'Fleet-Master', 20, PAGE_H - 15, 8, fonts.bold, C.white);
   txt(page, 'Rapport de Conformite Reglementaire', 0, PAGE_H - 15, 8, fonts.regular, C.primaryBg, 'right', PAGE_W - 20);
 }
 

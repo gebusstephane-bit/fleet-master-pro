@@ -130,7 +130,7 @@ export function Footer() {
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-slate-600">
-            © {new Date().getFullYear()} FleetMaster Pro. Tous droits réservés.
+            © {new Date().getFullYear()} Fleet-Master. Tous droits réservés.
           </p>
           <div className="flex gap-6">
             {footerLinks.legal.map((link) => (

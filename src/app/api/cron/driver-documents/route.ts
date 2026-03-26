@@ -185,7 +185,7 @@ function buildLicenseEmail(
             </table>
           </div>
           <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">
-            FleetMaster Pro — Alerte automatique documents conducteurs
+            Fleet-Master — Alerte automatique documents conducteurs
           </div>
         </div>
       `,
@@ -220,7 +220,7 @@ function buildLicenseEmail(
             </table>
           </div>
           <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">
-            FleetMaster Pro — Alerte automatique documents conducteurs
+            Fleet-Master — Alerte automatique documents conducteurs
           </div>
         </div>
       `,
@@ -250,7 +250,7 @@ function buildLicenseEmail(
           </table>
         </div>
         <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">
-          FleetMaster Pro — Alerte automatique documents conducteurs
+          Fleet-Master — Alerte automatique documents conducteurs
         </div>
       </div>
     `,
@@ -305,7 +305,7 @@ function buildCqcEmail(
             </table>
           </div>
           <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">
-            FleetMaster Pro — Alerte automatique documents conducteurs
+            Fleet-Master — Alerte automatique documents conducteurs
           </div>
         </div>
       `,
@@ -340,7 +340,7 @@ function buildCqcEmail(
             </table>
           </div>
           <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">
-            FleetMaster Pro — Alerte automatique documents conducteurs
+            Fleet-Master — Alerte automatique documents conducteurs
           </div>
         </div>
       `,
@@ -370,7 +370,7 @@ function buildCqcEmail(
           </table>
         </div>
         <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">
-          FleetMaster Pro — Alerte automatique documents conducteurs
+          Fleet-Master — Alerte automatique documents conducteurs
         </div>
       </div>
     `,
@@ -421,7 +421,7 @@ function buildGenericDocumentEmail(
               <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;">Statut</td><td style="padding:8px;color:#dc2626;font-weight:bold;">EXPIRÉ (${overdue} j)</td></tr>
             </table>
           </div>
-          <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">FleetMaster Pro — Alerte automatique documents conducteurs</div>
+          <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">Fleet-Master — Alerte automatique documents conducteurs</div>
         </div>
       `,
     };
@@ -451,7 +451,7 @@ function buildGenericDocumentEmail(
               <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;">Jours restants</td><td style="padding:8px;color:#d97706;font-weight:bold;">${daysLeft} jours</td></tr>
             </table>
           </div>
-          <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">FleetMaster Pro — Alerte automatique documents conducteurs</div>
+          <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">Fleet-Master — Alerte automatique documents conducteurs</div>
         </div>
       `,
     };
@@ -478,7 +478,7 @@ function buildGenericDocumentEmail(
             <tr><td style="padding:8px;background:#f9fafb;font-weight:bold;">Jours restants</td><td style="padding:8px;">${daysLeft} jours</td></tr>
           </table>
         </div>
-        <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">FleetMaster Pro — Alerte automatique documents conducteurs</div>
+        <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">Fleet-Master — Alerte automatique documents conducteurs</div>
       </div>
     `,
   };
@@ -782,7 +782,7 @@ function buildNoEmailWarningContent(
           </table>
         </div>
         <div style="background:#f9fafb;padding:16px;font-size:12px;color:#6b7280;">
-          FleetMaster Pro — Alerte automatique documents conducteurs
+          Fleet-Master — Alerte automatique documents conducteurs
         </div>
       </div>
     `,

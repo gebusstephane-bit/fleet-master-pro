@@ -1,5 +1,5 @@
 /**
- * Utilitaires de manipulation des dates - FleetMaster Pro
+ * Utilitaires de manipulation des dates - Fleet-Master
  * Gère la conversion sécurisée entre Date objects et strings ISO
  */
 

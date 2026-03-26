@@ -131,7 +131,7 @@ export function WhyFleetMaster() {
             </span>
           </h2>
           <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
-            FleetMaster Pro n'est pas un traqueur GPS. C'est un outil de gestion 
+            Fleet-Master n'est pas un traqueur GPS. C'est un outil de gestion 
             complet qui respecte vos chauffeurs et votre budget.
           </p>
         </motion.div>

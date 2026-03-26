@@ -1,7 +1,7 @@
 /**
  * InsuranceCard - Carte Type B: Assurance (Orange)
  * Affiche les informations d'assurance pour remorquage
- * Aligné Design System FleetMaster Pro
+ * Aligné Design System Fleet-Master
  */
 
 'use client';

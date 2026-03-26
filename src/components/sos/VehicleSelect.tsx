@@ -1,6 +1,6 @@
 /**
  * VehicleSelect - Sélection du véhicule en panne
- * Version V3.2 - Aligné Design System FleetMaster Pro
+ * Version V3.2 - Aligné Design System Fleet-Master
  */
 
 'use client';

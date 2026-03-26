@@ -1,5 +1,5 @@
 /**
- * Rate Limiter pour FleetMaster Pro - Production Ready
+ * Rate Limiter pour Fleet-Master - Production Ready
  * Protection contre les attaques DoS et abus d'API
  *
  * Architecture :

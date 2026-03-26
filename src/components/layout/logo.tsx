@@ -1,5 +1,5 @@
 /**
- * Composant Logo FleetMaster Pro
+ * Composant Logo Fleet-Master
  * Logo avec pictogramme nœud connecté (style Linear/Vercel)
  */
 

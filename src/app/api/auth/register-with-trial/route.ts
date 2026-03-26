@@ -237,7 +237,7 @@ async function handler(request: NextRequest) {
     try {
       await sendEmail({
         to: email,
-        subject: `Bienvenue sur FleetMaster Pro — votre essai commence maintenant`,
+        subject: `Bienvenue sur Fleet-Master — votre essai commence maintenant`,
         html: welcomeEmailTemplate({ firstName, companyName, trialEndsAt }),
         text: welcomeEmailText({ firstName, companyName, trialEndsAt }),
       });

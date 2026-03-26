@@ -291,7 +291,7 @@ export function CommandPalette() {
                     <span className="ml-1">pour sélectionner</span>
                   </span>
                 </div>
-                <span>FleetMaster Pro</span>
+                <span>Fleet-Master</span>
               </div>
             </div>
           </motion.div>

@@ -124,7 +124,7 @@ export async function handlePaymentFailed(
       try {
         await sendEmail({
           to: recipientEmail,
-          subject: `⚠️ Échec de paiement — abonnement FleetMaster Pro`,
+          subject: `⚠️ Échec de paiement — abonnement Fleet-Master`,
           html: paymentFailedEmailTemplate({
             companyName: company.name,
             adminFirstName: admin?.first_name ?? undefined,

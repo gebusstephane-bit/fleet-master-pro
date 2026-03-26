@@ -1,5 +1,5 @@
 /**
- * Configuration globale React Query pour FleetMaster Pro
+ * Configuration globale React Query pour Fleet-Master
  * Optimisée pour la scalabilité (1000+ véhicules)
  */
 

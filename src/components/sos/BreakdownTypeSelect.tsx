@@ -1,6 +1,6 @@
 /**
  * BreakdownTypeSelect - Sélection du type de panne (V3.2)
- * Aligné Design System FleetMaster Pro - Glassmorphism
+ * Aligné Design System Fleet-Master - Glassmorphism
  */
 
 'use client';

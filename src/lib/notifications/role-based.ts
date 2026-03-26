@@ -1,6 +1,6 @@
 /**
  * Système de notifications basé sur les rôles
- * FleetMaster Pro
+ * Fleet-Master
  */
 
 import { USER_ROLE } from '@/constants/enums';

@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { ArrowLeft, Building2, Mail, Phone, Globe, Shield } from 'lucide-react';
 
 export const metadata = {
-  title: 'Mentions Légales | FleetMaster Pro',
-  description: 'Mentions légales de la plateforme FleetMaster Pro',
+  title: 'Mentions Légales | Fleet-Master',
+  description: 'Mentions légales de la plateforme Fleet-Master',
 };
 
 export default function MentionsLegalesPage() {

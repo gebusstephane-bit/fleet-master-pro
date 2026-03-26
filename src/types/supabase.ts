@@ -1,5 +1,5 @@
 /**
- * Types Supabase Database — FleetMaster Pro
+ * Types Supabase Database — Fleet-Master
  * Mis à jour manuellement depuis les migrations SQL.
  * Pour régénérer automatiquement : `npx supabase gen types typescript`
  *

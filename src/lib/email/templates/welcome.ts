@@ -22,7 +22,7 @@ export function welcomeEmailTemplate(data: WelcomeEmailData): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bienvenue sur FleetMaster Pro</title>
+  <title>Bienvenue sur Fleet-Master</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f3f4f6; }
     .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.07); }
@@ -48,7 +48,7 @@ export function welcomeEmailTemplate(data: WelcomeEmailData): string {
 <body>
   <div class="container">
     <div class="header">
-      <h1>Bienvenue sur FleetMaster Pro</h1>
+      <h1>Bienvenue sur Fleet-Master</h1>
       <p>Votre essai gratuit est activé — aucune carte bancaire requise</p>
     </div>
     <div class="content">
@@ -81,7 +81,7 @@ export function welcomeEmailTemplate(data: WelcomeEmailData): string {
       </div>
     </div>
     <div class="footer">
-      FleetMaster Pro · Gestion de flotte professionnelle<br>
+      Fleet-Master · Gestion de flotte professionnelle<br>
       Vous recevez cet email car vous venez de créer un compte.
     </div>
   </div>
@@ -99,7 +99,7 @@ export function welcomeEmailText(data: WelcomeEmailData): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fleetmaster.pro';
 
   return `
-Bienvenue sur FleetMaster Pro
+Bienvenue sur Fleet-Master
 
 Bonjour ${data.firstName},
 
@@ -117,6 +117,6 @@ Commencer : ${appUrl}/dashboard
 
 Une question ? Répondez à cet email.
 
-FleetMaster Pro
+Fleet-Master
 `.trim();
 }

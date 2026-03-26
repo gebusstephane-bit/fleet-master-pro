@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 export const metadata = {
-  title: 'Conditions Générales de Vente | FleetMaster Pro',
-  description: 'Conditions générales de vente - FleetMaster Pro',
+  title: 'Conditions Générales de Vente | Fleet-Master',
+  description: 'Conditions générales de vente - Fleet-Master',
 };
 
 export default function CGVPage() {
@@ -26,70 +26,68 @@ export default function CGVPage() {
           Conditions Générales de Vente
         </h1>
 
-        {/* Contenu placeholder */}
+        <p className="text-sm text-slate-400 mb-8">Derniere mise a jour : 26 mars 2026</p>
+
         <div className="space-y-6 text-slate-300">
           <section>
             <h2 className="text-xl font-semibold text-white mb-4">1. Objet</h2>
             <p className="leading-relaxed">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Les présentes 
-              Conditions Générales de Vente (CGV) régissent l'utilisation du service 
-              FleetMaster Pro, solution SaaS de gestion de flotte automobile.
+              Les presentes Conditions Generales de Vente (CGV) regissent l'utilisation du service FleetMaster,
+              une solution SaaS de gestion de flotte editee par l'entreprise individuelle Stephane GEBUS.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">2. Prix et paiement</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">2. Services et Essai Gratuit</h2>
             <p className="leading-relaxed">
-              Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
-              Les prix sont indiqués en euros hors taxes. Le paiement s'effectue 
-              par carte bancaire via notre prestataire Stripe, mensuellement ou 
-              annuellement selon l'offre choisie.
+              FleetMaster propose une periode d'essai gratuite de 14 jours, sans engagement et sans saisie
+              de carte bancaire. A l'issue de cette periode, l'utilisateur peut choisir de souscrire a un
+              abonnement payant pour conserver l'acces a ses donnees.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">3. Durée et résiliation</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">3. Prix et Paiement</h2>
             <p className="leading-relaxed">
-              Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris. 
-              L'abonnement est sans engagement. Vous pouvez résilier à tout moment 
-              depuis votre espace client. La résiliation prend effet à la fin 
-              de la période en cours.
+              Les tarifs sont indiques en euros. Conformement a l'article 293 B du CGI, la TVA est non applicable.
+              Le paiement s'effectue de maniere securisee par carte bancaire via notre prestataire Stripe.
+              L'abonnement est facture mensuellement ou annuellement selon l'offre choisie.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">4. Responsabilités</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">4. Duree et Resiliation</h2>
             <p className="leading-relaxed">
-              Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore. 
-              Le service est fourni &quot;en l'état&quot;. Nous nous engageons à maintenir 
-              une disponibilité de 99,5% du service, hors maintenance planifiée.
+              L'abonnement est sans engagement de duree. L'utilisateur peut resilier a tout moment directement
+              depuis son espace client. La resiliation prendra effet a la fin de la periode de facturation en cours.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">5. Propriété intellectuelle</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">5. Responsabilites</h2>
             <p className="leading-relaxed">
-              Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia. 
-              Tous les droits de propriété intellectuelle relatifs au service FleetMaster Pro 
-              restent notre propriété exclusive.
+              Le service FleetMaster est fourni &quot;en l'etat&quot;. Bien que nous mettions tout en oeuvre pour
+              assurer une disponibilite de 99,5% du service, nous ne pourrons etre tenus responsables des
+              interruptions liees a la maintenance ou aux pannes de reseaux tiers. Les donnees saisies restent
+              sous la responsabilite de l'utilisateur.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">6. Loi applicable et juridiction</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">6. Propriete intellectuelle</h2>
             <p className="leading-relaxed">
-              Les présentes CGV sont soumises au droit français. En cas de litige, 
-              les tribunaux français seront compétents.
+              L'ensemble des elements (logiciel, code, design, logo) constituant le service FleetMaster
+              est la propriete exclusive de Stephane GEBUS.
             </p>
           </section>
 
-          <div className="mt-12 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-            <p className="text-sm text-slate-400">
-              <strong>Note :</strong> Ces conditions générales de vente sont des placeholders. 
-              Vous devez les remplacer par vos CGV réelles validées par un juriste 
-              avant la mise en production.
+          <section>
+            <h2 className="text-xl font-semibold text-white mb-4">7. Loi applicable et juridiction</h2>
+            <p className="leading-relaxed">
+              Les presentes CGV sont soumises au droit francais. En cas de litige, et a defaut d'accord amiable,
+              les tribunaux francais seront seuls competents.
             </p>
-          </div>
+          </section>
         </div>
       </div>
     </div>

@@ -114,7 +114,7 @@ export function ComparisonTable() {
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white">
             Pourquoi choisir{" "}
             <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              FleetMaster Pro ?
+              Fleet-Master ?
             </span>
           </h2>
         </motion.div>
@@ -133,7 +133,7 @@ export function ComparisonTable() {
               </span>
             </div>
             <div className="p-5 border-b border-cyan-500/20 bg-cyan-500/[0.05] text-center">
-              <p className="text-sm font-bold text-white">FleetMaster Pro</p>
+              <p className="text-sm font-bold text-white">Fleet-Master</p>
               <span className="inline-flex mt-1 items-center px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
                 <span className="text-[10px] text-cyan-400 font-bold">
                   VOTRE CHOIX
@@ -195,7 +195,7 @@ export function ComparisonTable() {
             </span>
           </div>
           <p className="text-xs text-slate-600 text-center max-w-2xl mx-auto leading-relaxed">
-            * FleetMaster Pro ne propose pas de géolocalisation GPS temps réel —
+            * Fleet-Master ne propose pas de géolocalisation GPS temps réel —
             un choix délibéré pour respecter la vie privée de vos chauffeurs et
             réduire les coûts.
           </p>

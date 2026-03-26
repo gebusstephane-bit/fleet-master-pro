@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * Actions Pneumatiques — FleetMaster Pro
+ * Actions Pneumatiques — Fleet-Master
  * Auth pattern: createClient + getUser + profiles (même que vehicles.ts)
  */
 

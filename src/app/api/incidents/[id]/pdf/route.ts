@@ -107,7 +107,7 @@ export async function GET(
     // ---- En-tête ----
     page.drawRectangle({ x: 0, y: H - 70, width: W, height: 70, color: cBlue });
     page.drawText('RAPPORT DE SINISTRE', { x: margin, y: H - 30, size: 16, font: fontBold, color: rgb(1, 1, 1) });
-    page.drawText('FleetMaster Pro', { x: margin, y: H - 48, size: 10, font, color: rgb(0.8, 0.9, 1) });
+    page.drawText('Fleet-Master', { x: margin, y: H - 48, size: 10, font, color: rgb(0.8, 0.9, 1) });
 
     // Numéro de sinistre
     const incidentNum = nt(incident.incident_number ?? `INC-${params.id.slice(0, 8).toUpperCase()}`);
@@ -267,7 +267,7 @@ export async function GET(
 
     // ---- Pied de page ----
     page.drawLine({ start: { x: margin, y: 40 }, end: { x: W - margin, y: 40 }, thickness: 0.5, color: cLightGray });
-    const generatedOn = `Document genere le ${new Date().toLocaleDateString('fr-FR')} — FleetMaster Pro`;
+    const generatedOn = `Document genere le ${new Date().toLocaleDateString('fr-FR')} — Fleet-Master`;
     page.drawText(generatedOn, { x: margin, y: 26, size: 8, font, color: cGray });
 
     const pdfBytes = await pdfDoc.save();

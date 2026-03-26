@@ -11,7 +11,7 @@ import crypto from 'crypto';
 const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 const MAX_OUTPUT_TOKENS = 500;
 
-const SYSTEM_PROMPT = `Tu es l'assistant IA de FleetMaster Pro. Génère un briefing matinal concis (4-5 phrases maximum) pour un gestionnaire de flotte. Sois direct, actionnable, priorise par urgence réglementaire puis financière. Ne répète pas les données brutes, synthétise en insight. Réponds uniquement en français.`;
+const SYSTEM_PROMPT = `Tu es l'assistant IA de Fleet-Master. Génère un briefing matinal concis (4-5 phrases maximum) pour un gestionnaire de flotte. Sois direct, actionnable, priorise par urgence réglementaire puis financière. Ne répète pas les données brutes, synthétise en insight. Réponds uniquement en français.`;
 
 function cacheKey(companyId: string, date: string): string {
   return crypto.createHash('sha256').update(`${companyId}:${date}`).digest('hex');

@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * Actions Sinistres — FleetMaster Pro
+ * Actions Sinistres — Fleet-Master
  * Pattern identique aux autres modules (vehicles, drivers)
  * RLS via createClient() — pas de createAdminClient()
  */

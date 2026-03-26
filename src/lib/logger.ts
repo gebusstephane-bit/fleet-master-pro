@@ -1,5 +1,5 @@
 /**
- * Logger structuré pour FleetMaster Pro
+ * Logger structuré pour Fleet-Master
  * Conforme ISO 27001 - pas de données sensibles en clair
  */
 

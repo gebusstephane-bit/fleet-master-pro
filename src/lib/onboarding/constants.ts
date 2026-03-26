@@ -8,7 +8,7 @@ export const ONBOARDING_STEPS = [
     id: 1,
     key: "welcome",
     title: "Bienvenue",
-    description: "Découvrez FleetMaster Pro",
+    description: "Découvrez Fleet-Master",
     duration: "2 min",
   },
   {
@@ -46,7 +46,7 @@ export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 export const ONBOARDING_TEXTS = {
   welcome: {
-    headline: "Bienvenue sur FleetMaster Pro",
+    headline: "Bienvenue sur Fleet-Master",
     subheadline:
       "La première plateforme de gestion de flotte qui anticipe les pannes avant qu'elles n'arrivent.",
     features: [

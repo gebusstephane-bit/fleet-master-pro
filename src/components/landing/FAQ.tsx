@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 const faqs = [
   {
-    question: "Pourquoi FleetMaster Pro n'a pas de géolocalisation GPS ?",
+    question: "Pourquoi Fleet-Master n'a pas de géolocalisation GPS ?",
     answer: "Nous avons fait le choix de ne pas inclure de traqueur GPS pour trois raisons : (1) Meilleure conformité RGPD — pas de surveillance permanente des chauffeurs, (2) Prix 10x moins cher — pas de boîtier OBD ni d'abonnement GPS coûteux, (3) Simplicité — pas d'installation matérielle. La gestion de flotte n'a pas besoin de savoir où est chaque camion en permanence.",
   },
   {

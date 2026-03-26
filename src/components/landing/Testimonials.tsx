@@ -29,7 +29,7 @@ export function Testimonials() {
             <span className="text-cosmic-display">
               Ils utilisent
             </span>
-            <span className="text-cosmic-gradient"> FleetMaster Pro</span>
+            <span className="text-cosmic-gradient"> Fleet-Master</span>
           </h2>
           <p className="text-lg text-slate-500 italic">
             Bêta en cours — premiers retours à venir
@@ -48,7 +48,7 @@ export function Testimonials() {
               <Quote className="h-6 w-6 text-[#00d4ff]" />
             </div>
             <p className="text-slate-400 italic text-lg leading-relaxed max-w-lg">
-              FleetMaster Pro est actuellement en phase bêta. Les premiers retours
+              Fleet-Master est actuellement en phase bêta. Les premiers retours
               de nos utilisateurs seront publiés ici.
             </p>
             <div className="flex items-center gap-3 mt-2">

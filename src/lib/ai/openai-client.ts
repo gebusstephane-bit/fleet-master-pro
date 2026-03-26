@@ -1,5 +1,5 @@
 /**
- * Client OpenAI singleton pour FleetMaster Pro
+ * Client OpenAI singleton pour Fleet-Master
  * Modèle imposé : gpt-4o-mini (coût optimisé)
  * Tous les appels passent par callAI() — jamais d'appel direct
  */

@@ -481,7 +481,7 @@ export default function CompanyPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Connectez FleetMaster Pro à vos systèmes TMS/ERP via l&apos;API publique REST.
+              Connectez Fleet-Master à vos systèmes TMS/ERP via l&apos;API publique REST.
               Authentification par clé API, rate limiting par plan.
             </p>
 

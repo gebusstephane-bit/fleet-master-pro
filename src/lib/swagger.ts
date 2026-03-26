@@ -1,5 +1,5 @@
 /**
- * OpenAPI 3.0 specification — FleetMaster Pro Public API v1
+ * OpenAPI 3.0 specification — Fleet-Master Public API v1
  */
 
 const BASE_URL =
@@ -9,10 +9,10 @@ export function getSwaggerSpec() {
   return {
     openapi: '3.0.3',
     info: {
-      title: 'FleetMaster Pro API',
+      title: 'Fleet-Master API',
       version: '1.0.0',
       description: `
-## API publique FleetMaster Pro
+## API publique Fleet-Master
 
 Gérez votre flotte programmatiquement : véhicules, conducteurs, carburant, maintenances, conformité et alertes.
 

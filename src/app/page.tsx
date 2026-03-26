@@ -9,7 +9,7 @@ import { Footer } from "@/components/landing/Footer";
 import { ParallaxContainer, WarpEffect } from "@/components/landing/FXLayer";
 
 export const metadata: Metadata = {
-  title: "FleetMaster Pro — Commandez votre flotte | Intelligence Artificielle",
+  title: "Fleet-Master — Commandez votre flotte | Intelligence Artificielle",
   description:
     "SaaS de gestion de flotte nouvelle génération. IA prédictive, conformité automatique, inspections QR. Pilotez votre flotte comme un commandant.",
   keywords: [
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     "DREAL",
   ],
   openGraph: {
-    title: "FleetMaster Pro — Commandez votre flotte",
+    title: "Fleet-Master — Commandez votre flotte",
     description: "Intelligence artificielle prédictive pour flottes. Déployez en 3 minutes.",
     type: "website",
   },

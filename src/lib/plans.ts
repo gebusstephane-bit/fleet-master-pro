@@ -1,5 +1,5 @@
 /**
- * Configuration centralisée des plans d'abonnement FleetMaster Pro
+ * Configuration centralisée des plans d'abonnement Fleet-Master
  * Source de vérité unique pour les limites, prix et features
  */
 

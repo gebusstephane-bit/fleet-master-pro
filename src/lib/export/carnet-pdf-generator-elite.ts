@@ -348,8 +348,8 @@ function drawSafeFleetHeader(
   // ── Partie droite: Logo et Statut ──
   const rightX = PAGE_W - MARGIN;
   
-  // Logo "FleetMaster Pro" (texte stylisé)
-  const logoText = 'FleetMaster Pro';
+  // Logo "Fleet-Master" (texte stylisé)
+  const logoText = 'Fleet-Master';
   const logoW = fonts.bold.widthOfTextAtSize(logoText, 12);
   drawText(page, logoText, rightX - logoW, baseY + 45, 12, fonts.bold, DS.white, 'left');
   
@@ -921,7 +921,7 @@ export async function generateEliteCarnetPDF(data: VehicleCarnetData): Promise<B
   
   // Métadonnées du document
   pdfDoc.setTitle(nt(`Carnet d'Entretien - ${data.vehicle.registration_number}`));
-  pdfDoc.setAuthor('FleetMaster Pro - Elite Transport 2026');
+  pdfDoc.setAuthor('Fleet-Master - Elite Transport 2026');
   pdfDoc.setSubject(nt(`Carnet numerique DREAL - ${data.vehicle.registration_number}`));
   pdfDoc.setCreationDate(generatedAt);
   pdfDoc.setKeywords(['fleet', 'maintenance', 'dreal', 'compliance', 'elite-2026']);

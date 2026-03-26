@@ -1,5 +1,5 @@
 /**
- * Module de sécurité FleetMaster Pro
+ * Module de sécurité Fleet-Master
  * 
  * Exporte tous les utilitaires de sécurité :
  * - Rate limiting

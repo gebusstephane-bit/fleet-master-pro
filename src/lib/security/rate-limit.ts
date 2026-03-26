@@ -1,5 +1,5 @@
 /**
- * Rate Limiting pour FleetMaster Pro
+ * Rate Limiting pour Fleet-Master
  * 
  * Implémentation en mémoire adaptée pour Vercel (sans Redis)
  * - Utilise une Map avec fenêtre glissante
