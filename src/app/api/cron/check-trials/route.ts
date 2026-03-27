@@ -26,10 +26,12 @@ export async function GET(request: NextRequest) {
   
   try {
     // Vérifier le secret Vercel Cron
-    const vercelCronSecret = request.headers.get('x-vercel-cron-secret');
-    const isVercelCron = vercelCronSecret === process.env.CRON_SECRET;
+    const secret =
+      request.headers.get('x-vercel-cron-secret') ||
+      request.headers.get('x-cron-secret') ||
+      request.nextUrl.searchParams.get('secret');
 
-    if (!isVercelCron && process.env.NODE_ENV === 'production') {
+    if (secret !== process.env.CRON_SECRET) {
       logger.warn('[check-trials] Tentative d\'accès non autorisée');
       return NextResponse.json(
         { error: 'Unauthorized' },

@@ -35,6 +35,7 @@ Sois factuel et concis. Réponds uniquement en JSON.`;
 
 export async function GET(request: NextRequest) {
   const secret =
+    request.headers.get('x-vercel-cron-secret') ||
     request.headers.get('x-cron-secret') ||
     request.nextUrl.searchParams.get('secret');
 

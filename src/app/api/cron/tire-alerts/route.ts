@@ -13,6 +13,7 @@ const DEDUP_DAYS = 7; // ne pas ré-alerter si notif émise il y a moins de 7 jo
 
 export async function GET(request: NextRequest) {
   const secret =
+    request.headers.get('x-vercel-cron-secret') ||
     request.headers.get('x-cron-secret') ||
     request.nextUrl.searchParams.get('secret');
 

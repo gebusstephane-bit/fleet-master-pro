@@ -28,6 +28,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.fleetmaster.pro'
 
 export async function GET(request: NextRequest) {
   const secret =
+    request.headers.get('x-vercel-cron-secret') ||
     request.headers.get('x-cron-secret') ||
     request.nextUrl.searchParams.get('secret');
 

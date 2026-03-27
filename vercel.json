@@ -16,10 +16,6 @@
       "schedule": "0 7 * * *"
     },
     {
-      "path": "/api/cron/predictive",
-      "schedule": "0 6 * * *"
-    },
-    {
       "path": "/api/cron/maintenance-status",
       "schedule": "0 8 * * *"
     },
@@ -34,10 +30,6 @@
     {
       "path": "/api/cron/tire-alerts",
       "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/maintenance-predictions",
-      "schedule": "0 5 * * *"
     },
     {
       "path": "/api/cron/monthly-report",
