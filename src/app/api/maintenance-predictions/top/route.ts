@@ -18,8 +18,11 @@ export async function GET() {
       .from('profiles')
       .select('company_id')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
+    if (!profile) {
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+    }
     if (!profile?.company_id) return NextResponse.json({ predictions: [] })
 
     const { data: rows } = await supabase
