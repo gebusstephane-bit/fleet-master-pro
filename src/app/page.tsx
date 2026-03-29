@@ -9,21 +9,33 @@ import { Footer } from "@/components/landing/Footer";
 import { ParallaxContainer, WarpEffect } from "@/components/landing/FXLayer";
 
 export const metadata: Metadata = {
-  title: "Fleet-Master — Commandez votre flotte | Intelligence Artificielle",
-  description:
-    "SaaS de gestion de flotte nouvelle génération. IA prédictive, conformité automatique, inspections QR. Pilotez votre flotte comme un commandant.",
-  keywords: [
-    "gestion flotte",
-    "fleet management",
-    "intelligence artificielle",
-    "maintenance prédictive",
-    "conformité transport",
-    "DREAL",
-  ],
+  title: "Logiciel Gestion de Flotte Transport | Suivi Véhicules & Alertes - FleetMaster",
+  description: "Fini les fichiers Excel et les oublis d'entretien. Centralisez la gestion de votre flotte (alertes, plannings, coûts) avec un SaaS conçu par des exploitants transport.",
+  keywords: ["gestion de flotte", "logiciel transport PME", "suivi véhicules", "alerte contrôle technique", "alternative excel flotte", "FleetMaster"],
+  alternates: {
+    canonical: "https://fleet-master.fr",
+  },
   openGraph: {
-    title: "Fleet-Master — Commandez votre flotte",
-    description: "Intelligence artificielle prédictive pour flottes. Déployez en 3 minutes.",
+    title: "Logiciel Gestion de Flotte Transport | Suivi Véhicules & Alertes - FleetMaster",
+    description: "Fini les fichiers Excel et les oublis d'entretien. Centralisez la gestion de votre flotte avec un SaaS conçu par des exploitants.",
+    url: "https://fleet-master.fr",
+    siteName: "FleetMaster",
+    locale: "fr_FR",
     type: "website",
+    images: [
+      {
+        url: "https://fleet-master.fr/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "FleetMaster - Logiciel gestion de flotte transport PME",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Logiciel Gestion de Flotte Transport | FleetMaster",
+    description: "Centralisez la gestion de votre flotte. Alertes automatiques, suivi maintenance, coûts en temps réel.",
+    images: ["https://fleet-master.fr/og-image.png"],
   },
 };
 
