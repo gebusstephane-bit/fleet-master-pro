@@ -18,7 +18,7 @@ import { Loader2, Eye, EyeOff, AlertCircle, Check, Gift } from 'lucide-react';
 // Schéma de validation
 const registerSchema = z.object({
   companyName: z.string().min(2, 'Le nom de l\'entreprise est requis'),
-  siret: z.string().regex(/^\d{14}$/, 'Le SIRET doit contenir 14 chiffres'),
+  siret: z.string().regex(/^\d{14}$/, 'Le SIRET doit contenir 14 chiffres').optional().or(z.literal('')),
   firstName: z.string().min(2, 'Le prénom est requis'),
   lastName: z.string().min(2, 'Le nom est requis'),
   email: z.string().email('Adresse email invalide'),
@@ -184,7 +184,7 @@ export default function RegisterForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="siret">Numéro SIRET</Label>
+                <Label htmlFor="siret">Numéro SIRET (optionnel)</Label>
                 <Input
                   id="siret"
                   placeholder="12345678900012"
@@ -192,6 +192,7 @@ export default function RegisterForm() {
                   disabled={isLoading}
                   {...register('siret')}
                 />
+                <p className="text-xs text-muted-foreground">Vous pourrez le renseigner plus tard dans vos paramètres</p>
                 {errors.siret && (
                   <p className="text-sm text-destructive">{errors.siret.message}</p>
                 )}
