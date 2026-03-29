@@ -91,34 +91,37 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
     const { data: subscription, error: subError } = await supabase
       .from('subscriptions')
       .select('plan, vehicle_limit')
-      .single();
-    
+      .eq('company_id', profile.company_id)
+      .maybeSingle();
+
     if (subError) {
       logger.error('createVehicle: Erreur récupération abonnement', new Error(subError.message));
-      return { success: false, error: 'Impossible de vérifier les limites d\'abonnement' };
     }
-    
+
+    // Pas d'abonnement trouvé — utilise les valeurs par défaut (trial PRO = 20 véhicules)
+    const vehicleLimit = subscription?.vehicle_limit || 20;
+
     // Compter les véhicules actuels (exclure les supprimés)
     const { count: vehicleCount, error: countError } = await supabase
       .from('vehicles')
       .select('*', { count: 'exact', head: true })
       .eq('company_id', profile.company_id)
       .is('deleted_at', null);
-    
+
     if (countError) {
       logger.error('createVehicle: Erreur comptage véhicules', new Error(countError.message));
       return { success: false, error: 'Impossible de vérifier le nombre de véhicules' };
     }
-    
+
     // Vérifier si la limite est atteinte
-    if (vehicleCount !== null && vehicleCount >= (subscription.vehicle_limit || 0)) {
-      return { 
-        success: false, 
-        error: `Limite de véhicules atteinte (${vehicleCount}/${subscription.vehicle_limit}). Passez au plan supérieur pour ajouter plus de véhicules.`,
+    if (vehicleCount !== null && vehicleCount >= vehicleLimit) {
+      return {
+        success: false,
+        error: `Limite de véhicules atteinte (${vehicleCount}/${vehicleLimit}). Passez au plan supérieur pour ajouter plus de véhicules.`,
         data: { 
           limitReached: true, 
           currentCount: vehicleCount, 
-          limit: subscription.vehicle_limit,
+          limit: vehicleLimit,
           upgradeUrl: '/settings/billing'
         }
       };
