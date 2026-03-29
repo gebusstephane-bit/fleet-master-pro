@@ -33,6 +33,8 @@ const publicRoutes = [
   "/terms",
   "/privacy",
   "/driver-app", // Route de l'app conducteur
+  "/sitemap.xml",
+  "/robots.txt",
 ];
 
 // Routes QR Code scan (publiques mais avec rate limiting strict)
