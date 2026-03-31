@@ -169,8 +169,13 @@ async function applyRateLimit(
     const vercelCronSecret = request.headers.get("x-vercel-cron-secret");
     const legacySecret = request.headers.get("x-cron-secret");
     const urlSecret = request.nextUrl.searchParams.get("secret");
+    const authHeader = request.headers.get("authorization");
+    const bearerSecret = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
     const isVercelCron =
       vercelCronSecret === process.env.CRON_SECRET ||
+      bearerSecret === process.env.CRON_SECRET ||
       legacySecret === process.env.CRON_SECRET ||
       urlSecret === process.env.CRON_SECRET;
 
