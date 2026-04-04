@@ -7,6 +7,8 @@ import { PricingTeaser } from "@/components/landing/PricingTeaser";
 import { FAQ } from "@/components/landing/FAQ";
 import { Footer } from "@/components/landing/Footer";
 import { ParallaxContainer, WarpEffect } from "@/components/landing/FXLayer";
+import { TestimonialsCarousel } from "@/components/landing/TestimonialsCarousel";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Logiciel Gestion de Flotte Transport | Suivi Véhicules & Alertes - FleetMaster",
@@ -55,7 +57,28 @@ export default function LandingPage() {
         
         {/* SECTION 2 — FEATURES 5DX */}
         <FeaturesV2 />
-        
+
+        {/* CTA intermédiaire */}
+        <section className="py-24 relative">
+          <div className="max-w-3xl mx-auto px-6 lg:px-8 text-center">
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-4">
+              Convaincu ? Testez gratuitement pendant 14 jours.
+            </h2>
+            <p className="text-lg text-slate-400 mb-8">
+              Sans carte bancaire. Résiliation en 1 clic.
+            </p>
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 btn-cosmic text-base px-8 py-4"
+            >
+              Démarrer mon essai gratuit
+            </Link>
+          </div>
+        </section>
+
+        {/* SECTION 2.5 — TÉMOIGNAGES */}
+        <TestimonialsCarousel />
+
         {/* SECTION 3 — TIMELINE 5DX */}
         <HowItWorksV2 />
         

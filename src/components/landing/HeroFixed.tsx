@@ -2,6 +2,7 @@
 
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Play, Shield, Activity, MapPin, Truck, Navigation } from "lucide-react";
 
@@ -43,24 +44,24 @@ function HighwayBackground() {
         />
         
         {/* Lignes de circulation animées */}
-        {[...Array(8)].map((_, i) => (
+        {[...Array(3)].map((_, i) => (
           <motion.circle
             key={i}
             r="3"
             fill="#00d4ff"
-            initial={{ 
-              cx: 50 + (Math.random() - 0.5) * 30, 
+            initial={{
+              cx: 50 + (Math.random() - 0.5) * 30,
               cy: 100,
-              opacity: 0 
+              opacity: 0
             }}
-            animate={{ 
+            animate={{
               cy: -10,
               opacity: [0, 1, 1, 0],
             }}
-            transition={{ 
+            transition={{
               duration: 3 + Math.random() * 2,
               repeat: Infinity,
-              delay: i * 0.5,
+              delay: i * 0.8,
               ease: "linear"
             }}
           />
@@ -82,7 +83,7 @@ function HighwayBackground() {
 
       {/* Réseau de connexions (type carte GPS) */}
       <svg className="absolute inset-0 w-full h-full opacity-30">
-        {[...Array(15)].map((_, i) => (
+        {[...Array(4)].map((_, i) => (
           <motion.line
             key={`connection-${i}`}
             x1={`${Math.random() * 100}%`}
@@ -93,54 +94,14 @@ function HighwayBackground() {
             strokeWidth="1"
             initial={{ opacity: 0 }}
             animate={{ opacity: [0, 0.3, 0] }}
-            transition={{ 
+            transition={{
               duration: 3,
               repeat: Infinity,
-              delay: i * 0.3,
+              delay: i * 0.5,
             }}
           />
         ))}
       </svg>
-
-      {/* Points de localisation (véhicules) */}
-      {[...Array(12)].map((_, i) => (
-        <motion.div
-          key={`vehicle-${i}`}
-          className="absolute"
-          style={{
-            left: `${10 + Math.random() * 80}%`,
-            top: `${10 + Math.random() * 80}%`,
-          }}
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: i * 0.2, duration: 0.5 }}
-        >
-          <motion.div
-            className="w-3 h-3 rounded-full"
-            style={{ 
-              background: i % 3 === 0 ? '#00d4ff' : i % 3 === 1 ? '#10b981' : '#8b5cf6',
-              boxShadow: `0 0 20px ${i % 3 === 0 ? '#00d4ff' : i % 3 === 1 ? '#10b981' : '#8b5cf6'}`,
-            }}
-            animate={{ 
-              scale: [1, 1.5, 1],
-              opacity: [0.8, 1, 0.8],
-            }}
-            transition={{ 
-              duration: 2 + Math.random(),
-              repeat: Infinity,
-            }}
-          />
-          {/* Halo */}
-          <motion.div
-            className="absolute inset-0 rounded-full border"
-            style={{ 
-              borderColor: i % 3 === 0 ? '#00d4ff' : i % 3 === 1 ? '#10b981' : '#8b5cf6',
-            }}
-            animate={{ scale: [1, 3], opacity: [0.5, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
-        </motion.div>
-      ))}
 
       {/* Grille perspective sol */}
       <div 
@@ -291,6 +252,20 @@ export function HeroFixed() {
     <section ref={containerRef} className="relative min-h-screen flex items-center overflow-hidden">
       {/* FOND SPECTACULAIRE */}
       <HighwayBackground />
+
+      {/* Image de fond hero */}
+      <div className="absolute inset-0 pointer-events-none">
+        <Image
+          src="/images/landing/hero-bg.png"
+          alt=""
+          fill
+          className="object-cover"
+          style={{ opacity: 0.18 }}
+          sizes="100vw"
+          quality={75}
+          priority
+        />
+      </div>
       
       <motion.div style={{ opacity, y }} className="relative w-full">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -306,7 +281,7 @@ export function HeroFixed() {
                 className="inline-flex items-center gap-2 glass-cosmic px-4 py-2 rounded-full border border-[#00d4ff]/30"
               >
                 <Shield className="h-4 w-4 text-[#00d4ff]" />
-                <span className="text-xs uppercase tracking-wider text-[#00d4ff]">Fleet OS v3.0</span>
+                <span className="text-xs uppercase tracking-wider text-[#00d4ff]">Essai 14 jours — Sans carte bancaire</span>
               </motion.div>
 
               {/* TITRE PRINCIPAL - STRUCTURÉ CORRECTEMENT AVEC EFFET 5DX */}
@@ -320,7 +295,7 @@ export function HeroFixed() {
                     textShadow: "0 0 40px rgba(0,212,255,0.3)",
                   }}
                 >
-                  Commandez
+                  Toute votre flotte.
                 </motion.h1>
                 <motion.h1
                   initial={{ opacity: 0, x: -50 }}
@@ -328,9 +303,9 @@ export function HeroFixed() {
                   transition={{ duration: 0.8, delay: 0.3 }}
                   className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight"
                 >
-                  <motion.span 
+                  <motion.span
                     className="bg-gradient-to-r from-[#00d4ff] to-blue-500 bg-clip-text text-transparent"
-                    animate={{ 
+                    animate={{
                       backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
                     }}
                     transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
@@ -338,7 +313,7 @@ export function HeroFixed() {
                       backgroundSize: "200% 200%",
                     }}
                   >
-                    votre flotte
+                    Un seul écran.
                   </motion.span>
                 </motion.h1>
               </div>
@@ -350,8 +325,8 @@ export function HeroFixed() {
                 transition={{ duration: 0.6, delay: 0.5 }}
                 className="text-lg text-slate-400 max-w-lg leading-relaxed"
               >
-                Intelligence artificielle prédictive, conformité automatique, 
-                et pilotage temps réel de votre flotte sur un seul écran.
+                Conformité, maintenance, carburant, inspections — FleetMaster gère tout
+                automatiquement. Fini les CT ratés, les amendes surprises, les pannes imprévues.
               </motion.p>
 
               {/* Stats */}
@@ -359,11 +334,11 @@ export function HeroFixed() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.6 }}
-                className="flex gap-4"
+                className="flex flex-wrap gap-4"
               >
-                <StatBadge value="2 847" label="Véhicules gérés" />
-                <StatBadge value="99,9" label="% Uptime" suffix="%" />
-                <StatBadge value="0" label="Pannes évitées" />
+                <StatBadge value="14 jours" label="Essai gratuit" />
+                <StatBadge value="3 min" label="Pour démarrer" />
+                <StatBadge value="Sans CB" label="Aucun engagement" />
               </motion.div>
 
               {/* CTAs */}
@@ -379,7 +354,7 @@ export function HeroFixed() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    Lancer la console
+                    Démarrer mon essai gratuit
                     <ArrowRight className="h-5 w-5" />
                   </motion.button>
                 </Link>

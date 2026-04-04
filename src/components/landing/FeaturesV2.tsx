@@ -2,11 +2,12 @@
 
 import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
-import { 
-  Brain, 
-  Shield, 
-  QrCode, 
-  TrendingUp, 
+import Image from "next/image";
+import {
+  Brain,
+  Shield,
+  QrCode,
+  TrendingUp,
   AlertTriangle,
   Clock,
   BarChart3,
@@ -74,6 +75,7 @@ function FeatureCard({
     description: string;
     color: string;
     data: FeatureData;
+    image?: string;
   };
   index: number;
 }) {
@@ -132,6 +134,18 @@ function FeatureCard({
           <h3 className="text-lg font-bold text-white mb-2 group-hover:text-white transition-colors">
             {feature.title}
           </h3>
+          {feature.image && (
+            <div className="relative w-full h-40 mb-3 rounded-lg overflow-hidden">
+              <Image
+                src={feature.image}
+                alt={feature.title}
+                fill
+                className="object-cover rounded-lg"
+                sizes="(max-width: 768px) 100vw, 50vw"
+                quality={75}
+              />
+            </div>
+          )}
           <p className="text-sm text-slate-400 mb-4 flex-1">
             {feature.description}
           </p>
@@ -161,46 +175,52 @@ function FeatureCard({
 
 const features = [
   {
-    icon: Brain,
-    title: "IA Prédictive",
-    description: "Anticipez les pannes 30 jours avant qu'elles n'arrivent. Algorithmes de machine learning entraînés sur 10M+ de véhicules.",
-    color: "#00d4ff",
-    data: { label: "prédictions", value: 2847, trend: 23 }
-  },
-  {
     icon: Shield,
     title: "Conformité Auto",
     description: "CT, assurances, permis — tout est surveillé 24/7. Alertes automatiques J-30, J-15, J-7.",
     color: "#10b981",
-    data: { label: "docs suivis", value: 15234, trend: 12 }
+    data: { label: "docs suivis", value: 15234, trend: 12 },
+    image: "/images/landing/conformite.png",
   },
   {
     icon: QrCode,
     title: "Inspection QR",
     description: "Scannez, inspectez, signez. Sans application. 32 points de contrôle en 2 minutes avec geolocalisation.",
     color: "#8b5cf6",
-    data: { label: "inspections", value: 8932, trend: 45 }
-  },
-  {
-    icon: BarChart3,
-    title: "Analytics Temps Réel",
-    description: "Tableaux de bord live TCO, consommation, efficacité. Exportez vers Excel, PowerBI, ou votre ERP.",
-    color: "#f59e0b",
-    data: { label: "métriques", value: 456, trend: 8 }
-  },
-  {
-    icon: Fuel,
-    title: "Optimisation Carburant",
-    description: "Détection d'anomalies de consommation, comparaison par véhicule et par chauffeur. Économies moyennes : 15%.",
-    color: "#ec4899",
-    data: { label: "litres économisés", value: 12847, trend: 15 }
+    data: { label: "inspections", value: 8932, trend: 45 },
+    image: "/images/landing/inspection.png",
   },
   {
     icon: Wrench,
     title: "Maintenance Proactive",
     description: "Planification automatique selon kilométrage et usage. Réduction des immobilisations de 40%.",
     color: "#f97316",
-    data: { label: "interventions", value: 342, trend: -5 }
+    data: { label: "interventions", value: 342, trend: -5 },
+    image: "/images/landing/maintenance.png",
+  },
+  {
+    icon: Fuel,
+    title: "Optimisation Carburant",
+    description: "Détection d'anomalies de consommation, comparaison par véhicule et par chauffeur. Économies moyennes : 15%.",
+    color: "#ec4899",
+    data: { label: "litres économisés", value: 12847, trend: 15 },
+    image: "/images/landing/carburant.png",
+  },
+  {
+    icon: Brain,
+    title: "IA Prédictive",
+    description: "Anticipez les pannes 30 jours avant qu'elles n'arrivent. Algorithmes de machine learning entraînés sur 10M+ de véhicules.",
+    color: "#00d4ff",
+    data: { label: "prédictions", value: 2847, trend: 23 },
+    image: "/images/landing/ia-predictive.png",
+  },
+  {
+    icon: BarChart3,
+    title: "Analytics Temps Réel",
+    description: "Tableaux de bord live TCO, consommation, efficacité. Exportez vers Excel, PowerBI, ou votre ERP.",
+    color: "#f59e0b",
+    data: { label: "métriques", value: 456, trend: 8 },
+    image: "/images/landing/analytics.png",
   },
 ];
 
@@ -244,9 +264,9 @@ export function FeaturesV2() {
             viewport={{ once: true }}
             className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6"
           >
-            <span className="text-cosmic-display">Une console</span>
+            <span className="text-cosmic-display">Tout ce dont votre flotte</span>
             <br />
-            <span className="text-cosmic-gradient">tout-puissante</span>
+            <span className="text-cosmic-gradient">a besoin</span>
           </motion.h2>
 
           <motion.p
@@ -256,8 +276,8 @@ export function FeaturesV2() {
             transition={{ delay: 0.1 }}
             className="text-xl text-slate-400 max-w-2xl mx-auto"
           >
-            Chaque seconde, notre IA analyse des millions de données pour vous donner 
-            l'avantage décisif sur votre flotte.
+            Conformité, maintenance, carburant, inspections — chaque outil pensé
+            pour les réalités du transport français.
           </motion.p>
         </div>
 

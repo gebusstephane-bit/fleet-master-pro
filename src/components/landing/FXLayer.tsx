@@ -11,45 +11,27 @@ export function ParallaxContainer({ children }: { children: React.ReactNode }) {
     offset: ["start start", "end start"]
   });
 
-  // 5 couches de profondeur
+  // 2 couches de profondeur (réduit de 5 à 2)
   const y1 = useTransform(scrollYProgress, [0, 1], [0, 100]);
   const y2 = useTransform(scrollYProgress, [0, 1], [0, 200]);
-  const y3 = useTransform(scrollYProgress, [0, 1], [0, 300]);
-  const y4 = useTransform(scrollYProgress, [0, 1], [0, 400]);
 
   return (
     <div ref={ref} className="relative">
-      {/* Couche 1: Arrière - Nébuleuse */}
-      <motion.div 
+      {/* Couche 1: Arrière - Nébuleuse + Routes */}
+      <motion.div
         className="fixed inset-0 pointer-events-none z-0"
         style={{ y: y1 }}
       >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(0,212,255,0.15)_0%,_transparent_70%)]" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-[100px]" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-[100px]" />
-      </motion.div>
-
-      {/* Couche 2: Routes lumineuses */}
-      <motion.div 
-        className="fixed inset-0 pointer-events-none z-10"
-        style={{ y: y2 }}
-      >
         <HighwayLines />
       </motion.div>
 
-      {/* Couche 3: Véhicules flottants */}
-      <motion.div 
-        className="fixed inset-0 pointer-events-none z-20"
-        style={{ y: y3 }}
+      {/* Couche 2: Véhicules + Particules */}
+      <motion.div
+        className="fixed inset-0 pointer-events-none z-10"
+        style={{ y: y2 }}
       >
         <FloatingVehicles />
-      </motion.div>
-
-      {/* Couche 4: Particules rapides */}
-      <motion.div 
-        className="fixed inset-0 pointer-events-none z-30"
-        style={{ y: y4 }}
-      >
         <SpeedParticles />
       </motion.div>
 
@@ -112,12 +94,9 @@ function HighwayLines() {
 // Véhicules qui flottent dans l'espace (5D)
 function FloatingVehicles() {
   const vehicles = [
-    { x: 15, y: 80, color: "#00d4ff", size: 8 },
-    { x: 35, y: 60, color: "#10b981", size: 6 },
-    { x: 65, y: 70, color: "#8b5cf6", size: 7 },
-    { x: 85, y: 85, color: "#f59e0b", size: 9 },
-    { x: 25, y: 40, color: "#ec4899", size: 5 },
-    { x: 75, y: 45, color: "#00d4ff", size: 7 },
+    { x: 20, y: 70, color: "#00d4ff", size: 8 },
+    { x: 55, y: 55, color: "#10b981", size: 7 },
+    { x: 80, y: 80, color: "#8b5cf6", size: 6 },
   ];
 
   return (
@@ -145,15 +124,7 @@ function FloatingVehicles() {
             ease: "easeInOut",
             delay: i * 0.5,
           }}
-        >
-          {/* Halo de connexion */}
-          <motion.div
-            className="absolute inset-0 rounded-full border"
-            style={{ borderColor: v.color }}
-            animate={{ scale: [1, 4], opacity: [0.8, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
-        </motion.div>
+        />
       ))}
     </div>
   );
@@ -163,7 +134,7 @@ function FloatingVehicles() {
 function SpeedParticles() {
   return (
     <div className="absolute inset-0">
-      {[...Array(20)].map((_, i) => (
+      {[...Array(6)].map((_, i) => (
         <motion.div
           key={i}
           className="absolute w-0.5 bg-gradient-to-t from-[#00d4ff] to-transparent"

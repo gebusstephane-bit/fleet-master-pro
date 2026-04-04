@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { Linkedin, Twitter, Mail, Phone, MapPin } from "lucide-react";
 
@@ -39,7 +37,7 @@ const contactInfo = [
   },
   {
     icon: MapPin,
-    label: "Coume, France",
+    label: "Metz, Grand Est",
     href: "#",
   },
 ];
@@ -132,7 +130,7 @@ export function Footer() {
           <p className="text-sm text-slate-600">
             © {new Date().getFullYear()} Fleet-Master. Tous droits réservés.
           </p>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap gap-6">
             {footerLinks.legal.map((link) => (
               <Link
                 key={link.name}
