@@ -256,7 +256,7 @@ export function HeroFixed() {
       {/* Image de fond hero */}
       <div className="absolute inset-0 pointer-events-none">
         <Image
-          src="/images/landing/hero-bg.png"
+          src="/images/landing/hero-bg.webp"
           alt=""
           fill
           className="object-cover"

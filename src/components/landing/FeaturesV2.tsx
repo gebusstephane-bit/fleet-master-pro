@@ -135,14 +135,16 @@ function FeatureCard({
             {feature.title}
           </h3>
           {feature.image && (
-            <div className="relative w-full h-40 mb-3 rounded-lg overflow-hidden">
+            <div className="w-full mb-3 rounded-lg overflow-hidden">
               <Image
                 src={feature.image}
                 alt={feature.title}
-                fill
-                className="object-cover rounded-lg"
+                width={600}
+                height={240}
+                className="w-full h-40 object-cover rounded-lg"
                 sizes="(max-width: 768px) 100vw, 50vw"
                 quality={75}
+                unoptimized
               />
             </div>
           )}
@@ -180,7 +182,7 @@ const features = [
     description: "CT, assurances, permis — tout est surveillé 24/7. Alertes automatiques J-30, J-15, J-7.",
     color: "#10b981",
     data: { label: "docs suivis", value: 15234, trend: 12 },
-    image: "/images/landing/conformite.png",
+    image: "/images/landing/conformite.webp",
   },
   {
     icon: QrCode,
@@ -188,7 +190,7 @@ const features = [
     description: "Scannez, inspectez, signez. Sans application. 32 points de contrôle en 2 minutes avec geolocalisation.",
     color: "#8b5cf6",
     data: { label: "inspections", value: 8932, trend: 45 },
-    image: "/images/landing/inspection.png",
+    image: "/images/landing/inspection.webp",
   },
   {
     icon: Wrench,
@@ -196,7 +198,7 @@ const features = [
     description: "Planification automatique selon kilométrage et usage. Réduction des immobilisations de 40%.",
     color: "#f97316",
     data: { label: "interventions", value: 342, trend: -5 },
-    image: "/images/landing/maintenance.png",
+    image: "/images/landing/maintenance.webp",
   },
   {
     icon: Fuel,
@@ -204,7 +206,7 @@ const features = [
     description: "Détection d'anomalies de consommation, comparaison par véhicule et par chauffeur. Économies moyennes : 15%.",
     color: "#ec4899",
     data: { label: "litres économisés", value: 12847, trend: 15 },
-    image: "/images/landing/carburant.png",
+    image: "/images/landing/carburant.webp",
   },
   {
     icon: Brain,
@@ -212,7 +214,7 @@ const features = [
     description: "Anticipez les pannes 30 jours avant qu'elles n'arrivent. Algorithmes de machine learning entraînés sur 10M+ de véhicules.",
     color: "#00d4ff",
     data: { label: "prédictions", value: 2847, trend: 23 },
-    image: "/images/landing/ia-predictive.png",
+    image: "/images/landing/ia-predictive.webp",
   },
   {
     icon: BarChart3,
@@ -220,7 +222,7 @@ const features = [
     description: "Tableaux de bord live TCO, consommation, efficacité. Exportez vers Excel, PowerBI, ou votre ERP.",
     color: "#f59e0b",
     data: { label: "métriques", value: 456, trend: 8 },
-    image: "/images/landing/analytics.png",
+    image: "/images/landing/analytics.webp",
   },
 ];
 
