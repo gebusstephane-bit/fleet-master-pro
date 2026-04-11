@@ -1,3 +1,5 @@
+'use client';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getReadableError } from '@/lib/error-messages';
@@ -18,24 +20,20 @@ export function useAlerts() {
     queryKey: alertKeys.lists(),
     queryFn: async () => {
       const result = await getAlerts();
-      // @ts-ignore
-      if (!result?.success) throw new Error('Erreur récupération alertes');
-      // @ts-ignore
-      return result.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data;
     },
   });
 }
 
 export function useCreateAlerts() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async () => {
       const result = await createAlert();
-      // @ts-ignore
-      if (!result?.success) throw new Error('Erreur création');
-      // @ts-ignore
-      return result.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: alertKeys.lists() });
@@ -47,14 +45,12 @@ export function useCreateAlerts() {
 
 export function useMarkAlertAsRead() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (id: string) => {
       const result = await markAlertAsRead({ id });
-      // @ts-ignore
-      if (!result?.success) throw new Error('Erreur');
-      // @ts-ignore
-      return result.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: alertKeys.lists() });
@@ -64,14 +60,12 @@ export function useMarkAlertAsRead() {
 
 export function useMarkAllAlertsAsRead() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async () => {
       const result = await markAllAlertsAsRead();
-      // @ts-ignore
-      if (!result?.success) throw new Error('Erreur');
-      // @ts-ignore
-      return result.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: alertKeys.lists() });
