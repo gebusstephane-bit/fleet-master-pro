@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Support Widget - Bouton flottant et modal de création de ticket
  * S'affiche sur toutes les pages du dashboard
  */
-
-'use client';
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
