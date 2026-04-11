@@ -27,10 +27,8 @@ export function useSubscription() {
     queryKey: subscriptionKeys.details(),
     queryFn: async () => {
       const result = await getCompanySubscription();
-      if (!result?.data?.success) {
-        throw new Error('Erreur récupération abonnement');
-      }
-      return result.data.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.data;
     },
   });
 }
@@ -41,10 +39,8 @@ export function useSubscriptionLimits() {
     queryKey: subscriptionKeys.limits(),
     queryFn: async () => {
       const result = await checkSubscriptionLimits();
-      if (!result?.data?.success) {
-        throw new Error('Erreur récupération limites');
-      }
-      return result.data.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.data;
     },
     refetchInterval: 30 * 1000, // Rafraîchir toutes les 30s
   });
@@ -55,10 +51,8 @@ export function useCreateCheckout() {
   return useMutation({
     mutationFn: async ({ plan, yearly }: { plan: PlanType; yearly?: boolean }) => {
       const result = await createCheckoutSession({ plan, yearly: yearly || false });
-      if (!result?.data?.success) {
-        throw new Error('Erreur création session');
-      }
-      return result.data.url;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.url;
     },
     onSuccess: (url) => {
       if (url) {
@@ -78,10 +72,8 @@ export function useRequestEnterpriseQuote() {
   return useMutation({
     mutationFn: async ({ message, phone }: { message: string; phone?: string }) => {
       const result = await requestEnterpriseQuote({ message, phone });
-      if (!result?.data?.success) {
-        throw new Error('Erreur envoi demande');
-      }
-      return result.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: subscriptionKeys.all });
@@ -100,10 +92,8 @@ export function useCancelSubscription() {
   return useMutation({
     mutationFn: async () => {
       const result = await cancelSubscription();
-      if (!result?.data?.success) {
-        throw new Error('Erreur annulation');
-      }
-      return result.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: subscriptionKeys.all });

@@ -28,10 +28,8 @@ export function useCreateDriverAccount() {
   return useMutation({
     mutationFn: async (data: CreateDriverAccountInput) => {
       const result = await createDriverAccount(data);
-      if (!result?.data?.success) {
-        throw new Error('Erreur création compte');
-      }
-      return result.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: driverKeys.detail(variables.driverId) });
@@ -53,10 +51,8 @@ export function useRevokeDriverAccount() {
   return useMutation({
     mutationFn: async (data: RevokeDriverAccountInput) => {
       const result = await revokeDriverAccount(data);
-      if (!result?.data?.success) {
-        throw new Error('Erreur révocation');
-      }
-      return result.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: driverKeys.detail(variables.driverId) });
@@ -76,10 +72,8 @@ export function useResetDriverPassword() {
   return useMutation({
     mutationFn: async (data: ResetDriverPasswordInput) => {
       const result = await resetDriverPassword(data);
-      if (!result?.data?.success) {
-        throw new Error('Erreur réinitialisation');
-      }
-      return result.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.data;
     },
     onSuccess: () => {
       toast.success('Mot de passe réinitialisé avec succès');
@@ -100,10 +94,8 @@ export function useReactivateDriverAccount() {
   return useMutation({
     mutationFn: async (data: RevokeDriverAccountInput) => {
       const result = await reactivateDriverAccount(data);
-      if (!result?.data?.success) {
-        throw new Error('Erreur réactivation');
-      }
-      return result.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: driverKeys.detail(variables.driverId) });

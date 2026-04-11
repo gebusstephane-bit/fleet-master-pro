@@ -249,12 +249,8 @@ export function useCreateMaintenance() {
   return useMutation({
     mutationFn: async (data: Parameters<typeof createMaintenance>[0]) => {
       const result = await createMaintenance(data);
-      // @ts-ignore
-      if (!result?.data?.success) {
-        throw new Error('Erreur création intervention');
-      }
-      // @ts-ignore
-      return result.data.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.data;
     },
     onSuccess: (_, variables) => {
       if (companyId) {
@@ -282,12 +278,8 @@ export function useUpdateMaintenance() {
   return useMutation({
     mutationFn: async (data: Parameters<typeof updateMaintenance>[0]) => {
       const result = await updateMaintenance(data);
-      // @ts-ignore
-      if (!result?.data?.success) {
-        throw new Error('Erreur mise à jour intervention');
-      }
-      // @ts-ignore
-      return result.data.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.data;
     },
     onSuccess: (_, variables) => {
       if (companyId) {
@@ -311,12 +303,8 @@ export function useDeleteMaintenance() {
   return useMutation({
     mutationFn: async (id: string) => {
       const result = await deleteMaintenance({ id });
-      // @ts-ignore
-      if (!result?.data?.success) {
-        throw new Error('Erreur suppression intervention');
-      }
-      // @ts-ignore
-      return result.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data;
     },
     onSuccess: () => {
       if (companyId) {
@@ -461,12 +449,8 @@ export function useSendMaintenanceAlerts() {
   return useMutation({
     mutationFn: async () => {
       const result = await sendMaintenanceAlerts();
-      // @ts-ignore
-      if (!result?.data?.success) {
-        throw new Error('Erreur envoi alertes');
-      }
-      // @ts-ignore
-      return result.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data;
     },
     onSuccess: (data: any) => {
       toast.success(`${data.sent} alertes envoyées à ${data.recipients} destinataires`);
@@ -482,12 +466,8 @@ export function useTestEmailConfig() {
   return useMutation({
     mutationFn: async () => {
       const result = await testEmailConfig();
-      // @ts-ignore
-      if (!result?.data?.success) {
-        throw new Error('Erreur test email');
-      }
-      // @ts-ignore
-      return result.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data;
     },
     onSuccess: () => {
       toast.success('Email de test envoyé avec succès');

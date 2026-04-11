@@ -25,11 +25,8 @@ export function useFuelRecords() {
     queryFn: async () => {
       const result = await getAllFuelRecords();
       logger.debug('[useFuelRecords] Raw result:', result);
-      // Le résultat est sous result.data car c'est une Server Action
-      // @ts-ignore
-      if (!result?.data?.success) throw new Error(result?.data?.error || 'Erreur');
-      // @ts-ignore
-      return result.data.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.data;
     },
   });
 }
@@ -40,10 +37,8 @@ export function useFuelRecordsByVehicle(vehicleId: string) {
     queryFn: async () => {
       const result = await getFuelRecordsByVehicle({ id: vehicleId });
       logger.debug('[useFuelRecordsByVehicle] Raw result:', result);
-      // @ts-ignore
-      if (!result?.data?.success) throw new Error(result?.data?.error || 'Erreur');
-      // @ts-ignore
-      return result.data.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.data;
     },
     enabled: !!vehicleId,
   });
@@ -56,10 +51,8 @@ export function useCreateFuelRecord() {
     mutationFn: async (data: Parameters<typeof createFuelRecord>[0]) => {
       const result = await createFuelRecord(data);
       logger.debug('[useCreateFuelRecord] Raw result:', result);
-      // @ts-ignore
-      if (!result?.data?.success) throw new Error(result?.data?.error || 'Erreur');
-      // @ts-ignore
-      return result.data.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: fuelKeys.lists() });
@@ -77,10 +70,8 @@ export function useFuelStats() {
     queryFn: async () => {
       const result = await getFuelStats();
       logger.debug('[useFuelStats] Raw result:', result);
-      // @ts-ignore
-      if (!result?.data?.success) throw new Error(result?.data?.error || 'Erreur');
-      // @ts-ignore
-      return result.data.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.data;
     },
   });
 }
@@ -90,10 +81,8 @@ export function useFuelAnomalies() {
     queryKey: fuelKeys.anomalies(),
     queryFn: async () => {
       const result = await getFuelAnomalies();
-      // @ts-ignore
-      if (!result?.data?.success) throw new Error(result?.data?.error || 'Erreur');
-      // @ts-ignore
-      return result.data.data;
+      if (result?.serverError) throw new Error(result.serverError);
+      return result?.data?.data;
     },
     refetchInterval: 60_000, // Rafraîchit toutes les 60s
   });
@@ -105,8 +94,7 @@ export function useDismissFuelAnomaly() {
   return useMutation({
     mutationFn: async (id: string) => {
       const result = await dismissFuelAnomaly({ id });
-      // @ts-ignore
-      if (!result?.data?.success) throw new Error(result?.data?.error || 'Erreur');
+      if (result?.serverError) throw new Error(result.serverError);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fuelKeys.anomalies() });
