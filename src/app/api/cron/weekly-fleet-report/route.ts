@@ -27,7 +27,12 @@ const DELAY_BETWEEN_SENDS_MS = 100;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.fleetmaster.pro';
 
 export async function GET(request: NextRequest) {
+  const authHeader = request.headers.get('authorization');
+  const bearerSecret = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice(7)
+    : null;
   const secret =
+    bearerSecret ||
     request.headers.get('x-vercel-cron-secret') ||
     request.headers.get('x-cron-secret') ||
     request.nextUrl.searchParams.get('secret');

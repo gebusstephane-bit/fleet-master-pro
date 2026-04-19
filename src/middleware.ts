@@ -189,8 +189,8 @@ async function applyRateLimit(
         { status: 403, headers: { "Content-Type": "application/json" } }
       );
     }
-    // Pas de rate limit pour les cron légitimes
-    return null;
+    // Pas de rate limit pour les cron légitimes — court-circuit du bloc auth cookie
+    return NextResponse.next();
   } else {
     // API générique
     result = await checkAnonymousRateLimit();

@@ -91,7 +91,12 @@ function calculateReturnDate(
 export async function GET(request: NextRequest) {
   try {
     // ── Authentification ──────────────────────────────────────
+    const authHeader = request.headers.get('authorization');
+    const bearerSecret = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : null;
     const secret =
+      bearerSecret ||
       request.headers.get('x-vercel-cron-secret') ||
       request.headers.get('x-cron-secret') ||
       request.nextUrl.searchParams.get('secret');
