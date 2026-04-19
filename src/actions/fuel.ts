@@ -78,6 +78,16 @@ export const createFuelRecord = authActionClient
         .from('vehicles')
         .update({ mileage: parsedInput.mileage_at_fill })
         .eq('id', parsedInput.vehicle_id);
+
+      // Rafraîchit les prédictions maintenance du véhicule
+      // de manière non bloquante (ne fait pas échouer le plein si ça plante)
+      try {
+        const { recalculatePredictionsForVehicle } = await import('@/lib/maintenance-predictor');
+        await recalculatePredictionsForVehicle(parsedInput.vehicle_id);
+      } catch (err) {
+        // Log mais ne bloque pas — le cron hebdo rattrapera
+        console.error('[createFuelRecord] recalculatePredictions failed (non-blocking):', err);
+      }
     }
     
     revalidatePath('/fuel');

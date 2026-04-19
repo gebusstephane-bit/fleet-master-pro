@@ -301,7 +301,23 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
         updateData[field] = null;
       }
     }
-    
+
+    // Garde-fou anti-recul : refuser si mileage saisi inférieur à l'actuel
+    if (data.mileage !== undefined) {
+      const { data: existing } = await supabase
+        .from('vehicles')
+        .select('mileage')
+        .eq('id', id)
+        .single();
+
+      if (existing && data.mileage < (existing.mileage || 0)) {
+        return {
+          success: false,
+          error: `Le kilométrage saisi (${data.mileage} km) est inférieur au kilométrage actuel (${existing.mileage} km). Modification refusée pour éviter un recul accidentel.`,
+        };
+      }
+    }
+
     // 4. Mettre à jour (RLS vérifie que le véhicule appartient à ma company)
     const { data: updated, error } = await supabase
       .from('vehicles')

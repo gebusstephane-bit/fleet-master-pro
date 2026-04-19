@@ -86,11 +86,20 @@ export default function DriverFuelPage() {
         throw error;
       }
       
-      // Mettre à jour le kilométrage du véhicule
-      await supabase
+      // Garde-fou anti-recul : ne met à jour que si nouveau km > ancien
+      const newMileage = parseInt(mileage);
+      const { data: currentVehicle } = await supabase
         .from('vehicles')
-        .update({ mileage: parseInt(mileage) })
-        .eq('id', driver.current_vehicle_id);
+        .select('mileage')
+        .eq('id', driver.current_vehicle_id)
+        .single();
+
+      if (currentVehicle && newMileage > (currentVehicle.mileage || 0)) {
+        await supabase
+          .from('vehicles')
+          .update({ mileage: newMileage })
+          .eq('id', driver.current_vehicle_id);
+      }
       
       toast.success('Plein enregistré avec succès !');
       router.push('/driver-app');
