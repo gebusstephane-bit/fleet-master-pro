@@ -554,13 +554,14 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith('/notifications');
     
     // Les chauffeurs ne peuvent accéder qu'à /driver-app et /api/driver
-    const isAllowedRoute = 
+    const isAllowedRoute =
       pathname.startsWith('/driver-app') ||
       pathname.startsWith('/api/driver') ||
       pathname.startsWith('/api/sos') ||
       pathname.startsWith('/auth') ||
       pathname === '/login' ||
       pathname === '/unauthorized' ||
+      pathname.startsWith('/inspection') ||
       pathname.startsWith('/scan');  // Permettre l'accès au carnet d'entretien
     
     if (isDashboardRoute) {
