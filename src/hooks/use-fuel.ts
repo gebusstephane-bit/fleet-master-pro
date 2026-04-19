@@ -26,6 +26,16 @@ export function useFuelRecords() {
       const result = await getAllFuelRecords();
       logger.debug('[useFuelRecords] Raw result:', result);
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.data;
     },
   });
@@ -38,6 +48,16 @@ export function useFuelRecordsByVehicle(vehicleId: string) {
       const result = await getFuelRecordsByVehicle({ id: vehicleId });
       logger.debug('[useFuelRecordsByVehicle] Raw result:', result);
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.data;
     },
     enabled: !!vehicleId,
@@ -81,6 +101,16 @@ export function useFuelStats() {
       const result = await getFuelStats();
       logger.debug('[useFuelStats] Raw result:', result);
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.data;
     },
   });
@@ -92,6 +122,16 @@ export function useFuelAnomalies() {
     queryFn: async () => {
       const result = await getFuelAnomalies();
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.data;
     },
     refetchInterval: 60_000, // Rafraîchit toutes les 60s

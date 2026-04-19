@@ -29,6 +29,16 @@ export function useCreateDriverAccount() {
     mutationFn: async (data: CreateDriverAccountInput) => {
       const result = await createDriverAccount(data);
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.data;
     },
     onSuccess: (_, variables) => {
@@ -52,6 +62,16 @@ export function useRevokeDriverAccount() {
     mutationFn: async (data: RevokeDriverAccountInput) => {
       const result = await revokeDriverAccount(data);
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.data;
     },
     onSuccess: (_, variables) => {
@@ -73,6 +93,16 @@ export function useResetDriverPassword() {
     mutationFn: async (data: ResetDriverPasswordInput) => {
       const result = await resetDriverPassword(data);
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.data;
     },
     onSuccess: () => {
@@ -95,6 +125,16 @@ export function useReactivateDriverAccount() {
     mutationFn: async (data: RevokeDriverAccountInput) => {
       const result = await reactivateDriverAccount(data);
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.data;
     },
     onSuccess: (_, variables) => {

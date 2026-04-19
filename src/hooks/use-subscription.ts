@@ -28,6 +28,16 @@ export function useSubscription() {
     queryFn: async () => {
       const result = await getCompanySubscription();
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.data;
     },
   });
@@ -40,6 +50,16 @@ export function useSubscriptionLimits() {
     queryFn: async () => {
       const result = await checkSubscriptionLimits();
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.data;
     },
     refetchInterval: 30 * 1000, // Rafraîchir toutes les 30s
@@ -52,6 +72,16 @@ export function useCreateCheckout() {
     mutationFn: async ({ plan, yearly }: { plan: PlanType; yearly?: boolean }) => {
       const result = await createCheckoutSession({ plan, yearly: yearly || false });
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.url;
     },
     onSuccess: (url) => {
@@ -73,6 +103,16 @@ export function useRequestEnterpriseQuote() {
     mutationFn: async ({ message, phone }: { message: string; phone?: string }) => {
       const result = await requestEnterpriseQuote({ message, phone });
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data;
     },
     onSuccess: () => {
@@ -93,6 +133,16 @@ export function useCancelSubscription() {
     mutationFn: async () => {
       const result = await cancelSubscription();
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data;
     },
     onSuccess: () => {

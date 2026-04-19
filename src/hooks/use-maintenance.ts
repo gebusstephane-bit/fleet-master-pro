@@ -250,6 +250,16 @@ export function useCreateMaintenance() {
     mutationFn: async (data: Parameters<typeof createMaintenance>[0]) => {
       const result = await createMaintenance(data);
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.data;
     },
     onSuccess: (_, variables) => {
@@ -279,6 +289,16 @@ export function useUpdateMaintenance() {
     mutationFn: async (data: Parameters<typeof updateMaintenance>[0]) => {
       const result = await updateMaintenance(data);
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.data;
     },
     onSuccess: (_, variables) => {
@@ -304,6 +324,16 @@ export function useDeleteMaintenance() {
     mutationFn: async (id: string) => {
       const result = await deleteMaintenance({ id });
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data;
     },
     onSuccess: () => {
@@ -450,6 +480,16 @@ export function useSendMaintenanceAlerts() {
     mutationFn: async () => {
       const result = await sendMaintenanceAlerts();
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data;
     },
     onSuccess: (data: any) => {
@@ -467,6 +507,16 @@ export function useTestEmailConfig() {
     mutationFn: async () => {
       const result = await testEmailConfig();
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data;
     },
     onSuccess: () => {

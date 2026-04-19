@@ -21,6 +21,16 @@ export function useAlerts() {
     queryFn: async () => {
       const result = await getAlerts();
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data;
     },
   });
@@ -33,6 +43,16 @@ export function useCreateAlerts() {
     mutationFn: async () => {
       const result = await createAlert();
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data;
     },
     onSuccess: () => {
@@ -50,6 +70,16 @@ export function useMarkAlertAsRead() {
     mutationFn: async (id: string) => {
       const result = await markAlertAsRead({ id });
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data;
     },
     onSuccess: () => {
@@ -65,6 +95,16 @@ export function useMarkAllAlertsAsRead() {
     mutationFn: async () => {
       const result = await markAllAlertsAsRead();
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data;
     },
     onSuccess: () => {
