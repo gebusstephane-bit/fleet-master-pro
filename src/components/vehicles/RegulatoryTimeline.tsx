@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * RegulatoryTimeline - Affichage compact des échéances réglementaires en ligne
  * Utilise le composant RegulatoryDatesCard existant mais en version timeline
  */
-
-'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

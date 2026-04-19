@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * VehicleSelect - Sélection du véhicule en panne
  * Version V3.2 - Aligné Design System Fleet-Master
  */
-
-'use client';
 
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

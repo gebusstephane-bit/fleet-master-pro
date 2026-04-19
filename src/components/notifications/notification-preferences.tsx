@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Préférences de notification utilisateur
  * Quels types de notifications, quels canaux
  */
-
-'use client';
 
 import { useState } from 'react';
 import { Bell, Mail, Smartphone, Monitor } from 'lucide-react';

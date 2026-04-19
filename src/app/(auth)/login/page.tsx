@@ -1,8 +1,8 @@
+'use client';
+
 /**
  * Page de connexion - Version propre et fonctionnelle
  */
-
-'use client';
 
 import { Suspense } from 'react';
 import { LoginForm } from './login-form';

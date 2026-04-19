@@ -1,8 +1,8 @@
+'use client';
+
 /**
  * Liste des tickets de support avec filtres
  */
-
-'use client';
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

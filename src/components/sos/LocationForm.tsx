@@ -1,10 +1,10 @@
+'use client';
+
 /**
  * LocationForm - Formulaire de localisation V3.2
  * Simplifié : ne gère que l'adresse (le type de panne est géré par BreakdownTypeSelect)
  * Aligné Design System Fleet-Master
  */
-
-'use client';
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';

@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Formulaire Multi-Carburant (Session de Ravitaillement)
  * 
@@ -12,8 +14,6 @@
  * 2. GNR sans km (alimentation frigo)
  * 3. Multi-plein en une seule fois (Gasoil + AdBlue + GNR)
  */
-
-'use client';
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

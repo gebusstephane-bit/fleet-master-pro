@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * ImmobilizationSwitch - Indique si le véhicule est immobilisé
  * Aligné Design System Fleet-Master
  */
-
-'use client';
 
 import { Car, AlertCircle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';

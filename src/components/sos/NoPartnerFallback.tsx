@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * NoPartnerFallback - Affiché quand aucun garage partenaire n'est trouvé
  * Version améliorée avec warning, tips et lien Google Maps
  */
-
-'use client';
 
 import { MapPin, Search, AlertTriangle, ExternalLink, Phone } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';

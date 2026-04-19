@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Composant ligne de carburant pour formulaire multi-plein
  * UX optimisée pour la saisie rapide sur le terrain
  */
-
-'use client';
 
 import { FuelInputLine, FUEL_TYPE_FORM_CONFIG, FuelType } from '@/types/fuel';
 import { Label } from '@/components/ui/label';

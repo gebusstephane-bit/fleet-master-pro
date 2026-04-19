@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * HighwaySwitch - Indique si on est sur une autoroute
  * Aligné Design System Fleet-Master
  */
-
-'use client';
 
 import { AlertTriangle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';

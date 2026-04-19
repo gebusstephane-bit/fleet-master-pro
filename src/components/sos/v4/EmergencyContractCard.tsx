@@ -1,10 +1,10 @@
+'use client';
+
 /**
  * EmergencyContractCard - Carte Type A: Contrat 24/24 (Vert)
  * Affiche un contrat d'urgence avec numéro prioritaire
  * Aligné Design System Fleet-Master
  */
-
-'use client';
 
 import { Phone, Clock, FileText, MapPin, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';

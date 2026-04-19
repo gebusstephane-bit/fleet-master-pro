@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * HighwayEmergencyCard - Affiche les instructions de sécurité pour une urgence sur autoroute
  * Version V3.2 - Priorité absolue
  */
-
-'use client';
 
 import { AlertTriangle, Phone, Shield, Triangle, Lightbulb } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';

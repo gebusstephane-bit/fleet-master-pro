@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Liste de véhicules avec virtualisation pour performance
  * Supporte 1000+ véhicules sans lag
  */
-
-'use client';
 
 import { useRef, useCallback } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';

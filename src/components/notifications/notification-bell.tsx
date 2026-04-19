@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Icône cloche avec badge de notifications non lues
  * Intégrée dans la sidebar/header
  */
-
-'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';

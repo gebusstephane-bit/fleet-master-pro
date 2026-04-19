@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * CriticalAlertBanner - Header critique avec la VRAIE prédiction la plus urgente
  * Remplace le faux calcul "15000 - (mileage % 15000)"
  */
-
-'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';

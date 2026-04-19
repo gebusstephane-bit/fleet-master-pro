@@ -1,10 +1,10 @@
+'use client';
+
 /**
  * Composant StatsCards - Dashboard SaaS 2026
  * Affiche les cartes de statistiques du dashboard
  * Glassmorphism Design System
  */
-
-'use client';
 
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

@@ -1,8 +1,8 @@
+'use client';
+
 /**
  * Theme Toggle - Bouton pour changer le thème
  */
-
-'use client';
 
 import { Button } from '@/components/ui/button';
 import {

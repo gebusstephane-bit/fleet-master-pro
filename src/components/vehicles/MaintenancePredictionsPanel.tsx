@@ -1,11 +1,11 @@
+'use client';
+
 /**
  * MaintenancePredictionsPanel - Version remontée et améliorée de UpcomingMaintenance
  * Affiche les maintenances préventives en priorité sur la page véhicule
  * 
  * Contrainte: Conserver la logique API de UpcomingMaintenance, améliorer le layout
  */
-
-'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

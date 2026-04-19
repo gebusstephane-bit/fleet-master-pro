@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Liste complète des notifications avec infinite scroll
  * Page /notifications
  */
-
-'use client';
 
 import { useRef, useCallback } from 'react';
 import Link from 'next/link';

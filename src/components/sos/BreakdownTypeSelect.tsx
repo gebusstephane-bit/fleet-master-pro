@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * BreakdownTypeSelect - Sélection du type de panne (V3.2)
  * Aligné Design System Fleet-Master - Glassmorphism
  */
-
-'use client';
 
 import { Cog, Thermometer, CircleDot, Zap, Hammer, Truck, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';

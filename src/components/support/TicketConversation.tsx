@@ -1,8 +1,8 @@
+'use client';
+
 /**
  * Vue détaillée d'un ticket avec conversation
  */
-
-'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';

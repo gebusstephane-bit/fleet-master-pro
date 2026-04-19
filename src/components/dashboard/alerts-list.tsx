@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Composant AlertsList
  * Liste des alertes récentes sur le dashboard
  */
-
-'use client';
 
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

@@ -1,8 +1,8 @@
+'use client';
+
 /**
  * Theme Provider - Dark Mode support
  */
-
-'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
 

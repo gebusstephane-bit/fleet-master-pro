@@ -1,11 +1,11 @@
+'use client';
+
 /**
  * Callback Auth - Établit la session Supabase depuis le magic link
  *
  * Le magic link redirige ici avec les tokens dans le hash (#access_token=...)
  * Le client Supabase les détecte automatiquement → session établie → redirect dashboard
  */
-
-'use client';
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';

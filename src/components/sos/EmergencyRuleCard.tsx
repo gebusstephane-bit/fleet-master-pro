@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * EmergencyRuleCard - Affiche une carte de règle d'urgence (contrat, assurance, direction)
  * Version V3.2 - Arbre de décision
  */
-
-'use client';
 
 import { Phone, Shield, User, FileText, AlertTriangle, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';

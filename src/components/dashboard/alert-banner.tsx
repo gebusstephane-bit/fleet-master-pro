@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Alert Banner - Dashboard Production
  * Affiche les alertes maintenance prioritaires
  */
-
-'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

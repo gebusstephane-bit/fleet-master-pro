@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * ManagementOnlyCard - Affiche un contact directionnel avec blocage de recherche externe
  * Version V3.2 - Pour les cas où seule la direction doit être contactée
  */
-
-'use client';
 
 import { User, Phone, AlertTriangle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';

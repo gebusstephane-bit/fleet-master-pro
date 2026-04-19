@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Risk Vehicles - Dashboard
  * Affiche les véhicules à risque selon l'IA
  */
-
-'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

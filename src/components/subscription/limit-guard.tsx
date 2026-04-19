@@ -1,8 +1,8 @@
+'use client';
+
 /**
  * Composant pour protéger les actions selon les limites d'abonnement
  */
-
-'use client';
 
 import { ReactNode } from 'react';
 import Link from 'next/link';

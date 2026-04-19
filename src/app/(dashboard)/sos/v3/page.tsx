@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * SOS Garage V3.2 - Page unifiée
  * Nouvelle interface avec arbre de décision intelligent
  */
-
-'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';

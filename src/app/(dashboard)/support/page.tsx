@@ -1,8 +1,8 @@
+'use client';
+
 /**
  * Page Support - Centre d'aide client
  */
-
-'use client';
 
 import { useState } from 'react';
 import { TicketList } from '@/components/support/TicketList';

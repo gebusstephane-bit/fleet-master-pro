@@ -1,10 +1,10 @@
+'use client';
+
 /**
  * Carte Maintenance Prédictive — V2
  * Source : table `predictive_alerts` (calcul basé sur inspections réelles)
  * Remplace l'ancien système `ai_predictions` (source externe opaque)
  */
-
-'use client';
 
 import { useState } from 'react';
 import {

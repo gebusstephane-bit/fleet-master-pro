@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Badge de risque pour la liste des véhicules
  * Affiche un indicateur visuel si le véhicule est à haut risque
  */
-
-'use client';
 
 import Link from 'next/link';
 import { AlertTriangle, Activity, Loader2, CheckCircle2 } from 'lucide-react';

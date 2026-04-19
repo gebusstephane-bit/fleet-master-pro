@@ -1,10 +1,10 @@
+'use client';
+
 /**
  * Activity Feed - Dashboard SaaS 2026
  * Affiche les dernières activités de l'entreprise
  * Glassmorphism Design System
  */
-
-'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';

@@ -1,8 +1,8 @@
+'use client';
+
 /**
  * Paginated Data Table - DataTable avec pagination côté client
  */
-
-'use client';
 
 import { useState, useMemo } from 'react';
 import {

@@ -1,8 +1,8 @@
+'use client';
+
 /**
  * Providers racine avec React Query configuré pour la performance
  */
-
-'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';

@@ -1,10 +1,10 @@
+'use client';
+
 /**
  * Page de diagnostic avec admin client
  * Bypass RLS pour vérifier les données réelles
  * PROTÉGÉ: Uniquement accessible en développement
  */
-
-'use client';
 
 import { notFound } from 'next/navigation';
 

@@ -1,10 +1,10 @@
+'use client';
+
 /**
  * InsuranceCard - Carte Type B: Assurance (Orange)
  * Affiche les informations d'assurance pour remorquage
  * Aligné Design System Fleet-Master
  */
-
-'use client';
 
 import { Phone, Shield, AlertTriangle, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';

@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Quick Actions - Dashboard Production
  * Boutons d'accès rapide aux actions principales
  */
-
-'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

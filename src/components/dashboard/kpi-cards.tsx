@@ -1,10 +1,10 @@
+'use client';
+
 /**
  * KPI Cards - Dashboard SaaS 2026
  * Affiche les indicateurs clés avec vraies données Supabase
  * Glassmorphism Design System
  */
-
-'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';

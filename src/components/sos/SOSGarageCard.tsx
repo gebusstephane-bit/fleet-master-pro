@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * SOSGarageCard - Composant principal SOS Garage V3.2
  * Arbre de décision intelligent
  */
-
-'use client';
 
 import { useState } from 'react';
 import { Wrench, Loader2, MapPin, Phone, AlertCircle, User } from 'lucide-react';

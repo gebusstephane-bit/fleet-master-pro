@@ -1,10 +1,10 @@
+'use client';
+
 /**
  * GarageCard - Carte Type C: Garage (Bleu)
  * Affiche un garage partenaire ou une recherche externe
  * Aligné Design System Fleet-Master
  */
-
-'use client';
 
 import { Phone, MapPin, Wrench, ExternalLink, Building2, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';

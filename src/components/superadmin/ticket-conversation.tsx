@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Conversation ticket - Vue SuperAdmin
  * Avec workflow automatique de statut
  */
-
-'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

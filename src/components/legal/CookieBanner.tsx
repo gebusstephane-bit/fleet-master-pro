@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Bannière de consentement cookies RGPD
  * Design cohérent avec Shadcn/ui - Position sticky en bas
@@ -7,8 +9,6 @@
  * - Choix binaire (Accepter/Refuser) équitable
  * - Information claire sur les finalités
  */
-
-'use client';
 
 import { useCookieConsent } from '@/hooks/use-cookie-consent';
 import { Button } from '@/components/ui/button';
