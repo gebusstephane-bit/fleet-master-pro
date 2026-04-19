@@ -316,6 +316,16 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
           error: `Le kilométrage saisi (${data.mileage} km) est inférieur au kilométrage actuel (${existing.mileage} km). Modification refusée pour éviter un recul accidentel.`,
         };
       }
+
+      if (existing) {
+        const mileageDelta = data.mileage - (existing.mileage || 0);
+        if (mileageDelta > 15000) {
+          return {
+            success: false,
+            error: `Saut de kilométrage suspect détecté : +${mileageDelta} km en une fois. Si cette valeur est correcte, contactez le support.`,
+          };
+        }
+      }
     }
 
     // 4. Mettre à jour (RLS vérifie que le véhicule appartient à ma company)

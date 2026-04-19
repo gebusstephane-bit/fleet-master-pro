@@ -72,8 +72,10 @@ export const createFuelRecord = authActionClient
       throw new Error(`Erreur création: ${error.message}`);
     }
     
-    // Mettre à jour le kilométrage du véhicule si supérieur
-    if (parsedInput.mileage_at_fill > vehicle.mileage) {
+    // Mettre à jour le kilométrage du véhicule si supérieur ET saut raisonnable
+    const mileageDelta = parsedInput.mileage_at_fill - (vehicle.mileage || 0);
+
+    if (parsedInput.mileage_at_fill > (vehicle.mileage || 0) && mileageDelta <= 15000) {
       await supabase
         .from('vehicles')
         .update({ mileage: parsedInput.mileage_at_fill })
@@ -88,6 +90,8 @@ export const createFuelRecord = authActionClient
         // Log mais ne bloque pas — le cron hebdo rattrapera
         console.error('[createFuelRecord] recalculatePredictions failed (non-blocking):', err);
       }
+    } else if (mileageDelta > 15000) {
+      console.warn(`[createFuelRecord] Saut de km suspect ignoré: +${mileageDelta} km pour vehicle ${parsedInput.vehicle_id}. mileage_at_fill=${parsedInput.mileage_at_fill}, vehicle.mileage=${vehicle.mileage}`);
     }
     
     revalidatePath('/fuel');

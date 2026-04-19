@@ -95,6 +95,13 @@ export default function DriverFuelPage() {
         .single();
 
       if (currentVehicle && newMileage > (currentVehicle.mileage || 0)) {
+        const currentMileage = currentVehicle.mileage || 0;
+        const mileageDelta = newMileage - currentMileage;
+        if (mileageDelta > 15000) {
+          toast.error(`Kilométrage suspect : saut de ${mileageDelta} km détecté (actuel ${currentMileage} km → saisi ${newMileage} km). Vérifiez votre saisie. Si c'est correct, contactez votre gestionnaire.`);
+          return;
+        }
+
         await supabase
           .from('vehicles')
           .update({ mileage: newMileage })
