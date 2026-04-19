@@ -31,7 +31,8 @@ const VEHICLE_SCORING_SYSTEM_PROMPT = `Tu reçois un tableau JSON de véhicules 
 Pour CHACUN, génère un résumé narratif d'une phrase (max 20 mots) décrivant l'état de santé du véhicule.
 Mentionne les points forts et les points d'attention principaux.
 Ton seul output est un JSON array dans le même ordre : [{"id":"uuid","summary":"phrase"}].
-Sois factuel et concis. Réponds uniquement en JSON.`;
+Sois factuel et concis.
+IMPORTANT : Réponds UNIQUEMENT avec le JSON array brut, sans backticks, sans blocs markdown, sans préambule ni commentaire.`;
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
@@ -191,14 +192,18 @@ export async function GET(request: NextRequest) {
         { role: 'user', content: JSON.stringify(batchData) },
       ];
 
-      const aiResult = await callAI(messages, 1200, companyId, 'vehicle_scoring', 30_000);
+      const aiResult = await callAI(messages, 3500, companyId, 'vehicle_scoring', 30_000);
       totalAICalls++;
 
       // Parser les résumés IA (strip markdown code fences if present)
       const summaries = new Map<string, string>();
       if (aiResult) {
         try {
-          const cleanJson = aiResult.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+          // Extraction robuste : cherche le premier tableau JSON, sinon strip markdown
+          const jsonMatch = aiResult.match(/\[[\s\S]*\]/);
+          const cleanJson = jsonMatch
+            ? jsonMatch[0]
+            : aiResult.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
           const parsed = JSON.parse(cleanJson) as Array<{ id: string; summary: string }>;
           if (Array.isArray(parsed)) {
             for (const item of parsed) {
