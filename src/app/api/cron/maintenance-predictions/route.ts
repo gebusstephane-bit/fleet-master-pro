@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
 
   for (const v of vehicles ?? []) {
     try {
-      await recalculatePredictionsForVehicle(v.id);
+      await recalculatePredictionsForVehicle(v.id, admin);
       successCount++;
     } catch (err) {
       errorCount++;

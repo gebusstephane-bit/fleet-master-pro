@@ -8,6 +8,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
+import type { Database } from '@/types/supabase'
 
 export interface MaintenancePrediction {
   vehicleId: string
@@ -73,9 +74,10 @@ const RULE_KEYWORDS: Record<string, string[]> = {
 // ──────────────────────────────────────────────────────────────
 export async function predictMaintenanceForVehicle(
   vehicleId: string,
-  onlyActionable = false   // si true : ne retourne que upcoming/due/overdue
+  onlyActionable = false,   // si true : ne retourne que upcoming/due/overdue
+  supabaseClient?: SupabaseClient<Database>
 ): Promise<MaintenancePrediction[]> {
-  const supabase = await createClient()
+  const supabase = supabaseClient ?? await createClient()
 
   // 1. Infos du véhicule
   // NOTE: Récupération des dates réglementaires pour fallback (CT, Tachygraphe)
@@ -368,7 +370,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function recalculatePredictionsForVehicle(
   vehicleId: string,
-  supabaseClient?: SupabaseClient
+  supabaseClient?: SupabaseClient<Database>
 ): Promise<void> {
   // Utiliser le client fourni ou créer un nouveau
   const supabase = supabaseClient ?? await createClient()
@@ -383,7 +385,7 @@ export async function recalculatePredictionsForVehicle(
   if (!vehicle?.company_id) return
 
   // Calculer les prédictions (sans filtre onlyActionable pour tout recalculer)
-  const predictions = await predictMaintenanceForVehicle(vehicleId, false)
+  const predictions = await predictMaintenanceForVehicle(vehicleId, false, supabase)
 
   // Persister chaque prédiction (upsert)
   for (const pred of predictions) {
