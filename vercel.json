@@ -44,6 +44,10 @@
       "schedule": "0 2 * * 0"
     },
     {
+      "path": "/api/cron/maintenance-predictions",
+      "schedule": "0 3 * * 0"
+    },
+    {
       "path": "/api/cron/weekly-fleet-report",
       "schedule": "0 8 * * 1"
     }
