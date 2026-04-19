@@ -58,10 +58,15 @@ export const createFuelRecord = authActionClient
     }
     
     // Insérer le plein
+    if (!ctx.user.company_id) {
+      throw new Error('Company manquante — impossible de créer un plein');
+    }
+
     const { data, error } = await supabase
       .from('fuel_records')
       .insert({
         ...parsedInput,
+        company_id: ctx.user.company_id,
         price_per_liter: Math.round(price_per_liter * 1000) / 1000,
         consumption_l_per_100km,
       })

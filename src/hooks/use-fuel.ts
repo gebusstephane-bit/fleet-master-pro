@@ -52,6 +52,16 @@ export function useCreateFuelRecord() {
       const result = await createFuelRecord(data);
       logger.debug('[useCreateFuelRecord] Raw result:', result);
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
       return result?.data?.data;
     },
     onSuccess: (_, variables) => {
@@ -95,6 +105,16 @@ export function useDismissFuelAnomaly() {
     mutationFn: async (id: string) => {
       const result = await dismissFuelAnomaly({ id });
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        const errors = Object.entries(result.validationErrors)
+          .map(([field, msgs]) => {
+            const m = msgs as any;
+            const messages = m?._errors?.join(', ') || (Array.isArray(m) ? m.join(', ') : String(m));
+            return `${field}: ${messages}`;
+          })
+          .join(' | ');
+        throw new Error(`Validation: ${errors}`);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fuelKeys.anomalies() });

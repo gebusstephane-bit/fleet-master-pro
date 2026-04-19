@@ -1,8 +1,8 @@
+'use client';
+
 /**
  * Modal de détail d'un plein de carburant
  */
-
-'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
