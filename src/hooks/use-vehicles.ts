@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Hook useVehicles - VERSION UNIFIÉE (comme useRoutes)
  * Utilise le même pattern que useRoutes qui fonctionne
  */
-
-'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase/client';

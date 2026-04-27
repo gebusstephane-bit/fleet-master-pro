@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Hook React Query pour la conformité réglementaire
  * Récupère les données des véhicules et conducteurs avec leurs dates réglementaires
  */
-
-'use client';
 
 import { useQuery } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase/client';

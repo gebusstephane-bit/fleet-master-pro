@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Hook pour gérer une session de ravitaillement multi-carburants
  * Optimisé pour la saisie rapide sur le terrain (mobile-first)
  */
-
-'use client';
 
 import { useState, useCallback, useMemo } from 'react';
 import { FuelInputLine, FuelType, FUEL_TYPE_FORM_CONFIG } from '@/types/fuel';

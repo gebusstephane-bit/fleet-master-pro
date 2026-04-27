@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Hooks React Query pour la maintenance
  * VERSION CORRIGÉE - Utilise client Supabase côté client avec fallback RLS
  */
-
-'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';

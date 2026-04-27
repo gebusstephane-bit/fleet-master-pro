@@ -1,8 +1,8 @@
+'use client';
+
 /**
  * Hook pour détecter les media queries
  */
-
-'use client';
 
 import { useState, useEffect } from 'react';
 

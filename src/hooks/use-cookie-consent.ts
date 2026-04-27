@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Hook de gestion du consentement cookies RGPD
  * Stockage dans localStorage avec typage strict
  */
-
-'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 

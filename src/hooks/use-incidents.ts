@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Hooks React Query — Sinistres
  * Pattern identique à use-vehicles / use-drivers
  */
-
-'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';

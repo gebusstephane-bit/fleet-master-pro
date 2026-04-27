@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Hook React Query - Gestion des activités de transport par entreprise
  * ADR, Frigorifique, etc.
  */
-
-'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUserContext } from '@/components/providers/user-provider';

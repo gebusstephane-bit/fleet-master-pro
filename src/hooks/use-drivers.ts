@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Hooks React Query pour les chauffeurs
  * VERSION CORRIGÉE - Jointure supprimée (n'existe pas dans drivers)
  */
-
-'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';

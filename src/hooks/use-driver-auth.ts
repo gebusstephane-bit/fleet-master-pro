@@ -1,8 +1,8 @@
+'use client';
+
 /**
  * Hooks React Query pour la gestion des comptes conducteurs (authentification)
  */
-
-'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';

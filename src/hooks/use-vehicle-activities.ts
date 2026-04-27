@@ -1,9 +1,9 @@
+'use client';
+
 /**
  * Hook React Query - Gestion des activités de transport par véhicule
  * Assignation, historique, activité courante
  */
-
-'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useUserContext } from '@/components/providers/user-provider';
