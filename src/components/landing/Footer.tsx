@@ -20,7 +20,7 @@ const footerLinks = {
     { name: "Mentions légales", href: "/mentions-legales" },
     { name: "Confidentialité", href: "/politique-confidentialite" },
     { name: "CGV", href: "/cgv" },
-    { name: "Cookies", href: "#" },
+    { name: "Cookies", href: "/politique-confidentialite#cookies" },
   ],
 };
 

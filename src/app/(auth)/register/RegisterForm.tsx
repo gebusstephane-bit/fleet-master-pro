@@ -284,8 +284,8 @@ export default function RegisterForm() {
               <div className="flex items-start space-x-2">
                 <input type="checkbox" id="acceptTerms" className="mt-1" {...register('acceptTerms')} />
                 <Label htmlFor="acceptTerms" className="text-sm font-normal cursor-pointer">
-                  J&apos;accepte les <Link href="/terms" className="text-primary hover:underline">conditions d&apos;utilisation</Link>
-                  {' '}et la{' '}<Link href="/privacy" className="text-primary hover:underline">politique de confidentialité</Link>
+                  J&apos;accepte les <Link href="/cgv" className="text-primary hover:underline">conditions d&apos;utilisation</Link>
+                  {' '}et la{' '}<Link href="/politique-confidentialite" className="text-primary hover:underline">politique de confidentialité</Link>
                 </Label>
               </div>
               {errors.acceptTerms && <p className="text-sm text-destructive">{errors.acceptTerms.message}</p>}

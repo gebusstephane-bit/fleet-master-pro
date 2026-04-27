@@ -30,8 +30,9 @@ const publicRoutes = [
   "/auth/callback",
   "/unauthorized",
   "/pricing",
-  "/terms",
-  "/privacy",
+  "/mentions-legales",
+  "/politique-confidentialite",
+  "/cgv",
   "/driver-app", // Route de l'app conducteur
   "/sitemap.xml",
   "/robots.txt",
