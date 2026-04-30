@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { withApiAuth, apiSuccess, apiError } from '@/lib/api-auth';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const querySchema = z.object({
   status: z.enum(['active', 'inactive', 'on_leave', 'suspended', 'terminated']).optional(),
   page: z.coerce.number().int().min(1).default(1),

@@ -4,6 +4,8 @@ import { withApiAuth, apiSuccess, apiError } from '@/lib/api-auth';
 import { planHasFeature } from '@/lib/plans';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const querySchema = z.object({
   status: z.enum(['ACTIF', 'INACTIF', 'EN_MAINTENANCE', 'ARCHIVE']).optional(),
   page: z.coerce.number().int().min(1).default(1),

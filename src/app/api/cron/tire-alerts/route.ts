@@ -4,6 +4,8 @@ import { USER_ROLE } from '@/constants/enums';
 import { TREAD_DEPTH_THRESHOLDS } from '@/lib/axle-configurations';
 import { logger } from '@/lib/logger';
 
+export const dynamic = 'force-dynamic';
+
 // ----------------------------------------------------------------
 // CRON : Alertes pneumatiques — quotidien à 06h00
 // Auth : x-cron-secret header ou ?secret= query param

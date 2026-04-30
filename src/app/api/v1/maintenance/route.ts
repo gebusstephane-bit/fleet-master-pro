@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { withApiAuth, apiSuccess, apiError } from '@/lib/api-auth';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const querySchema = z.object({
   vehicle_id: z.string().uuid().optional(),
   status: z.string().optional(),

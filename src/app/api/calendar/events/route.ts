@@ -4,6 +4,9 @@ import { logger } from '@/lib/logger';
 import { addDays, isBefore, parseISO } from 'date-fns';
 import { VEHICLE_STATUS } from '@/constants/enums';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export interface UnifiedCalendarEvent {
   id: string;
   title: string;

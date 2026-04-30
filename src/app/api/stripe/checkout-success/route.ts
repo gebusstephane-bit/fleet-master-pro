@@ -15,6 +15,9 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { PLAN_LIMITS, PlanType } from '@/lib/plans';
 import { logger } from '@/lib/logger';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // Type local pour la table pending_registrations (table temporaire non dans Database types)
 interface PendingRegistration {
   id: string;

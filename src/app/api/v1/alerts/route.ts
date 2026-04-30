@@ -4,6 +4,8 @@ import { withApiAuth, apiSuccess, apiError } from '@/lib/api-auth';
 import { z } from 'zod';
 import { VEHICLE_STATUS } from '@/constants/enums';
 
+export const dynamic = 'force-dynamic';
+
 const querySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   per_page: z.coerce.number().int().min(1).max(100).default(20),
