@@ -54,6 +54,7 @@ const publicApiRoutes = [
   "/api/cron",
   // Route de cleanup E2E — accessible sans auth (la route elle-même bloque en production)
   "/api/e2e",
+  "/api/v1",
 ];
 
 // Routes autorisées pendant un paiement en attente
