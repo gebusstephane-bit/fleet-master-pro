@@ -77,7 +77,7 @@ export function StepCompany({
 
   const isValid =
     formData.name &&
-    formData.siret?.length === 14 &&
+    (formData.siret === "" || formData.siret?.length === 14) &&
     formData.fleetSize &&
     formData.industry;
 

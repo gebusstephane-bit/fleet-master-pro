@@ -79,9 +79,9 @@ export const ONBOARDING_TEXTS = {
         placeholder: "Transport Dupont SARL",
       },
       siret: {
-        label: "Numéro SIRET",
+        label: "Numéro SIRET (optionnel)",
         placeholder: "123 456 789 00012",
-        help: "14 chiffres, sans espaces",
+        help: "14 chiffres, sans espaces. Vous pourrez le renseigner plus tard dans vos paramètres.",
       },
       fleetSize: {
         label: "Taille de votre flotte",

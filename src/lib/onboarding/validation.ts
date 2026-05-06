@@ -14,7 +14,9 @@ export const CompanyStepSchema = z.object({
     .max(100, "Le nom ne peut dépasser 100 caractères"),
   siret: z
     .string()
-    .regex(/^\d{14}$/, "Le SIRET doit contenir exactement 14 chiffres"),
+    .regex(/^(\d{14})?$/, "Le SIRET doit contenir exactement 14 chiffres ou être vide")
+    .optional()
+    .or(z.literal("")),
   fleetSize: z
     .number()
     .min(1, "Au moins 1 véhicule")

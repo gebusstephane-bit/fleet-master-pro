@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       .from("companies")
       .update({
         name,
-        siret,
+        siret: siret || null,
         fleet_size: fleetSize,
         industry,
         updated_at: new Date().toISOString(),
