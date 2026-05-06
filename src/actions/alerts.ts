@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { authActionClient, idSchema } from '@/lib/safe-action';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 // Types explicites pour les véhicules et chauffeurs
 interface Vehicle {
@@ -208,8 +209,11 @@ export const getAlerts = authActionClient
       `)
       .order('created_at', { ascending: false });
     
-    if (error) {throw error;}
-    
+    if (error) {
+      logger.errorWithError('[getAlerts] DB error', error);
+      return [];
+    }
+
     return alerts || [];
   });
 
