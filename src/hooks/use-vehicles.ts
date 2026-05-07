@@ -9,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { useUserContext } from '@/components/providers/user-provider';
 import { logger } from '@/lib/logger';
-import { createVehicle, deleteVehicle as deleteVehicleAction, type CreateVehicleData } from '@/actions/vehicles';
+import { createVehicle, deleteVehicle as deleteVehicleAction, updateVehicle as updateVehicleAction, type CreateVehicleData } from '@/actions/vehicles';
 import { cacheTimes } from '@/lib/query-config';
 import { toast } from 'sonner';
 import { getReadableError } from '@/lib/error-messages';
@@ -213,8 +213,6 @@ export function useUpdateVehicle() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string } & Partial<Vehicle>) => {
-      const supabase = getSupabaseClient();
-
       let updateData: Record<string, unknown> = { ...data };
       delete updateData.id;
       delete updateData.drivers;
@@ -222,19 +220,18 @@ export function useUpdateVehicle() {
       // Convertir les champs date vides ("") en null pour éviter l'erreur PostgreSQL 22007
       updateData = sanitizeVehicleDates(updateData);
 
-      const { data: updated, error } = await supabase
-        .from('vehicles')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) {
-        logger.error('Error updating vehicle', error);
-        throw new Error(error.message);
+      // Passer par la server action pour bénéficier des validations
+      // (anti-recul kilométrage, normalisation statut) ET du dispatchWebhook.
+      const result = await updateVehicleAction(id, updateData as Partial<CreateVehicleData>);
+      const resultData = result as { success?: boolean; error?: string; data?: unknown } | undefined;
+
+      if (!resultData?.success) {
+        const message = resultData?.error || 'Erreur mise à jour';
+        logger.error('Error updating vehicle', new Error(message));
+        throw new Error(message);
       }
-      
-      return updated;
+
+      return resultData.data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(variables.id) });
