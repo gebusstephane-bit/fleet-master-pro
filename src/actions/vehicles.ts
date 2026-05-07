@@ -15,6 +15,7 @@ import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/types/supabase';
 import { dispatchWebhook } from '@/lib/webhooks/send';
+import { waitUntil } from '@vercel/functions';
 
 export interface CreateVehicleData {
   registration_number: string;
@@ -215,9 +216,11 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
     
     revalidatePath('/vehicles');
 
-    // Webhook fire-and-forget — ne bloque pas la mutation UI
-    dispatchWebhook(vehicle.company_id, 'vehicle.created', vehicle).catch((err) =>
-      console.error('Webhook dispatch failed:', err)
+    // Webhook via waitUntil — garantit l'exécution hors response cycle (serverless)
+    waitUntil(
+      dispatchWebhook(vehicle.company_id, 'vehicle.created', vehicle).catch((err) =>
+        console.error('Webhook dispatch failed:', err)
+      )
     );
 
     return { success: true, data: vehicle };
@@ -349,9 +352,11 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
     revalidatePath('/vehicles');
     revalidatePath(`/vehicles/${id}`);
 
-    // Webhook fire-and-forget — ne bloque pas la mutation UI
-    dispatchWebhook(updated.company_id, 'vehicle.updated', updated).catch((err) =>
-      console.error('Webhook dispatch failed:', err)
+    // Webhook via waitUntil — garantit l'exécution hors response cycle (serverless)
+    waitUntil(
+      dispatchWebhook(updated.company_id, 'vehicle.updated', updated).catch((err) =>
+        console.error('Webhook dispatch failed:', err)
+      )
     );
 
     return { success: true, data: updated };
@@ -433,11 +438,13 @@ export async function deleteVehicle(id: string): Promise<ActionResult> {
 
     revalidatePath('/vehicles');
 
-    // Webhook fire-and-forget — ne bloque pas la mutation UI
-    dispatchWebhook(vehicle.company_id, 'vehicle.deleted', {
-      id: vehicle.id,
-      registration_number: vehicle.registration_number,
-    }).catch((err) => console.error('Webhook dispatch failed:', err));
+    // Webhook via waitUntil — garantit l'exécution hors response cycle (serverless)
+    waitUntil(
+      dispatchWebhook(vehicle.company_id, 'vehicle.deleted', {
+        id: vehicle.id,
+        registration_number: vehicle.registration_number,
+      }).catch((err) => console.error('Webhook dispatch failed:', err))
+    );
 
     return { success: true };
 

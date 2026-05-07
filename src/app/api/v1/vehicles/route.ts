@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { withApiAuth, apiSuccess, apiError } from '@/lib/api-auth';
 import { planHasFeature } from '@/lib/plans';
 import { dispatchWebhook } from '@/lib/webhooks/send';
+import { waitUntil } from '@vercel/functions';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -138,9 +139,11 @@ export async function POST(request: NextRequest) {
 
   if (error) return apiError(error.message, 500, rateLimitHeaders);
 
-  // Webhook fire-and-forget — ne bloque pas la response API
-  dispatchWebhook(auth.companyId, 'vehicle.created', data).catch((err) =>
-    console.error('Webhook dispatch failed:', err)
+  // Webhook via waitUntil — garantit l'exécution hors response cycle (serverless)
+  waitUntil(
+    dispatchWebhook(auth.companyId, 'vehicle.created', data).catch((err) =>
+      console.error('Webhook dispatch failed:', err)
+    )
   );
 
   return apiSuccess(data, null, rateLimitHeaders);
