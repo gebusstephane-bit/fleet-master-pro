@@ -14,6 +14,7 @@ import { requireManagerOrAbove } from '@/lib/auth-guards';
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/types/supabase';
+import { dispatchWebhook } from '@/lib/webhooks/send';
 
 export interface CreateVehicleData {
   registration_number: string;
@@ -213,9 +214,14 @@ export async function createVehicle(data: CreateVehicleData): Promise<ActionResu
     }
     
     revalidatePath('/vehicles');
-    
+
+    // Webhook fire-and-forget — ne bloque pas la mutation UI
+    dispatchWebhook(vehicle.company_id, 'vehicle.created', vehicle).catch((err) =>
+      console.error('Webhook dispatch failed:', err)
+    );
+
     return { success: true, data: vehicle };
-    
+
   } catch (error) {
     logger.error('createVehicle: Exception', error instanceof Error ? error : new Error(String(error)));
     const message = error instanceof Error ? error.message : 'Erreur inconnue';
@@ -342,9 +348,14 @@ export async function updateVehicle(id: string, data: Partial<CreateVehicleData>
     
     revalidatePath('/vehicles');
     revalidatePath(`/vehicles/${id}`);
-    
+
+    // Webhook fire-and-forget — ne bloque pas la mutation UI
+    dispatchWebhook(updated.company_id, 'vehicle.updated', updated).catch((err) =>
+      console.error('Webhook dispatch failed:', err)
+    );
+
     return { success: true, data: updated };
-    
+
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Erreur inconnue';
     return { success: false, error: message };
@@ -394,7 +405,7 @@ export async function deleteVehicle(id: string): Promise<ActionResult> {
     // 3. Vérifier que le véhicule existe et est accessible (RLS)
     const { data: vehicle, error: vehicleError } = await supabase
       .from('vehicles')
-      .select('id, company_id')
+      .select('id, company_id, registration_number')
       .eq('id', id)
       .is('deleted_at', null)
       .single();
@@ -419,11 +430,17 @@ export async function deleteVehicle(id: string): Promise<ActionResult> {
     if (error) {
       return { success: false, error: error.message };
     }
-    
+
     revalidatePath('/vehicles');
-    
+
+    // Webhook fire-and-forget — ne bloque pas la mutation UI
+    dispatchWebhook(vehicle.company_id, 'vehicle.deleted', {
+      id: vehicle.id,
+      registration_number: vehicle.registration_number,
+    }).catch((err) => console.error('Webhook dispatch failed:', err));
+
     return { success: true };
-    
+
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Erreur inconnue';
     return { success: false, error: message };

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { withApiAuth, apiSuccess, apiError } from '@/lib/api-auth';
 import { planHasFeature } from '@/lib/plans';
+import { dispatchWebhook } from '@/lib/webhooks/send';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -136,5 +137,11 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) return apiError(error.message, 500, rateLimitHeaders);
+
+  // Webhook fire-and-forget — ne bloque pas la response API
+  dispatchWebhook(auth.companyId, 'vehicle.created', data).catch((err) =>
+    console.error('Webhook dispatch failed:', err)
+  );
+
   return apiSuccess(data, null, rateLimitHeaders);
 }
