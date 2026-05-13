@@ -49,6 +49,27 @@ Les headers \`X-RateLimit-*\` sont inclus dans chaque réponse.
   "error": null
 }
 \`\`\`
+
+### Webhooks sortants
+
+Fleet-Master peut notifier vos endpoints HTTPS lors d'événements métier.
+Configurez vos webhooks dans **Paramètres → Webhooks** (UI).
+
+Chaque POST inclut :
+- Header \`X-FleetMaster-Signature: sha256=<hmac>\` — signature HMAC SHA256 du body avec votre secret webhook
+- Header \`X-FleetMaster-Event: <event_name>\`
+- Body JSON : \`{ event, timestamp, data }\`
+
+Événements disponibles :
+
+| Event | Quand |
+|---|---|
+| \`vehicle.created\` | Création d'un véhicule (UI ou API v1) |
+| \`vehicle.updated\` | Modification d'un véhicule (UI) |
+| \`vehicle.deleted\` | Soft-delete d'un véhicule (UI) |
+| \`vehicle.regulatory_expired\` | Document réglementaire expiré (CT, tachy, ATP) — émis quotidiennement à 8h par le cron \`vehicle-documents-check\` |
+
+Cf. les schémas \`WebhookRegulatoryExpiredPayload\` (composants) pour le format précis.
       `.trim(),
       contact: {
         name: 'Support FleetMaster',
@@ -227,6 +248,33 @@ Les headers \`X-RateLimit-*\` sont inclus dans chaque réponse.
             due_date: { type: 'string', format: 'date', nullable: true },
             days_remaining: { type: 'integer', nullable: true },
           },
+        },
+        WebhookRegulatoryExpiredPayload: {
+          type: 'object',
+          description:
+            "Payload du webhook `vehicle.regulatory_expired` — émis quotidiennement à 8h par le cron `vehicle-documents-check` pour chaque véhicule dont un document réglementaire vient d'expirer (CT, tachy, ATP). Anti-doublon : une fois par expiration (table `document_alert_logs`).",
+          properties: {
+            vehicleId: { type: 'string', format: 'uuid' },
+            companyId: { type: 'string', format: 'uuid' },
+            registration_number: { type: 'string', example: 'AB-123-CD' },
+            expired_document: {
+              type: 'string',
+              enum: ['CT', 'TACHY', 'ATP', 'INSURANCE', 'ADR_CERTIFICATE'],
+              description:
+                "Type du document expiré. Aujourd'hui seuls CT, TACHY, ATP sont scannés par le cron ; INSURANCE et ADR_CERTIFICATE sont prévus dans le payload pour extension future.",
+            },
+            expiry_date: { type: 'string', format: 'date', example: '2026-05-05' },
+            days_overdue: { type: 'integer', example: 8, description: 'Nombre de jours depuis l\'expiration' },
+            alert_level: { type: 'string', enum: ['J0'], description: 'Niveau de gravité. J0 = document expiré.' },
+            vehicle_status: {
+              type: 'string',
+              enum: ['ACTIF', 'INACTIF', 'EN_MAINTENANCE', 'ARCHIVE'],
+              example: 'ACTIF',
+              description:
+                "Statut du véhicule au moment de l'émission. En NIVEAU 2 (lecture seule), le statut reste inchangé — FM n'immobilise pas automatiquement.",
+            },
+          },
+          required: ['vehicleId', 'companyId', 'registration_number', 'expired_document', 'expiry_date', 'days_overdue', 'alert_level', 'vehicle_status'],
         },
         AgendaEvent: {
           type: 'object',
