@@ -28,6 +28,7 @@ const ALL_EVENTS = [
   { value: 'vehicle.created', label: 'Véhicule créé' },
   { value: 'vehicle.updated', label: 'Véhicule modifié' },
   { value: 'vehicle.deleted', label: 'Véhicule supprimé' },
+  { value: 'vehicle.regulatory_expired', label: 'Document réglementaire expiré (CT, tachy, ATP)' },
   { value: 'maintenance.created', label: 'Maintenance créée' },
   { value: 'maintenance.completed', label: 'Maintenance terminée' },
   { value: 'maintenance.due', label: 'Maintenance échue' },
