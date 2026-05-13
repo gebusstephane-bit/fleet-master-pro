@@ -85,13 +85,15 @@ function formatDate(dateStr: string): string {
 
 function buildEmailContent(
   alertLevel: 'J60' | 'J30' | 'J0',
-  vehicle: { registration_number: string; brand: string; model: string },
+  vehicle: { id: string; registration_number: string; brand: string; model: string },
   documentLabel: string,
   daysLeft: number,
   expiryDate: string
 ): { subject: string; html: string } {
   const formattedExpiry = formatDate(expiryDate);
   const vehicleRef = `${vehicle.registration_number} (${vehicle.brand} ${vehicle.model})`;
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://fleet-master.fr').replace(/\/$/, '');
+  const renewalUrl = `${baseUrl}/vehicles/${vehicle.id}/edit`;
 
   if (alertLevel === 'J0') {
     const overdue = Math.abs(daysLeft);
@@ -110,6 +112,15 @@ function buildEmailContent(
             <div style="background:#fef2f2;border:1px solid #fecaca;padding:16px;border-radius:8px;margin:20px 0;">
               <p style="margin:0;color:#dc2626;font-weight:bold;">
                 ⛔ Ce véhicule doit être immobilisé immédiatement jusqu'au renouvellement du document.
+              </p>
+            </div>
+            <div style="text-align:center;margin:24px 0;">
+              <a href="${renewalUrl}"
+                 style="display:inline-block;padding:14px 28px;background:#dc2626;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">
+                Renouveler maintenant →
+              </a>
+              <p style="margin:8px 0 0;font-size:12px;color:#6b7280;">
+                Cliquez pour mettre à jour le document expiré
               </p>
             </div>
             <table style="width:100%;border-collapse:collapse;margin:16px 0;">
