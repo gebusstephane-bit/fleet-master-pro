@@ -89,17 +89,29 @@ export async function GET(request: NextRequest) {
     ? (maintenanceEventsRaw || []).filter((e: any) => e.vehicle_id === vehicleIdFilter)
     : maintenanceEventsRaw;
 
-  // 2. maintenance_records avec rdv_date renseigné dans la fenêtre
+  // 2. maintenance_records avec rdv_date renseigné — actifs uniquement
+  // (statuses qui correspondent à un RDV actif/à venir, on exclut TERMINEE,
+  // REFUSEE, CANCELLED).
+  //
+  // Note : on n'applique PAS de filtre date côté SQL — le filtrage par fenêtre
+  // est fait en JS plus bas. Cela suit le pattern de la route interne
+  // /api/calendar/events (testée et fonctionnelle depuis 8 mois) et évite
+  // un bug PostgREST observé sur certaines combinaisons start/end qui faisaient
+  // disparaître silencieusement le RDV des résultats malgré qu'il soit
+  // bien dans la fenêtre.
   let rdvQuery = (supabase as any)
     .from('maintenance_records')
     .select('id, description, rdv_date, rdv_time, status, garage_name, vehicle_id, vehicles(registration_number, brand, model, type)')
     .eq('company_id', auth.companyId)
     .not('rdv_date', 'is', null)
-    .gte('rdv_date', start)
-    .lte('rdv_date', end);
+    .in('status', ['VALIDEE_DIRECTEUR', 'RDV_PRIS', 'EN_COURS']);
   if (vehicleIdFilter) rdvQuery = rdvQuery.eq('vehicle_id', vehicleIdFilter);
-  const { data: rdvRecords, error: rdvErr } = await rdvQuery;
+  const { data: rdvRecordsAll, error: rdvErr } = await rdvQuery;
   if (rdvErr) return apiError(rdvErr.message, 500, rateLimitHeaders);
+  // Filtre date côté JS — string comparison fonctionne pour format YYYY-MM-DD
+  const rdvRecords = (rdvRecordsAll || []).filter(
+    (r: any) => r.rdv_date >= start && r.rdv_date <= end
+  );
 
   // 3. Véhicules actifs avec leurs échéances réglementaires (filtre OR par expiry dans la fenêtre)
   let vehiclesQuery = (supabase as any)
