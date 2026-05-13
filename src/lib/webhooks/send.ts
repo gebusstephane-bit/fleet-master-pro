@@ -9,12 +9,31 @@ export type WebhookEvent =
   | 'vehicle.created'
   | 'vehicle.updated'
   | 'vehicle.deleted'
+  | 'vehicle.regulatory_expired'
   | 'maintenance.created'
   | 'maintenance.completed'
   | 'maintenance.due'
   | 'inspection.completed'
   | 'driver.created'
   | 'driver.updated';
+
+/**
+ * Payload pour vehicle.regulatory_expired. Émis quotidiennement par le cron
+ * vehicle-documents-check pour chaque véhicule entrant dans le bucket J0
+ * (document expiré). Anti-doublon : une fois par expiration via la table
+ * document_alert_logs (UNIQUE vehicle_id, document_type, alert_level,
+ * expiry_date).
+ */
+export interface VehicleRegulatoryExpiredPayload {
+  vehicleId: string;
+  companyId: string;
+  registration_number: string;
+  expired_document: 'CT' | 'TACHY' | 'ATP' | 'INSURANCE' | 'ADR_CERTIFICATE';
+  expiry_date: string; // YYYY-MM-DD
+  days_overdue: number;
+  alert_level: 'J0';
+  vehicle_status: string; // statut FM actuel (non modifié en NIVEAU 2)
+}
 
 export interface WebhookPayload {
   event: WebhookEvent;
