@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Truck, MoreHorizontal, Edit, Trash2, AlertTriangle, Car, Upload, Snowflake, Construction, AlertOctagon, Container, Heart, Box, Gauge, TrainFront, ArrowUpFromLine } from 'lucide-react';
+import { Plus, Search, Truck, MoreHorizontal, Edit, Trash2, AlertTriangle, Car, Upload, Snowflake, Construction, AlertOctagon, Container, Heart, Box, Gauge, TrainFront, ArrowUpFromLine, FileWarning } from 'lucide-react';
 import { ReliabilityScoreBadge } from '@/components/vehicles/ReliabilityScore';
 import { useFleetReliabilityScores } from '@/hooks/use-reliability-score';
 import { ImportWizard } from '@/components/import/ImportWizard';
@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { SearchInput } from '@/components/ui/search-input';
 import { FilterDropdown } from '@/components/ui/filter-dropdown';
@@ -31,6 +31,32 @@ import { ExportButton } from '@/components/export/export-button';
 import { useSelection } from '@/hooks/use-selection';
 import { DataTableBulkActions } from '@/components/ui/data-table-bulk-actions';
 import { VEHICLE_STATUS } from '@/constants/enums';
+
+/**
+ * Détecte les documents réglementaires expirés d'un véhicule.
+ * Compare chaque date d'expiration à aujourd'hui (00h00 local).
+ * Utilisé pour le badge "Document expiré" et le filtre URL ?filter=expired.
+ */
+function getExpiredDocuments(vehicle: Pick<Vehicle, 'technical_control_expiry' | 'tachy_control_expiry' | 'atp_expiry'> & { insurance_expiry?: string | null }): string[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expired: string[] = [];
+
+  const checks: Array<[string | null | undefined, string]> = [
+    [vehicle.technical_control_expiry, 'CT'],
+    [vehicle.tachy_control_expiry, 'Tachygraphe'],
+    [vehicle.atp_expiry, 'ATP'],
+    [vehicle.insurance_expiry, 'Assurance'],
+  ];
+
+  for (const [date, label] of checks) {
+    if (!date) continue;
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    if (d < today) expired.push(label);
+  }
+  return expired;
+}
 
 const typeLabels: Record<string, string> = {
   truck: 'Camion',
@@ -428,10 +454,15 @@ function AddVehicleButton() {
 
 export default function VehiclesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: vehicles, isLoading, error } = useVehicles();
   const deleteMutation = useDeleteVehicle();
   const selection = useSelection(vehicles ?? [], 'id');
   const { data: reliabilityScores } = useFleetReliabilityScores();
+
+  // Filtre URL ?filter=expired — pré-filtre la liste sur les véhicules avec
+  // au moins un document réglementaire expiré. Initialisé une seule fois au mount.
+  const expiredFilterActive = searchParams.get('filter') === 'expired';
 
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -467,9 +498,14 @@ export default function VehiclesPage() {
         return false;
       }
 
+      // Filtre URL : véhicules avec au moins un document expiré
+      if (expiredFilterActive && getExpiredDocuments(vehicle as any).length === 0) {
+        return false;
+      }
+
       return true;
     });
-  }, [vehicles, searchQuery, activeFilters]);
+  }, [vehicles, searchQuery, activeFilters, expiredFilterActive]);
 
   // Stats calculation
   const stats = {
@@ -507,17 +543,31 @@ export default function VehiclesPage() {
       key: 'registration_number',
       header: 'Immatriculation',
       width: '200px',
-      render: (vehicle) => (
-        <div className="flex items-center gap-3">
-          {reliabilityScores?.get(vehicle.id) && (
-            <ReliabilityScoreBadge score={reliabilityScores.get(vehicle.id)!} />
-          )}
-          <div>
-            <p className="font-medium text-white">{vehicle.registration_number}</p>
-            <p className="text-xs text-slate-500">{vehicle.vin || 'N/A'}</p>
+      render: (vehicle) => {
+        const expired = getExpiredDocuments(vehicle as any);
+        return (
+          <div className="flex items-center gap-3">
+            {reliabilityScores?.get(vehicle.id) && (
+              <ReliabilityScoreBadge score={reliabilityScores.get(vehicle.id)!} />
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-white">{vehicle.registration_number}</p>
+                {expired.length > 0 && (
+                  <span
+                    title={`Document(s) expiré(s) : ${expired.join(', ')}`}
+                    className="inline-flex items-center gap-1 rounded-md border border-red-500/30 bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-300"
+                  >
+                    <FileWarning className="h-3 w-3" />
+                    {expired.length === 1 ? expired[0] : `${expired.length} docs`}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500">{vehicle.vin || 'N/A'}</p>
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: 'brand',
