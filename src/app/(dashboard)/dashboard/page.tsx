@@ -18,6 +18,7 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { CriticalVehiclesWidget } from "@/components/vehicles/ReliabilityScore";
+import { CriticalDocumentsBanner } from "@/components/dashboard/CriticalDocumentsBanner";
 import { DailyBriefing } from "@/components/ai/DailyBriefing";
 import { CriticalFleetWidget } from "@/components/dashboard/CriticalFleetWidget";
 import { planHasFeature } from "@/lib/plans";
@@ -135,6 +136,11 @@ export default function DashboardPage() {
         <p className="mt-1 text-slate-400 text-sm">
           Voici un aperçu de votre flotte aujourd&apos;hui
         </p>
+      </motion.div>
+
+      {/* Bannière documents expirés — affichée seulement si au moins 1 expiré */}
+      <motion.div variants={itemVariants}>
+        <CriticalDocumentsBanner />
       </motion.div>
 
       {/* AI Daily Briefing */}
