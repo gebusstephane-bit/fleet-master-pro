@@ -228,6 +228,53 @@ Les headers \`X-RateLimit-*\` sont inclus dans chaque réponse.
             days_remaining: { type: 'integer', nullable: true },
           },
         },
+        AgendaEvent: {
+          type: 'object',
+          description:
+            'Événement agenda unifié : maintenances, RDV garage, échéances CT/tachy/ATP. Identique au format interne FM (8 mois de production), sans le champ `attendees`.',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'ID synthétique préfixé : "maintenance-<uuid>", "rdv-<uuid>", "ct-<vehicleId>", "tachy-<vehicleId>", "atp-<vehicleId>"',
+              example: 'ct-5104653f-016a-4cd9-bd88-d58e654a48c9',
+            },
+            title: { type: 'string', example: 'CT — AB-123-CD' },
+            start: { type: 'string', format: 'date-time', description: 'ISO 8601 (event_date + start_time)' },
+            end: { type: 'string', format: 'date-time' },
+            type: {
+              type: 'string',
+              enum: ['maintenance', 'ct', 'tachy', 'atp'],
+              description: 'Catégorie de l\'événement',
+            },
+            vehicleId: { type: 'string', format: 'uuid', nullable: true },
+            vehicleRegistration: { type: 'string', nullable: true, example: 'AB-123-CD' },
+            vehicleBrand: { type: 'string', nullable: true, example: 'Renault' },
+            vehicleModel: { type: 'string', nullable: true, example: 'Master' },
+            urgent: {
+              type: 'boolean',
+              description: 'true si échéance dans les 7 prochains jours (CT/tachy/ATP)',
+            },
+            overdue: { type: 'boolean', description: 'true si échéance dépassée' },
+            maintenanceId: { type: 'string', format: 'uuid', nullable: true },
+            eventType: {
+              type: 'string',
+              nullable: true,
+              description: 'RDV_GARAGE | RETOUR_PREVU | RAPPEL pour maintenance, ou type même pour CT/tachy/ATP',
+            },
+            status: {
+              type: 'string',
+              nullable: true,
+              description: 'SCHEDULED | CONFIRMED | COMPLETED | CANCELLED | OVERDUE | URGENT',
+            },
+            garageName: { type: 'string', nullable: true },
+            controlDate: { type: 'string', format: 'date', nullable: true, description: 'Date du dernier contrôle (CT/tachy/ATP)' },
+            vehicleType: {
+              type: 'string',
+              nullable: true,
+              enum: ['VOITURE', 'FOURGON', 'POIDS_LOURD', 'POIDS_LOURD_FRIGO'],
+            },
+          },
+        },
         ComplianceResult: {
           type: 'object',
           properties: {
@@ -445,6 +492,64 @@ Les headers \`X-RateLimit-*\` sont inclus dans chaque réponse.
           responses: {
             200: { description: 'OK', content: { 'application/json': { schema: { type: 'object', properties: { data: { type: 'array', items: { $ref: '#/components/schemas/Alert' } }, meta: { $ref: '#/components/schemas/Meta' }, error: { nullable: true } } } } } },
             401: { $ref: '#/components/responses/Unauthorized' },
+          },
+        },
+      },
+      // ─── Agenda ───────────────────────────────────────────────────────────────
+      '/agenda': {
+        get: {
+          tags: ['Agenda'],
+          summary: 'Unified fleet agenda (maintenances + RDV + CT/tachy/ATP deadlines)',
+          description:
+            'Returns events sorted chronologically. Default window: today → today + 90 days. ' +
+            'Combines three sources: explicit maintenance_agenda entries, maintenance_records with rdv_date, ' +
+            'and regulatory deadlines (technical control, tachograph, ATP) derived from active vehicles. ' +
+            'Designed for external integrations (planning systems, scheduling tools).',
+          parameters: [
+            {
+              in: 'query',
+              name: 'start',
+              schema: { type: 'string', format: 'date', example: '2026-05-01' },
+              description: 'Start of window (YYYY-MM-DD). Defaults to today.',
+            },
+            {
+              in: 'query',
+              name: 'end',
+              schema: { type: 'string', format: 'date', example: '2026-08-01' },
+              description: 'End of window (YYYY-MM-DD). Defaults to today + 90 days.',
+            },
+            {
+              in: 'query',
+              name: 'type',
+              schema: { type: 'string', enum: ['maintenance', 'ct', 'tachy', 'atp'] },
+              description: 'Filter by event category.',
+            },
+            {
+              in: 'query',
+              name: 'vehicle_id',
+              schema: { type: 'string', format: 'uuid' },
+              description: 'Filter by vehicle UUID.',
+            },
+          ],
+          responses: {
+            200: {
+              description: 'OK',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: { type: 'array', items: { $ref: '#/components/schemas/AgendaEvent' } },
+                      meta: { $ref: '#/components/schemas/Meta' },
+                      error: { nullable: true },
+                    },
+                  },
+                },
+              },
+            },
+            400: { description: 'Invalid query parameter', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            401: { $ref: '#/components/responses/Unauthorized' },
+            429: { $ref: '#/components/responses/RateLimitExceeded' },
           },
         },
       },
