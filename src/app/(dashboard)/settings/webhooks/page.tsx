@@ -17,6 +17,7 @@ import {
   RefreshCw,
   ArrowLeft,
   ExternalLink,
+  Pencil,
 } from 'lucide-react';
 import Link from 'next/link';
 import { getSupabaseClient } from '@/lib/supabase/client';
@@ -67,10 +68,11 @@ export default function WebhooksPage() {
   const [newKeyName, setNewKeyName] = useState('');
   const [creatingKey, setCreatingKey] = useState(false);
 
-  // New webhook form
+  // New/edit webhook form — `editingId` non-null = mode édition
   const [newWebhook, setNewWebhook] = useState({ name: '', url: '', events: [] as string[] });
   const [creatingWebhook, setCreatingWebhook] = useState(false);
   const [showWebhookForm, setShowWebhookForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // UI state
   const [revealedSecrets, setRevealedSecrets] = useState<Set<string>>(new Set());
@@ -133,33 +135,62 @@ export default function WebhooksPage() {
   };
 
   // ── Webhooks ──────────────────────────────
-  const createWebhook = async () => {
+  const resetWebhookForm = () => {
+    setNewWebhook({ name: '', url: '', events: [] });
+    setEditingId(null);
+    setShowWebhookForm(false);
+  };
+
+  const submitWebhook = async () => {
     if (!newWebhook.name.trim() || !newWebhook.url.trim() || newWebhook.events.length === 0 || !user?.company_id) return;
     setCreatingWebhook(true);
     try {
-      const { error } = await supabase.from('webhooks' as any).insert({
-        company_id: user.company_id,
-        name: newWebhook.name.trim(),
-        url: newWebhook.url.trim(),
-        events: newWebhook.events,
-      });
-      if (error) throw error;
-      toast.success('Webhook créé');
-      setNewWebhook({ name: '', url: '', events: [] });
-      setShowWebhookForm(false);
+      if (editingId) {
+        // Mode édition — UPDATE
+        const { error } = await supabase
+          .from('webhooks' as any)
+          .update({
+            name: newWebhook.name.trim(),
+            url: newWebhook.url.trim(),
+            events: newWebhook.events,
+          })
+          .eq('id', editingId);
+        if (error) throw error;
+        toast.success('Webhook mis à jour');
+      } else {
+        // Mode création — INSERT
+        const { error } = await supabase.from('webhooks' as any).insert({
+          company_id: user.company_id,
+          name: newWebhook.name.trim(),
+          url: newWebhook.url.trim(),
+          events: newWebhook.events,
+        });
+        if (error) throw error;
+        toast.success('Webhook créé');
+      }
+      resetWebhookForm();
       load();
     } catch {
-      toast.error('Erreur lors de la création');
+      toast.error(editingId ? 'Erreur lors de la mise à jour' : 'Erreur lors de la création');
     } finally {
       setCreatingWebhook(false);
     }
   };
 
+  const startEditWebhook = (wh: Webhook) => {
+    setEditingId(wh.id);
+    setNewWebhook({ name: wh.name, url: wh.url, events: [...wh.events] });
+    setShowWebhookForm(true);
+  };
+
   const deleteWebhook = async (id: string) => {
+    if (!window.confirm('Supprimer ce webhook ? L\'opération est irréversible.')) return;
     try {
       await supabase.from('webhooks' as any).delete().eq('id', id);
       setWebhooks((prev) => prev.filter((w) => w.id !== id));
       toast.success('Webhook supprimé');
+      // Si on était en train d'éditer ce webhook, fermer le formulaire
+      if (editingId === id) resetWebhookForm();
     } catch {
       toast.error('Erreur lors de la suppression');
     }
@@ -297,7 +328,15 @@ export default function WebhooksPage() {
               </div>
             </div>
             <Button
-              onClick={() => setShowWebhookForm((v) => !v)}
+              onClick={() => {
+                if (showWebhookForm) {
+                  resetWebhookForm();
+                } else {
+                  setEditingId(null);
+                  setNewWebhook({ name: '', url: '', events: [] });
+                  setShowWebhookForm(true);
+                }
+              }}
               className="btn-primary gap-2"
             >
               <Plus className="h-4 w-4" />
@@ -305,7 +344,7 @@ export default function WebhooksPage() {
             </Button>
           </div>
 
-          {/* Create webhook form */}
+          {/* Create/edit webhook form */}
           {showWebhookForm && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -356,15 +395,17 @@ export default function WebhooksPage() {
               </div>
 
               <div className="flex gap-2 justify-end">
-                <Button variant="ghost" onClick={() => setShowWebhookForm(false)} className="text-slate-400">
+                <Button variant="ghost" onClick={resetWebhookForm} className="text-slate-400">
                   Annuler
                 </Button>
                 <Button
-                  onClick={createWebhook}
+                  onClick={submitWebhook}
                   disabled={creatingWebhook || !newWebhook.name || !newWebhook.url || newWebhook.events.length === 0}
                   className="btn-primary"
                 >
-                  {creatingWebhook ? 'Création…' : 'Créer le webhook'}
+                  {creatingWebhook
+                    ? (editingId ? 'Mise à jour…' : 'Création…')
+                    : (editingId ? 'Mettre à jour' : 'Créer le webhook')}
                 </Button>
               </div>
             </motion.div>
@@ -421,6 +462,7 @@ export default function WebhooksPage() {
                           return next;
                         })}
                         className="h-7 px-2 text-slate-400 hover:text-white text-xs gap-1"
+                        title="Voir / masquer le secret HMAC"
                       >
                         {revealedSecrets.has(wh.id) ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                         Secret
@@ -431,15 +473,28 @@ export default function WebhooksPage() {
                           variant="ghost"
                           onClick={() => copyToClipboard(wh.secret, `secret-${wh.id}`)}
                           className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+                          title="Copier le secret"
                         >
                           {copied === `secret-${wh.id}` ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                         </Button>
                       )}
+                      {/* Modifier — toujours visible */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => startEditWebhook(wh)}
+                        className="h-7 w-7 p-0 text-slate-400 hover:text-cyan-300"
+                        title="Modifier le webhook"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      {/* Supprimer — toujours visible (anciennement caché derrière hover) */}
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => deleteWebhook(wh.id)}
-                        className="h-7 w-7 p-0 text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-7 w-7 p-0 text-slate-400 hover:text-red-400"
+                        title="Supprimer le webhook"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
