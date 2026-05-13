@@ -27,6 +27,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { VEHICLE_STATUS, USER_ROLE } from '@/constants/enums';
+import { dispatchWebhook } from '@/lib/webhooks/send';
+import { waitUntil } from '@vercel/functions';
 
 // ============================================================
 // CONFIGURATION
@@ -371,6 +373,27 @@ export async function GET(request: NextRequest) {
               alert_level: alertLevel,
               expiry_date: expiryDate,
             });
+
+          // 7. Webhook vehicle.regulatory_expired — uniquement au niveau J0
+          // (document expiré). Anti-doublon déjà garanti par document_alert_logs
+          // au-dessus : on n'arrive ici qu'une seule fois par cycle d'expiration.
+          // waitUntil garantit le dispatch hors response cycle (Vercel serverless).
+          if (alertLevel === 'J0') {
+            waitUntil(
+              dispatchWebhook(vehicle.company_id, 'vehicle.regulatory_expired', {
+                vehicleId: vehicle.id,
+                companyId: vehicle.company_id,
+                registration_number: vehicle.registration_number,
+                expired_document: doc.type,
+                expiry_date: expiryDate,
+                days_overdue: Math.abs(daysLeft),
+                alert_level: 'J0',
+                vehicle_status: VEHICLE_STATUS.ACTIF,
+              }).catch((err) =>
+                console.error('[CRON] Webhook regulatory_expired dispatch failed:', err)
+              )
+            );
+          }
 
           stats.alerts_sent++;
           logger.info(
