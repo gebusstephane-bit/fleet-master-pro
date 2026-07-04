@@ -132,6 +132,7 @@ export async function getDashboardStats(): Promise<ActionResult<DashboardStats>>
       supabase
         .from('vehicles')
         .select('id, registration_number, status, mileage, fuel_type, brand, model')
+        .is('deleted_at', null) // exclure les véhicules soft-deleted des KPI
         .order('created_at', { ascending: false }),
       supabase
         .from('drivers')
