@@ -4,6 +4,7 @@
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 import { Database } from '@/types/supabase';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { logger } from '@/lib/logger';
@@ -54,7 +55,9 @@ export function createAdminClient() {
 }
 
 // Récupérer l'utilisateur courant (VERSION SÉCURISÉE - RLS)
-export async function getUserWithCompany() {
+// Perf : React.cache → dédoublonné au sein d'un même rendu serveur
+// (layout + pages + composants serveur partagent le même résultat)
+export const getUserWithCompany = cache(async function getUserWithCompany() {
   try {
     const supabase = await createClient();
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -87,19 +90,22 @@ export async function getUserWithCompany() {
     const companyId = profile?.company_id || user.user_metadata?.company_id || null;
     
     if (companyId) {
-      // Récupérer d'abord les données de companies
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .select('id, name, logo_url, max_vehicles, max_drivers')
-        .eq('id', companyId)
-        .maybeSingle();
-      
-      // Puis récupérer le PLAN depuis subscriptions (source de vérité)
-      const { data: subscription, error: subError } = await supabase
-        .from('subscriptions')
-        .select('plan, vehicle_limit, user_limit, status, trial_ends_at')
-        .eq('company_id', companyId)
-        .maybeSingle();
+      // Perf : companies + subscriptions sont indépendantes → parallélisées
+      const [
+        { data: company, error: companyError },
+        { data: subscription },
+      ] = await Promise.all([
+        supabase
+          .from('companies')
+          .select('id, name, logo_url, max_vehicles, max_drivers')
+          .eq('id', companyId)
+          .maybeSingle(),
+        supabase
+          .from('subscriptions')
+          .select('plan, vehicle_limit, user_limit, status, trial_ends_at')
+          .eq('company_id', companyId)
+          .maybeSingle(),
+      ]);
       
       if (!companyError && company) {
         companyData = {
@@ -146,7 +152,7 @@ export async function getUserWithCompany() {
     });
     return null;
   }
-}
+});
 
 // Récupérer la session
 export async function getSession() {

@@ -21,6 +21,129 @@ import { isRedisConfigured } from "@/lib/security/rate-limiter-redis";
 import { timingSafeEqual, scryptSync } from "crypto";
 import { USER_ROLE } from "@/constants/enums";
 
+// ============================================
+// 🍪 CACHE PROFIL/COMPANY DU MIDDLEWARE (signé HMAC, TTL 60s)
+// Perf : évite de re-télécharger profiles + companies à CHAQUE requête
+// (y compris les prefetch de <Link>). auth.getUser() reste systématique —
+// la sécurité de session est inchangée, seul le lookup DB est mis en cache.
+// ============================================
+const MW_CACHE_COOKIE = "fm_mw_cache";
+const MW_CACHE_TTL_SECONDS = 60;
+
+type MwCachePayload = {
+  uid: string;                 // user.id (le cache est ignoré si l'uid diffère)
+  role: string | null;
+  cid: string | null;          // company_id
+  ss: string | null;           // subscription_status
+  sp: string | null;           // subscription_plan
+  te: string | null;           // trial_ends_at
+  oc: boolean | null;          // onboarding_completed
+  exp: number;                 // expiration epoch (secondes)
+};
+
+// Routes où le statut peut changer pendant la session → toujours fetch frais
+// + invalidation du cookie (sinon boucle de redirection post-onboarding/paiement)
+const mwCacheBypassRoutes = [
+  "/onboarding",
+  "/payment-pending",
+  "/settings/billing",
+  "/pricing",
+  "/api/onboarding",
+  "/api/stripe",
+];
+
+let mwHmacKeyPromise: Promise<CryptoKey> | null = null;
+function getMwHmacKey(): Promise<CryptoKey> | null {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return null; // pas de secret → pas de cache, comportement historique
+  if (!mwHmacKeyPromise) {
+    mwHmacKeyPromise = crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(`mw-cache:${secret}`),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign", "verify"]
+    );
+  }
+  return mwHmacKeyPromise;
+}
+
+function b64urlFromBytes(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function bytesFromB64url(s: string): Uint8Array | null {
+  try {
+    const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  } catch {
+    return null;
+  }
+}
+
+async function readMwCache(
+  request: NextRequest,
+  key: CryptoKey
+): Promise<MwCachePayload | null> {
+  const raw = request.cookies.get(MW_CACHE_COOKIE)?.value;
+  if (!raw) return null;
+  const dot = raw.lastIndexOf(".");
+  if (dot <= 0) return null;
+  const payloadB64 = raw.slice(0, dot);
+  const sigBytes = bytesFromB64url(raw.slice(dot + 1));
+  if (!sigBytes) return null;
+  try {
+    const valid = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      sigBytes as unknown as ArrayBuffer,
+      new TextEncoder().encode(payloadB64)
+    );
+    if (!valid) return null;
+    const payloadBytes = bytesFromB64url(payloadB64);
+    if (!payloadBytes) return null;
+    const payload = JSON.parse(new TextDecoder().decode(payloadBytes)) as MwCachePayload;
+    if (!payload?.uid || typeof payload.exp !== "number") return null;
+    if (payload.exp < Math.floor(Date.now() / 1000)) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+async function writeMwCache(
+  response: NextResponse,
+  key: CryptoKey,
+  payload: MwCachePayload
+): Promise<void> {
+  try {
+    const payloadB64 = b64urlFromBytes(
+      new TextEncoder().encode(JSON.stringify(payload))
+    );
+    const sig = await crypto.subtle.sign(
+      "HMAC",
+      key,
+      new TextEncoder().encode(payloadB64)
+    );
+    response.cookies.set({
+      name: MW_CACHE_COOKIE,
+      value: `${payloadB64}.${b64urlFromBytes(new Uint8Array(sig))}`,
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: MW_CACHE_TTL_SECONDS,
+    });
+  } catch {
+    // Échec de signature → pas de cache, la prochaine requête re-fetchera
+  }
+}
+
 // Routes publiques (pas de vérification)
 const publicRoutes = [
   "/",
@@ -525,18 +648,101 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Récupérer le profil et l'entreprise
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, company_id")
-    .eq("id", user.id)
-    .single();
+  // ============================================
+  // 🍪 Lecture du cache profil/company (TTL 60s)
+  // ============================================
+  const isCacheBypassRoute = mwCacheBypassRoutes.some((route) =>
+    pathname.startsWith(route)
+  );
+  const hmacKeyPromise = getMwHmacKey();
+  const hmacKey = hmacKeyPromise ? await hmacKeyPromise : null;
+
+  let cached: MwCachePayload | null = null;
+  if (hmacKey && !isCacheBypassRoute) {
+    cached = await readMwCache(request, hmacKey);
+    if (cached && cached.uid !== user.id) cached = null; // autre utilisateur
+  }
+
+  let userRoleValue: string | null;
+  let companyId: string | null;
+  let companyStatus: {
+    subscription_status: string | null;
+    trial_ends_at: string | null;
+    onboarding_completed: boolean | null;
+  } | null;
+
+  if (cached) {
+    // Cache valide → 0 requête DB supplémentaire
+    userRoleValue = cached.role;
+    companyId = cached.cid;
+    companyStatus = cached.cid
+      ? {
+          subscription_status: cached.ss,
+          trial_ends_at: cached.te,
+          onboarding_completed: cached.oc,
+        }
+      : null;
+  } else {
+    // Récupérer le profil et l'entreprise
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, company_id")
+      .eq("id", user.id)
+      .single();
+
+    userRoleValue = profile?.role ?? null;
+    companyId = profile?.company_id ?? null;
+    companyStatus = null;
+
+    if (companyId) {
+      const { data: company } = await supabase
+        .from("companies")
+        .select(
+          "subscription_status, subscription_plan, trial_ends_at, onboarding_completed"
+        )
+        .eq("id", companyId)
+        .single();
+
+      if (company) {
+        companyStatus = {
+          subscription_status: company.subscription_status,
+          trial_ends_at: company.trial_ends_at,
+          onboarding_completed: company.onboarding_completed,
+        };
+      }
+    }
+
+    // Écrire le cache (sauf routes de transition, invalidées ci-dessous)
+    if (hmacKey && !isCacheBypassRoute) {
+      await writeMwCache(response, hmacKey, {
+        uid: user.id,
+        role: userRoleValue,
+        cid: companyId,
+        ss: companyStatus?.subscription_status ?? null,
+        sp: null,
+        te: companyStatus?.trial_ends_at ?? null,
+        oc: companyStatus?.onboarding_completed ?? null,
+        exp: Math.floor(Date.now() / 1000) + MW_CACHE_TTL_SECONDS,
+      });
+    }
+  }
+
+  // Sur les routes de transition (onboarding, billing, stripe...), invalider
+  // le cookie pour que la prochaine navigation reparte d'un état frais
+  if (isCacheBypassRoute) {
+    response.cookies.set({
+      name: MW_CACHE_COOKIE,
+      value: "",
+      path: "/",
+      maxAge: 0,
+    });
+  }
 
   // ============================================
   // 🚖 GESTION DES RÔLES - REDIRECTION CHAUFFEURS
   // ============================================
-  
-  const userRole = profile?.role;
+
+  const userRole = userRoleValue;
   const isChauffeur = userRole === USER_ROLE.CHAUFFEUR;
   
   // Si c'est un chauffeur : restrictions d'accès
@@ -579,24 +785,16 @@ export async function middleware(request: NextRequest) {
   }
   
   // Si pas de company_id (cas rare), autoriser l'accès pour création
-  if (!profile?.company_id) {
+  if (!companyId) {
     return response;
   }
 
-  // Vérifier le statut de l'entreprise (onboarding + abonnement)
-  const { data: company } = await supabase
-    .from("companies")
-    .select(
-      "subscription_status, subscription_plan, trial_ends_at, onboarding_completed"
-    )
-    .eq("id", profile.company_id)
-    .single();
-
-  if (!company) {
+  // Statut de l'entreprise (onboarding + abonnement) — depuis le cache ou la DB
+  if (!companyStatus) {
     return response;
   }
 
-  const subscriptionStatus = company.subscription_status;
+  const subscriptionStatus = companyStatus.subscription_status;
 
   // ============================================
   // 🚫 BLOCAGES SELON STATUT
@@ -638,8 +836,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // 4. TRIAL EXPIRÉ
-  if (subscriptionStatus === "trialing" && company.trial_ends_at) {
-    if (new Date(company.trial_ends_at) < new Date()) {
+  if (subscriptionStatus === "trialing" && companyStatus.trial_ends_at) {
+    if (new Date(companyStatus.trial_ends_at) < new Date()) {
       if (
         !pathname.startsWith("/settings/billing") &&
         !pathname.startsWith("/pricing")
@@ -655,7 +853,7 @@ export async function middleware(request: NextRequest) {
   // ============================================
   // 📋 VÉRIFICATION ONBOARDING
   // ============================================
-  if (company.onboarding_completed === false) {
+  if (companyStatus.onboarding_completed === false) {
     const isOnboardingRoute =
       pathname.startsWith("/onboarding") || pathname.startsWith("/api/onboarding");
 
