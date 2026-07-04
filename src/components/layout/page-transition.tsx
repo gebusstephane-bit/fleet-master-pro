@@ -1,26 +1,25 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 
+/**
+ * Transition d'entrée légère uniquement.
+ * Perf : pas d'AnimatePresence mode="wait" (bloquait chaque navigation ~250 ms
+ * le temps de l'animation de sortie) — la nouvelle page monte immédiatement.
+ */
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  
+
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={pathname}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ 
-          duration: 0.25, 
-          ease: [0.25, 0.1, 0.25, 1] 
-        }}
-        className="min-h-full"
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      key={pathname}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+      className="min-h-full"
+    >
+      {children}
+    </motion.div>
   );
 }

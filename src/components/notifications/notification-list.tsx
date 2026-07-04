@@ -28,7 +28,7 @@ import {
 import { notificationTypeConfig, priorityColors } from '@/types/notifications';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import * as Icons from 'lucide-react';
+import { getNotificationIcon } from './notification-icons';
 import { toast } from 'sonner';
 
 export function NotificationList() {
@@ -141,7 +141,7 @@ export function NotificationList() {
               // @ts-ignore
               const config = notificationTypeConfig[notification.type];
               // @ts-ignore
-              const IconComponent = (Icons as Record<string, React.ComponentType<{ className?: string }>>)[config?.icon] || Icons.Bell;
+              const IconComponent = getNotificationIcon(config?.icon);
               const isUnread = !notification.read_at;
               const isLastItem = virtualItem.index === notifications.length - 1;
 

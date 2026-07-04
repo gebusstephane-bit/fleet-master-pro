@@ -24,7 +24,7 @@ export function useDashboardStats() {
       }
       return result.data;
     },
-    refetchInterval: 10 * 1000, // PRÉSERVÉ
+    refetchInterval: 60 * 1000, // Perf : 10s → 60s (7 requêtes séquentielles par tick, charge DB ÷6)
     retry: 1,
   });
 }

@@ -25,7 +25,7 @@ import { useUnreadNotificationsCount, useNotifications, useMarkAsRead } from '@/
 import { notificationTypeConfig, priorityColors } from '@/types/notifications';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import * as Icons from 'lucide-react';
+import { getNotificationIcon } from './notification-icons';
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
@@ -83,7 +83,7 @@ export function NotificationBell() {
                 // @ts-ignore
                 const config = notificationTypeConfig[notification.type];
                 // @ts-ignore
-                const IconComponent = (Icons as Record<string, React.ComponentType<{ className?: string }>>)[config?.icon] || Icons.Bell;
+                const IconComponent = getNotificationIcon(config?.icon);
                 const isUnread = !notification.read_at;
 
                 return (

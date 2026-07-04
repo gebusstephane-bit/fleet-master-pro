@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Search,
@@ -25,7 +26,8 @@ function DigitalClock() {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
+    // Affichage HH:MM uniquement → tick 10s suffisant (1s était inutile)
+    const timer = setInterval(() => setTime(new Date()), 10_000);
     return () => clearInterval(timer);
   }, []);
 
@@ -138,6 +140,7 @@ interface HeaderProps {
 export function Header({ user }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { isExpanded, setMobileOpen } = useSidebar();
 
   useEffect(() => {
@@ -219,7 +222,7 @@ export function Header({ user }: HeaderProps) {
             {/* Notifications */}
             <button 
               className="relative rounded-xl p-2.5 text-[#a1a1aa] transition-all hover:bg-cyan-500/10 hover:text-cyan-400 active:scale-95"
-              onClick={() => window.location.href = '/alerts'}
+              onClick={() => router.push('/alerts')}
             >
               <Bell className="h-5 w-5" strokeWidth={1.5} />
               <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-[#0a0f1a]">
@@ -260,18 +263,18 @@ export function Header({ user }: HeaderProps) {
                     <p className="text-sm font-medium text-white">{companyName}</p>
                     <p className="text-xs text-[#71717a]">Plan {planName}</p>
                   </div>
-                  <a href="/settings/profile" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#a1a1aa] hover:bg-cyan-500/10 hover:text-cyan-300 transition-colors">
+                  <Link href="/settings/profile" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#a1a1aa] hover:bg-cyan-500/10 hover:text-cyan-300 transition-colors">
                     <User className="h-4 w-4" />
                     <span className="text-sm">Mon profil</span>
-                  </a>
-                  <a href="/support" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#a1a1aa] hover:bg-cyan-500/10 hover:text-cyan-300 transition-colors">
+                  </Link>
+                  <Link href="/support" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#a1a1aa] hover:bg-cyan-500/10 hover:text-cyan-300 transition-colors">
                     <LifeBuoy className="h-4 w-4" />
                     <span className="text-sm">Aide & Support</span>
-                  </a>
-                  <a href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#a1a1aa] hover:bg-cyan-500/10 hover:text-cyan-300 transition-colors">
+                  </Link>
+                  <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#a1a1aa] hover:bg-cyan-500/10 hover:text-cyan-300 transition-colors">
                     <Settings className="h-4 w-4" />
                     <span className="text-sm">Paramètres</span>
-                  </a>
+                  </Link>
                   <div className="border-t border-white/[0.08] mt-2 pt-2">
                     <button 
                       className="flex items-center gap-3 px-3 py-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors w-full"
