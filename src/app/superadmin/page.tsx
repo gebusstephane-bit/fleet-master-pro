@@ -47,19 +47,19 @@ async function getDashboardStats() {
     .from('profiles')
     .select('*', { count: 'exact', head: true });
 
-  // Abonnements actifs
+  // Abonnements actifs (enum subscriptions.status = MAJUSCULES)
   const { count: activeSubscriptions } = await supabase
     .from('subscriptions')
     .select('*', { count: 'exact', head: true })
     // @ts-ignore
-    .eq('status', 'active');
+    .eq('status', 'ACTIVE');
 
-  // Abonnements en essai
+  // Abonnements en essai (enum subscriptions.status = MAJUSCULES)
   const { count: trialSubscriptions } = await supabase
     .from('subscriptions')
     .select('*', { count: 'exact', head: true })
     // @ts-ignore
-    .eq('status', 'trialing');
+    .eq('status', 'TRIALING');
 
   // Tickets support ouverts
   const { count: openTickets } = await supabase

@@ -116,7 +116,8 @@ export const getUserWithCompany = cache(async function getUserWithCompany() {
           plan: subscription?.plan || 'ESSENTIAL',
           max_vehicles: subscription?.vehicle_limit || company.max_vehicles || 5,
           max_drivers: subscription?.user_limit || company.max_drivers || 10,
-          subscription_status: subscription?.status || 'ACTIVE',
+          // Normalisé lowercase : convention companies/middleware + badges UI
+          subscription_status: (subscription?.status || 'ACTIVE').toLowerCase(),
           logo_url: company.logo_url, // Ajouter le logo_url
         };
       }

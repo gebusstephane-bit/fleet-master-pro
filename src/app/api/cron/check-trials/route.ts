@@ -136,6 +136,9 @@ export async function GET(request: NextRequest) {
     }
 
     // 1. RÉCUPÉRER LES ESSAIS EXPIRÉS
+    // .is('stripe_customer_id', null) : ne rétrograder QUE les essais gratuits.
+    // Un essai ayant initié un checkout Stripe est converti par le webhook Stripe
+    // (sinon on rétrograderait un client payant vers le plan gratuit).
     const { data: expiredTrials, error: fetchError } = await supabase
       .from('subscriptions')
       .select(`
@@ -148,6 +151,7 @@ export async function GET(request: NextRequest) {
         user_limit
       `)
       .eq('status', 'TRIALING')
+      .is('stripe_customer_id', null)
       .lt('trial_ends_at', now);
 
     if (fetchError) {

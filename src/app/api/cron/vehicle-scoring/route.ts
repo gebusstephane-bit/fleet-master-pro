@@ -64,7 +64,9 @@ export async function GET(request: NextRequest) {
       .select('id, registration_number, brand, model, type, mileage, company_id')
       .eq('status', 'ACTIF')
       .is('deleted_at', null)
-      .order('company_id');
+      // Least-recently-scored d'abord (jamais scorés = null en tête) : garantit
+      // la rotation et évite l'affamement des dernières sociétés au-delà du cap.
+      .order('ai_score_updated_at', { ascending: true, nullsFirst: true });
 
     if (vehiclesErr || !vehicles || vehicles.length === 0) {
       return NextResponse.json({

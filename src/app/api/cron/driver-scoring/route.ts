@@ -69,7 +69,9 @@ export async function GET(request: NextRequest) {
       .from('drivers')
       .select('id, first_name, last_name, company_id')
       .eq('is_active', true)
-      .order('company_id');
+      // Least-recently-scored d'abord (jamais scorés = null en tête) : garantit
+      // la rotation et évite l'affamement des dernières sociétés au-delà du cap.
+      .order('ai_score_updated_at', { ascending: true, nullsFirst: true });
 
     if (driversErr || !drivers || drivers.length === 0) {
       return NextResponse.json({
