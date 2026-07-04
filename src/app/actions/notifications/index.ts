@@ -26,7 +26,33 @@ const markAsReadSchema = z.object({
   notificationId: z.string().uuid(),
 });
 
-const updatePreferencesSchema: any = {} as any;
+// Schéma réel des préférences (update partiel : tous les champs optionnels).
+// Zod strippe les clés inconnues → protège le .update() de colonnes arbitraires.
+const updatePreferencesSchema = z
+  .object({
+    email_enabled: z.boolean(),
+    push_enabled: z.boolean(),
+    in_app_enabled: z.boolean(),
+    maintenance_due_email: z.boolean(),
+    maintenance_due_push: z.boolean(),
+    maintenance_due_in_app: z.boolean(),
+    document_expiring_email: z.boolean(),
+    document_expiring_push: z.boolean(),
+    document_expiring_in_app: z.boolean(),
+    fuel_anomaly_email: z.boolean(),
+    fuel_anomaly_push: z.boolean(),
+    fuel_anomaly_in_app: z.boolean(),
+    geofencing_email: z.boolean(),
+    geofencing_push: z.boolean(),
+    geofencing_in_app: z.boolean(),
+    alert_critical_email: z.boolean(),
+    alert_critical_push: z.boolean(),
+    alert_critical_in_app: z.boolean(),
+    alert_warning_email: z.boolean(),
+    alert_warning_push: z.boolean(),
+    alert_warning_in_app: z.boolean(),
+  })
+  .partial();
 
 // Types
 interface NotificationRow {

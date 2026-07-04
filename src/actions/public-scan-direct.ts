@@ -46,7 +46,22 @@ export const createFuelSessionDirect = scanPublicActionClient
     if (vehicle.qr_code_data !== parsedInput.accessToken) {
       throw new Error('Token invalide');
     }
-    
+
+    // Garde-fou anti-empoisonnement du compteur : rejeter un saut invraisemblable
+    // AVANT toute écriture (le compteur ne peut pas être corrompu par un QR volé).
+    // 20 000 km couvre largement le trajet entre deux pleins.
+    const MAX_MILEAGE_JUMP_KM = 20000;
+    const submittedMaxMileage = parsedInput.fuels.reduce<number>((max, f) => {
+      if (f.type === 'gnr' || f.mileage == null) return max;
+      return Math.max(max, f.mileage);
+    }, 0);
+    const currentMileage = vehicle.mileage || 0;
+    if (currentMileage > 0 && submittedMaxMileage - currentMileage > MAX_MILEAGE_JUMP_KM) {
+      throw new Error(
+        `Kilométrage invraisemblable (${submittedMaxMileage.toLocaleString('fr-FR')} km). Vérifiez la valeur saisie.`
+      );
+    }
+
     const recordIds: string[] = [];
     let maxMileage = 0;
     

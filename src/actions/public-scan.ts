@@ -145,8 +145,50 @@ async function calculateConsumption(
       return (previousFill.quantity_liters / distanceKm) * 100;
     }
   }
-  
+
   return null;
+}
+
+// Écart maximum plausible entre deux relevés kilométriques via QR public.
+// 20 000 km couvre largement le trajet entre deux pleins, même longue distance.
+const MAX_MILEAGE_JUMP_KM = 20000;
+
+/**
+ * Garde-fou anti-empoisonnement du kilométrage (flow QR public).
+ * Les RPC appliquent mileage = GREATEST(...), donc une valeur aberrante
+ * (ex : 9 999 999) corromprait DÉFINITIVEMENT le compteur et casserait toutes
+ * les prédictions de maintenance. On rejette donc tout saut invraisemblable.
+ * - compteur actuel 0/absent → première saisie autorisée (pas de référence)
+ * - nouvelle valeur ≤ actuel → sans effet via GREATEST (autorisé)
+ * - saut > 20 000 km → rejeté (valeur à vérifier)
+ * Fail-open : une erreur de lecture ne bloque jamais une saisie légitime
+ * (le token reste validé par le RPC en aval).
+ */
+async function assertPlausibleMileage(
+  vehicleId: string,
+  newMileage: number | null | undefined
+): Promise<void> {
+  if (newMileage == null) return;
+  try {
+    const adminClient = createAdminClient();
+    const { data: vehicle } = await adminClient
+      .from('vehicles')
+      .select('mileage')
+      .eq('id', vehicleId)
+      .single();
+
+    const current = vehicle?.mileage ?? 0;
+    if (current > 0 && newMileage - current > MAX_MILEAGE_JUMP_KM) {
+      throw new Error(
+        `Kilométrage invraisemblable (${newMileage.toLocaleString('fr-FR')} km). Vérifiez la valeur saisie.`
+      );
+    }
+  } catch (e) {
+    // Ne propager que NOTRE rejet ; toute erreur de lecture est ignorée.
+    if (e instanceof Error && e.message.startsWith('Kilométrage invraisemblable')) {
+      throw e;
+    }
+  }
 }
 
 // ============================================
@@ -188,7 +230,10 @@ export const createPublicFuelRecord = scanPublicActionClient
   .schema(publicFuelRecordSchema)
   .action(async ({ parsedInput }) => {
     const supabase = await createClient();
-    
+
+    // Garde-fou anti-empoisonnement du compteur (avant le RPC GREATEST)
+    await assertPlausibleMileage(parsedInput.vehicleId, parsedInput.mileage);
+
     // Utiliser la fonction RPC pour créer le plein
     const { data, error } = await supabase
       // @ts-ignore - RPC non typée dans Database
@@ -228,7 +273,10 @@ export const createPublicInspection = scanPublicActionClient
   .schema(publicInspectionSchema)
   .action(async ({ parsedInput }) => {
     const supabase = await createClient();
-    
+
+    // Garde-fou anti-empoisonnement du compteur (avant le RPC GREATEST)
+    await assertPlausibleMileage(parsedInput.vehicleId, parsedInput.mileage);
+
     // Calculer le score
     const criticalCount = parsedInput.checks.filter(c => c.status === 'CRITICAL').length;
     const warningCount = parsedInput.checks.filter(c => c.status === 'WARNING').length;
@@ -306,7 +354,14 @@ export const createFuelSession = scanPublicActionClient
   .schema(fuelSessionSchema)
   .action(async ({ parsedInput }) => {
     const supabase = await createClient();
-    
+
+    // Garde-fou anti-empoisonnement : vérifier le kilométrage max de la session
+    const maxMileage = parsedInput.fuels.reduce<number | null>((max, f) => {
+      if (f.mileage == null) return max;
+      return max == null ? f.mileage : Math.max(max, f.mileage);
+    }, null);
+    await assertPlausibleMileage(parsedInput.vehicleId, maxMileage);
+
     // Préparer les données pour la fonction RPC (format JSONB natif)
     const fuelsData = parsedInput.fuels.map(f => ({
       type: f.type,

@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Hooks React Query pour le système de notifications
  * - useNotifications : Liste avec infinite scroll
@@ -9,7 +11,7 @@
  * - useRealtimeNotifications : Supabase Realtime pour temps réel
  */
 
-import { 
+import {
   useInfiniteQuery, 
   useMutation, 
   useQuery, 
@@ -28,6 +30,18 @@ import {
 } from '@/app/actions/notifications';
 import { useUser } from '@/hooks/use-user';
 import { logger } from '@/lib/logger';
+
+/**
+ * Déballe un résultat next-safe-action en remontant les erreurs.
+ * Sans ça, un serverError/validationErrors passait inaperçu → faux succès.
+ */
+function unwrapActionResult<T>(result: any): T {
+  if (result?.serverError) throw new Error(result.serverError);
+  if (result?.validationErrors) {
+    throw new Error('Données invalides');
+  }
+  return result?.data as T;
+}
 
 // Types
 interface Notification {
@@ -71,12 +85,11 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   return useInfiniteQuery<NotificationsPage, Error>({
     queryKey: notificationKeys.list({ pageSize }),
     queryFn: async ({ pageParam }: QueryFunctionContext) => {
-      const result = await getNotifications({ 
-        cursor: pageParam as string | undefined, 
-        pageSize 
+      const result = await getNotifications({
+        cursor: pageParam as string | undefined,
+        pageSize
       });
-      // @ts-ignore
-      return result.data as NotificationsPage;
+      return unwrapActionResult<NotificationsPage>(result);
     },
     // @ts-ignore
     getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -95,8 +108,7 @@ export function useMarkAsRead() {
   return useMutation({
     mutationFn: async (notificationId: string) => {
       const result = await markAsRead({ notificationId });
-      // @ts-ignore
-      return result.data;
+      return unwrapActionResult(result);
     },
     onSuccess: () => {
       // Invalider les requêtes de notifications
@@ -118,8 +130,7 @@ export function useMarkAllAsRead() {
   return useMutation({
     mutationFn: async () => {
       const result = await markAllAsRead();
-      // @ts-ignore
-      return result.data;
+      return unwrapActionResult(result);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.lists() });
@@ -139,8 +150,8 @@ export function useUnreadNotificationsCount() {
     queryKey: notificationKeys.unread(),
     queryFn: async () => {
       const result = await getUnreadCount();
-      // @ts-ignore
-      return result.data?.count ?? 0;
+      const data = unwrapActionResult<{ count: number }>(result);
+      return data?.count ?? 0;
     },
     staleTime: 1000 * 30, // 30 secondes
     refetchInterval: 1000 * 60, // Refetch toutes les minutes
@@ -155,8 +166,7 @@ export function useNotificationPreferences() {
     queryKey: notificationKeys.preferences(),
     queryFn: async () => {
       const result = await getPreferences();
-      // @ts-ignore
-      return result.data;
+      return unwrapActionResult(result);
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -171,8 +181,7 @@ export function useUpdateNotificationPreferences() {
   return useMutation({
     mutationFn: async (preferences: Record<string, boolean>) => {
       const result = await updatePreferences(preferences);
-      // @ts-ignore
-      return result.data;
+      return unwrapActionResult(result);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.preferences() });
