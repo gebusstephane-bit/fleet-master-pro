@@ -657,7 +657,16 @@ export async function GET(request: NextRequest) {
               doc.label
             );
             console.log('[CRON] Envoi email à', driverEmail, 'pour', doc.type, driver.first_name, driver.last_name);
-            await sendEmailWithRetry({ to: driverEmail!, ...driverContent });
+            // Envoi isolé : un échec ne doit pas empêcher l'écriture du log
+            // anti-doublon (sinon re-envoi en masse au run suivant).
+            try {
+              await sendEmailWithRetry({ to: driverEmail!, ...driverContent });
+            } catch (sendErr) {
+              stats.errors++;
+              logger.error('❌ Envoi email conducteur échoué', {
+                driver_id: driver.id, error: sendErr instanceof Error ? sendErr.message : String(sendErr),
+              });
+            }
           }
 
           // Email pour ADMIN + DIRECTEUR
@@ -668,7 +677,15 @@ export async function GET(request: NextRequest) {
               : buildNoEmailWarningContent(doc.label, alertLevel, driver, daysLeft, expiryDate);
 
             console.log('[CRON] Envoi email à', manager.email, 'pour', doc.type, driver.first_name, driver.last_name);
-            await sendEmailWithRetry({ to: manager.email, ...managerContent });
+            // Envoi isolé par manager : un bounce ne doit pas sauter le log
+            try {
+              await sendEmailWithRetry({ to: manager.email, ...managerContent });
+            } catch (sendErr) {
+              stats.errors++;
+              logger.error('❌ Envoi email manager échoué', {
+                manager: manager.email, error: sendErr instanceof Error ? sendErr.message : String(sendErr),
+              });
+            }
           }
 
           // 6. Notification in-app pour chaque ADMIN+DIRECTEUR
@@ -798,3 +815,5 @@ function buildNoEmailWarningContent(
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+// Évite le kill à mi-parcours (envois séquentiels) qui cause des doublons d'emails
+export const maxDuration = 300;

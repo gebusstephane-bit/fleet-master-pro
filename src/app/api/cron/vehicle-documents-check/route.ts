@@ -360,7 +360,16 @@ export async function GET(request: NextRequest) {
 
           for (const email of recipients) {
             console.log('[CRON] Envoi email à', email, 'pour', doc.type, vehicle.registration_number);
-            await sendEmail({ to: email, subject, html });
+            // Envoi isolé : un échec ne doit pas empêcher l'écriture du log
+            // anti-doublon (sinon re-envoi en masse au run suivant).
+            try {
+              await sendEmail({ to: email, subject, html });
+            } catch (sendErr) {
+              stats.errors++;
+              logger.error('❌ Envoi email véhicule échoué', {
+                email, error: sendErr instanceof Error ? sendErr.message : String(sendErr),
+              });
+            }
           }
 
           // 6. Logger l'alerte pour éviter les doublons futurs
@@ -428,3 +437,5 @@ export async function GET(request: NextRequest) {
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+// Évite le kill à mi-parcours (envois séquentiels) qui cause des doublons d'emails
+export const maxDuration = 300;
