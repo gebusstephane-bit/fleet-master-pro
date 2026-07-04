@@ -6,6 +6,7 @@
 
 import { randomBytes } from "crypto";
 
+import { decryptSecret } from "@/lib/crypto/secret-box";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe/stripe";
 import { logger } from "@/lib/logger";
@@ -111,7 +112,8 @@ export async function handleNewRegistration(
       } else {
         tokenValid = true;
         pendingReg = pending;
-        passwordToUse = pending.password_hash;
+        // Déchiffrer le mot de passe stocké (rétrocompatible legacy en clair)
+        passwordToUse = decryptSecret(pending.password_hash);
         // Token valide trouvé, données récupérées localement
       }
     }

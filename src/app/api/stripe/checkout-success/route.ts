@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PLAN_LIMITS, PlanType } from '@/lib/plans';
+import { decryptSecret } from '@/lib/crypto/secret-box';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -132,7 +133,8 @@ export async function GET(request: NextRequest) {
       // CRÉER L'UTILISATEUR SUPABASE AUTH
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: pendingData.email,
-        password: pendingData.password_hash,
+        // Déchiffrer le mot de passe stocké (rétrocompatible legacy en clair)
+        password: decryptSecret(pendingData.password_hash),
         email_confirm: true,
         user_metadata: {
           first_name: pendingData.first_name,

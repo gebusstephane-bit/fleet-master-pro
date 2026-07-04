@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe, isStripeConfigured } from '@/lib/stripe/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { randomUUID } from 'crypto';
+import { encryptSecret } from '@/lib/crypto/secret-box';
 import { withCSRFProtection } from '@/lib/security/csrf';
 import { checkSensitiveRateLimit, getRateLimitHeaders } from '@/lib/security/rate-limiter';
 import { logger } from '@/lib/logger';
@@ -30,14 +31,10 @@ interface CheckoutRequest {
   };
 }
 
-// Fonction de hashage simple (bcrypt n'est pas disponible côté edge, on utilise une méthode alternative)
-// Note : Le hashage final sera fait par Supabase Auth qui accepte password_hash
-async function hashPassword(password: string): Promise<string> {
-  // On ne hash pas ici car Supabase Auth va le faire lors de createUser
-  // On stocke temporairement et on supprime immédiatement après utilisation
-  // Ceci est une solution temporaire - en production, utiliser bcrypt sur le serveur Node.js
-  return password;
-}
+// Le mot de passe doit être relu EN CLAIR pour createUser (Supabase le hashe
+// lui-même). On ne peut donc pas le hasher ici → on le CHIFFRE au repos
+// (AES-256-GCM, cf. @/lib/crypto/secret-box) et on le déchiffre dans
+// checkout-success. Corrige le stockage en clair (RGPD Art. 32).
 
 // Handler principal (protégé par CSRF et rate limiting)
 async function handler(request: NextRequest) {
@@ -136,7 +133,7 @@ async function handler(request: NextRequest) {
       'create_pending_registration',
       {
         p_email: email,
-        p_password_hash: tempData.password,
+        p_password_hash: encryptSecret(tempData.password),
         p_company_name: tempData.companyName,
         p_siret: tempData.siret || null,
         p_first_name: tempData.firstName || null,
