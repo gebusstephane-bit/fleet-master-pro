@@ -15,12 +15,19 @@ import { timingSafeEqual } from "crypto";
 import { logger } from '@/lib/logger';
 
 /**
- * Vérifie le secret de manière constant-time (protection timing attack)
+ * Vérifie le secret de manière constant-time (protection timing attack).
+ *
+ * Sécurité (M3) : utilise un secret DÉDIÉ `ADMIN_RESET_SECRET` s'il est défini,
+ * sinon retombe sur `SUPERADMIN_SETUP_SECRET` (rétrocompatible). Définir
+ * ADMIN_RESET_SECRET dissocie ce endpoint du secret de setup superadmin : une
+ * fuite de SUPERADMIN_SETUP_SECRET ne permet alors plus de reset arbitraire.
+ *
  * @param providedSecret - Le secret fourni dans le header
  * @returns boolean - true si le secret est valide
  */
 function verifySecretConstantTime(providedSecret: string | null): boolean {
-  const expectedSecret = process.env.SUPERADMIN_SETUP_SECRET;
+  const expectedSecret =
+    process.env.ADMIN_RESET_SECRET || process.env.SUPERADMIN_SETUP_SECRET;
 
   if (!providedSecret || !expectedSecret) {
     return false;
