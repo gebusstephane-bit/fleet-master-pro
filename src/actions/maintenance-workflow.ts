@@ -283,7 +283,8 @@ export const validateMaintenanceRequest = authActionClient
       parsedInput.notes
     );
     
-    // 4. Email à l'agent de parc + tous les agents de parc de la company
+    // 4. Email (NON BLOQUANT : le statut est déjà persisté ci-dessus)
+    try {
     if (parsedInput.action === 'validate') {
       const adminClientStep2 = createAdminClient();
       const { data: agentsDeParc } = await adminClientStep2
@@ -339,7 +340,12 @@ export const validateMaintenanceRequest = authActionClient
         `,
       });
     }
-    
+    } catch (emailErr) {
+      logger.warn('[validateMaintenanceRequest] Envoi email non bloquant échoué', {
+        error: emailErr instanceof Error ? emailErr.message : String(emailErr),
+      });
+    }
+
     revalidatePath('/maintenance');
     revalidatePath(`/maintenance/${parsedInput.id}`);
     return { success: true, status: newStatus };
@@ -450,7 +456,8 @@ export const scheduleMaintenanceRDV = authActionClient
       parsedInput.notes
     );
     
-    // 6. Emails de confirmation (ADMIN + DIRECTEUR + AGENT_DE_PARC + EXPLOITANT)
+    // 6. Emails de confirmation (NON BLOQUANT : le RDV est déjà persisté)
+    try {
     const adminClientStep3 = createAdminClient();
     const directors = await getCompanyDirectors(ctx.user.company_id);
     const [{ data: exploitants }, { data: agentsDeParc3 }] = await Promise.all([
@@ -496,7 +503,12 @@ export const scheduleMaintenanceRDV = authActionClient
         `,
       });
     }
-    
+    } catch (emailErr) {
+      logger.warn('[scheduleMaintenanceRDV] Envoi email non bloquant échoué', {
+        error: emailErr instanceof Error ? emailErr.message : String(emailErr),
+      });
+    }
+
     revalidatePath('/maintenance');
     revalidatePath(`/maintenance/${parsedInput.maintenanceId}`);
     revalidatePath('/agenda');
@@ -644,10 +656,11 @@ export const completeMaintenance = authActionClient
       logger.error('[MAINTENANCE] Recalcul prédictions non critique:', recalcError)
     }
     
-    // 4. Email confirmation à tous
+    // 4. Email confirmation (NON BLOQUANT : le statut TERMINEE est déjà persisté)
+    try {
     const directors = await getCompanyDirectors(ctx.user.company_id);
     const recipients = [...directors, requesterData];
-    
+
     for (const recipient of recipients) {
       await sendEmail({
         to: recipient?.email || '',
@@ -674,7 +687,12 @@ export const completeMaintenance = authActionClient
         `,
       });
     }
-    
+    } catch (emailErr) {
+      logger.warn('[completeMaintenance] Envoi email non bloquant échoué', {
+        error: emailErr instanceof Error ? emailErr.message : String(emailErr),
+      });
+    }
+
     revalidatePath('/maintenance');
     revalidatePath(`/maintenance/${parsedInput.maintenanceId}`);
     revalidatePath('/agenda');

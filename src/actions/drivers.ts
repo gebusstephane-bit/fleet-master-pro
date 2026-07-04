@@ -268,11 +268,11 @@ export const getDriverById = authActionClient
       throw new Error(`Chauffeur non trouvé: ${error.message}`);
     }
     
-    // Récupérer le véhicule séparément
+    // Récupérer le véhicule séparément (colonne réelle : assigned_driver_id)
     const { data: vehicle } = await supabase
       .from('vehicles')
       .select('*')
-      .eq('driver_id', driver.id)
+      .eq('assigned_driver_id', driver.id)
       .maybeSingle();
     
     return { success: true, data: { ...driver, vehicles: vehicle } };

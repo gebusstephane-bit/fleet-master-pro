@@ -36,8 +36,10 @@ export const createFuelRecord = authActionClient
       throw new Error('Véhicule non trouvé');
     }
     
-    // Calculer le prix au litre
-    const price_per_liter = parsedInput.price_total / parsedInput.quantity_liters;
+    // Calculer le prix au litre (garde-fou division par zéro : 0 L → 0)
+    const price_per_liter = parsedInput.quantity_liters > 0
+      ? parsedInput.price_total / parsedInput.quantity_liters
+      : 0;
     
     // Calculer la consommation si on a un plein précédent
     let consumption_l_per_100km: number | null = null;

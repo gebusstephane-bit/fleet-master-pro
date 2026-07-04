@@ -180,16 +180,27 @@ export const createAlert = authActionClient
       }
     }
     
-    // Supprimer les anciennes alertes (RLS filtre automatiquement par company_id)
-    await supabase
+    // Supprimer les anciennes alertes — filtre company_id EXPLICITE en plus du
+    // RLS (défense en profondeur : jamais de DELETE global même si RLS faillit)
+    const { error: deleteError } = await supabase
       .from('alerts')
-      .delete();
-    
+      .delete()
+      .eq('company_id', ctx.user.company_id);
+
+    if (deleteError) {
+      logger.errorWithError('[createAlert] Erreur suppression anciennes alertes', deleteError);
+      throw new Error('Erreur lors de la régénération des alertes');
+    }
+
     // Insérer les nouvelles alertes
     if (alerts.length > 0) {
-      await supabase.from('alerts').insert(alerts);
+      const { error: insertError } = await supabase.from('alerts').insert(alerts);
+      if (insertError) {
+        logger.errorWithError('[createAlert] Erreur insertion alertes', insertError);
+        throw new Error('Erreur lors de la régénération des alertes');
+      }
     }
-    
+
     revalidatePath('/alerts');
     return { count: alerts.length };
   });
