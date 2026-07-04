@@ -107,6 +107,7 @@ export async function getIncidentStats(): Promise<ActionResult> {
       id: string;
       incident_date: string;
       estimated_damage: number | null;
+      status: string | null;
       vehicle_id: string | null;
       driver_id: string | null;
       vehicles: { id: string; registration_number: string; brand: string; model: string } | null;
@@ -114,6 +115,8 @@ export async function getIncidentStats(): Promise<ActionResult> {
     };
     const data = (incidents ?? []) as unknown as IncidentStatRow[];
     const totalCost = data.reduce((sum, i) => sum + (i.estimated_damage ?? 0), 0);
+    // Sinistres non clôturés (évite au widget de re-télécharger toute la liste)
+    const activeCount = data.filter((i) => i.status !== 'clôturé').length;
 
     // Véhicule avec le plus de sinistres
     const vehicleCounts: Record<string, { count: number; label: string }> = {};
@@ -156,6 +159,7 @@ export async function getIncidentStats(): Promise<ActionResult> {
       success: true,
       data: {
         total: data.length,
+        activeCount,
         totalCost,
         topVehicle,
         topDriver,

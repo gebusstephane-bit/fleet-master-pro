@@ -116,43 +116,43 @@ export async function getDashboardStats(): Promise<ActionResult<DashboardStats>>
     const companyId = profile.company_id;
     logger.info('getDashboardStats: Chargement pour company', { companyId });
     
-    // Récupérer les véhicules (RLS gère le filtre company_id)
-    const { data: vehicles, error: vErr } = await supabase
-      .from('vehicles')
-      .select('id, registration_number, status, mileage, fuel_type, brand, model')
-      .order('created_at', { ascending: false });
-    
-    if (vErr) {logger.error('Erreur véhicules', new Error(vErr.message));}
-    
-    // Récupérer les chauffeurs (RLS gère le filtre company_id)
-    const { data: drivers, error: dErr } = await supabase
-      .from('drivers')
-      .select('id, status, first_name, last_name');
-    
-    if (dErr) {logger.error('Erreur chauffeurs', new Error(dErr.message));}
-    
-    // Tournées du jour (RLS gère le filtre company_id)
     const today = new Date().toISOString().split('T')[0];
-    const { data: routes, error: rErr } = await supabase
-      .from('routes')
-      .select('id, status, name')
-      .gte('route_date', today);
-    
-    if (rErr) {logger.error('Erreur routes', new Error(rErr.message));}
-    
-    // Coûts ce mois
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
-    
-    const { data: fuel } = await supabase
-      .from('fuel_records')
-      .select('price_total')
-      .gte('date', startOfMonth.toISOString());
-    
-    const { data: maintenance } = await supabase
-      .from('maintenance_records')
-      .select('cost, final_cost')
-      .gte('created_at', startOfMonth.toISOString());
+
+    // Perf : les 5 requêtes sont indépendantes (RLS gère le filtre company_id)
+    // → parallélisées au lieu de 5 allers-retours séquentiels
+    const [
+      { data: vehicles, error: vErr },
+      { data: drivers, error: dErr },
+      { data: routes, error: rErr },
+      { data: fuel },
+      { data: maintenance },
+    ] = await Promise.all([
+      supabase
+        .from('vehicles')
+        .select('id, registration_number, status, mileage, fuel_type, brand, model')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('drivers')
+        .select('id, status, first_name, last_name'),
+      supabase
+        .from('routes')
+        .select('id, status, name')
+        .gte('route_date', today),
+      supabase
+        .from('fuel_records')
+        .select('price_total')
+        .gte('date', startOfMonth.toISOString()),
+      supabase
+        .from('maintenance_records')
+        .select('cost, final_cost')
+        .gte('created_at', startOfMonth.toISOString()),
+    ]);
+
+    if (vErr) {logger.error('Erreur véhicules', new Error(vErr.message));}
+    if (dErr) {logger.error('Erreur chauffeurs', new Error(dErr.message));}
+    if (rErr) {logger.error('Erreur routes', new Error(rErr.message));}
 
     const totalFuel = fuel?.reduce((s, r) => s + (r.price_total ?? 0), 0) ?? 0;
     // Aligné sur tco-calculator.ts : final_cost (réel réglé) ?? cost (devis)

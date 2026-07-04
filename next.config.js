@@ -128,7 +128,9 @@ const nextConfig = {
   // EXPERIMENTAL
   // ============================================
   experimental: {
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    // Perf : recharts + date-fns ajoutés (tree-shaking des barrel imports).
+    // @radix-ui/react-icons retiré : n'est pas une dépendance du projet.
+    optimizePackageImports: ['lucide-react', 'recharts', 'date-fns'],
     serverComponentsExternalPackages: ['@supabase/supabase-js'],
   },
 

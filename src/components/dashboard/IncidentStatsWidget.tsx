@@ -8,15 +8,13 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Euro, Car, User, TrendingUp, ArrowRight } from 'lucide-react';
-import { useIncidentStats, useIncidents } from '@/hooks/use-incidents';
+import { useIncidentStats } from '@/hooks/use-incidents';
 import { cn } from '@/lib/utils';
 
 export function IncidentStatsWidget() {
+  // Perf : le compteur "en cours" vient désormais des stats (activeCount) —
+  // plus besoin de useIncidents() qui re-téléchargeait toute la liste avec jointures.
   const { data: stats, isLoading } = useIncidentStats();
-  const { data: incidents = [] } = useIncidents();
-
-  // Sinistres actifs (non clôturés)
-  const activeIncidents = incidents.filter((i) => i.status !== 'clôturé');
 
   if (isLoading) {
     return (
@@ -78,7 +76,7 @@ export function IncidentStatsWidget() {
         <div className="rounded-xl bg-[#0f172a]/50 border border-white/[0.06] p-3">
           <p className="text-xs text-slate-500">Sinistres</p>
           <p className="text-xl font-bold text-white mt-0.5">{stats.total}</p>
-          <p className="text-xs text-slate-500">{activeIncidents.length} en cours</p>
+          <p className="text-xs text-slate-500">{stats.activeCount ?? 0} en cours</p>
         </div>
         <div className="rounded-xl bg-[#0f172a]/50 border border-white/[0.06] p-3">
           <div className="flex items-center gap-1.5 mb-0.5">

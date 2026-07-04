@@ -1,9 +1,9 @@
 "use client";
 
 import { motion, type Variants } from "framer-motion";
+import dynamic from "next/dynamic";
 import { useDashboardStats, useDashboardAnalytics } from "@/hooks/use-dashboard";
 import { useVehicles } from "@/hooks/use-vehicles";
-import { AnalyticsSection } from "@/components/dashboard/analytics-section";
 import { useUser } from "@/hooks/use-user";
 import { useMaintenanceAlerts } from "@/hooks/use-maintenance";
 import {
@@ -30,6 +30,13 @@ import { DashboardSkeleton } from "@/components/ui/skeletons";
 import { GlassCard, MetricCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+
+// Perf : recharts (~100 kB) chargé à la demande — les graphiques sont sous la
+// ligne de flottaison, inutile de les embarquer dans le bundle initial.
+const AnalyticsSection = dynamic(
+  () => import("@/components/dashboard/analytics-section").then((m) => m.AnalyticsSection),
+  { ssr: false, loading: () => <div className="min-h-[400px]" /> }
+);
 
 // Animation variants
 const containerVariants: Variants = {

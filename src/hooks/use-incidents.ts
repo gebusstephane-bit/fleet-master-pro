@@ -126,6 +126,7 @@ export function useIncidentStats() {
       if (!result.success) throw new Error(result.error ?? 'Erreur statistiques');
       return result.data as {
         total: number;
+        activeCount: number;
         totalCost: number;
         topVehicle: { count: number; label: string } | null;
         topDriver: { count: number; label: string } | null;
