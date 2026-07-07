@@ -18,7 +18,10 @@ import { z } from 'zod';
 
 // Schémas de validation
 const paginationSchema = z.object({
-  cursor: z.string().optional(),
+  // .nullish() : accepte string | null | undefined. L'infinite query envoie
+  // cursor=null au 1er appel (initialPageParam) → sans null, la validation
+  // échouait et la liste restait vide (le compteur, lui, n'a pas de curseur).
+  cursor: z.string().nullish(),
   pageSize: z.number().min(1).max(100).default(30),
 });
 
