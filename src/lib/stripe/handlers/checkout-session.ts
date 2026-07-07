@@ -172,7 +172,7 @@ export async function handleNewRegistration(
         country: "France",
         phone,
         email,
-        subscription_plan: plan.toLowerCase(),
+        subscription_plan: plan.toUpperCase(),
         subscription_status: "active", // ✅ ACTIF car paiement réussi
         max_vehicles: WEBHOOK_PLAN_LIMITS[plan]?.maxVehicles || 3,
         max_drivers: WEBHOOK_PLAN_LIMITS[plan]?.maxDrivers || 2,
@@ -412,7 +412,7 @@ export async function handleSubscriptionUpdate(
   await supabase
     .from("companies")
     .update({
-      subscription_plan: plan.toLowerCase(),
+      subscription_plan: plan.toUpperCase(),
       subscription_status: "active",
       max_vehicles: WEBHOOK_PLAN_LIMITS[plan]?.maxVehicles || 3,
       max_drivers: WEBHOOK_PLAN_LIMITS[plan]?.maxDrivers || 2,

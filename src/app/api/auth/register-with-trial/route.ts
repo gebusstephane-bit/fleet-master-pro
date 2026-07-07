@@ -138,7 +138,7 @@ async function handler(request: NextRequest) {
         country: 'France',
         phone: phone || null,
         email,
-        subscription_plan: trialPlan.toLowerCase(),
+        subscription_plan: trialPlan.toUpperCase(),
         subscription_status: 'trialing',
         max_vehicles: PLAN_LIMITS[trialPlan].vehicleLimit,
         max_drivers: PLAN_LIMITS[trialPlan].userLimit,

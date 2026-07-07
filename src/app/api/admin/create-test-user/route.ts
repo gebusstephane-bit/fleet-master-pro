@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
         country: 'France',
         phone: '',
         email: email,
-        subscription_plan: 'starter',
+        subscription_plan: 'ESSENTIAL',
         subscription_status: 'trialing',
         max_vehicles: 1,
         max_drivers: 1,

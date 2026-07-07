@@ -135,8 +135,8 @@ export const getUserWithCompany = cache(async function getUserWithCompany() {
       companies: companyData ? {
         id: companyData.id,
         name: companyData.name,
-        plan: companyData.subscription_plan || 'essential',
-        subscription_plan: companyData.subscription_plan || 'essential',
+        plan: companyData.subscription_plan || 'ESSENTIAL',
+        subscription_plan: companyData.subscription_plan || 'ESSENTIAL',
         max_vehicles: companyData.max_vehicles,
         max_drivers: companyData.max_drivers,
         logo_url: companyData.logo_url,
