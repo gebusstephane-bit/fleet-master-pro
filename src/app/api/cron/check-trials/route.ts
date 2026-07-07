@@ -183,14 +183,14 @@ export async function GET(request: NextRequest) {
         logger.debug(`[check-trials] Traitement company ${trial.company_id}...`);
 
         // 2a. Mettre à jour la subscription
+        // PAYWALL : l'essai gratuit expiré est BLOQUÉ (statut terminal), pas
+        // converti en plan actif gratuit. Le middleware redirige 'canceled'
+        // vers /pricing (accès /pricing + /settings/billing conservé pour payer).
         const { error: subError } = await supabase
           .from('subscriptions')
           .update({
-            plan: 'ESSENTIAL',
-            status: 'ACTIVE', // Plus en essai
-            vehicle_limit: ESSENTIAL_VEHICLE_LIMIT,
-            user_limit: ESSENTIAL_USER_LIMIT,
-            trial_ends_at: null, // Réinitialiser
+            status: 'CANCELED', // essai terminé, accès bloqué jusqu'à souscription
+            trial_ends_at: null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', trial.id);
@@ -199,14 +199,11 @@ export async function GET(request: NextRequest) {
           throw new Error(`Erreur mise à jour subscription: ${subError.message}`);
         }
 
-        // 2b. Mettre à jour la company
+        // 2b. Mettre à jour la company — statut bloquant (lu par le middleware)
         const { error: companyError } = await supabase
           .from('companies')
           .update({
-            subscription_plan: 'essential',
-            subscription_status: 'active',
-            max_vehicles: ESSENTIAL_VEHICLE_LIMIT,
-            max_drivers: ESSENTIAL_USER_LIMIT,
+            subscription_status: 'canceled',
             updated_at: new Date().toISOString(),
           })
           .eq('id', trial.company_id);
@@ -218,15 +215,13 @@ export async function GET(request: NextRequest) {
         // 2c. Logger l'activité
         await supabase.from('activity_logs').insert({
           company_id: trial.company_id,
-          action_type: 'trial_expired_downgrade',
+          action_type: 'trial_expired_blocked',
           entity_type: 'subscription',
           entity_id: trial.id,
-          description: `Essai expiré - Downgrade vers ESSENTIAL (${ESSENTIAL_VEHICLE_LIMIT} véhicule(s))`,
+          description: `Essai gratuit expiré — accès bloqué jusqu'à souscription`,
           metadata: {
             previous_plan: trial.plan,
-            new_plan: 'ESSENTIAL',
-            previous_vehicle_limit: trial.vehicle_limit,
-            new_vehicle_limit: ESSENTIAL_VEHICLE_LIMIT,
+            new_status: 'CANCELED',
             trial_ended_at: now,
           },
         });
@@ -237,7 +232,7 @@ export async function GET(request: NextRequest) {
           success: true,
         });
 
-        logger.info(`[check-trials] ✓ Company ${trial.company_id} downgradée avec succès`);
+        logger.info(`[check-trials] ✓ Company ${trial.company_id} essai expiré → accès bloqué`);
 
       } catch (error: any) {
         logger.error(`[check-trials] ✗ Erreur company ${trial.company_id}:`, error);
@@ -251,7 +246,7 @@ export async function GET(request: NextRequest) {
     // 3. ENVOYER LES NOTIFICATIONS (optionnel - peut être fait via email service)
     // Pour l'instant, on se contente de logger
     if (results.length > 0) {
-      logger.info(`[check-trials] ${results.length} downgrades effectués`);
+      logger.info(`[check-trials] ${results.length} essai(s) expiré(s) bloqué(s)`);
     }
 
     const duration = Date.now() - startTime;
