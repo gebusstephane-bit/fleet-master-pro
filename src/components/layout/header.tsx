@@ -3,21 +3,20 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Search,
-  Bell,
   Command,
   User,
   ChevronDown,
   LogOut,
   Settings,
-  Sun,
   Menu,
   LifeBuoy,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/command-palette";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./sidebar-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -140,7 +139,6 @@ interface HeaderProps {
 export function Header({ user }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const queryClient = useQueryClient();
-  const router = useRouter();
   const { isExpanded, setMobileOpen } = useSidebar();
 
   useEffect(() => {
@@ -219,26 +217,8 @@ export function Header({ user }: HeaderProps) {
             {/* Divider */}
             <div className="h-6 w-px bg-white/[0.08] mx-1" />
 
-            {/* Notifications */}
-            <button 
-              className="relative rounded-xl p-2.5 text-[#a1a1aa] transition-all hover:bg-cyan-500/10 hover:text-cyan-400 active:scale-95"
-              onClick={() => router.push('/alerts')}
-            >
-              <Bell className="h-5 w-5" strokeWidth={1.5} />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-[#0a0f1a]">
-                <span className="absolute inset-0 rounded-full bg-amber-500 animate-ping" />
-              </span>
-            </button>
-
-            {/* Theme Toggle */}
-            <button 
-              className="rounded-xl p-2.5 text-[#a1a1aa] transition-all hover:bg-cyan-500/10 hover:text-cyan-400 active:scale-95"
-              onClick={() => {
-                document.documentElement.classList.toggle('light');
-              }}
-            >
-              <Sun className="h-5 w-5" strokeWidth={1.5} />
-            </button>
+            {/* Notifications — vraie cloche branchée sur le compteur non-lues */}
+            <NotificationBell />
 
             {/* Divider */}
             <div className="h-6 w-px bg-white/[0.08] mx-1" />

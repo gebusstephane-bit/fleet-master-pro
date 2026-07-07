@@ -179,8 +179,8 @@ export function RegulatoryTimeline({ vehicle }: RegulatoryTimelineProps) {
           <div className="mt-4 pt-3 border-t border-slate-700">
             <p className="text-xs text-amber-400/80 flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" />
-              Certaines échéances requises ne sont pas configurées. 
-              <a href="#" className="underline hover:text-amber-300">Compléter la fiche</a>
+              Certaines échéances requises ne sont pas configurées.
+              <span className="font-medium">Complétez la fiche du véhicule (bouton Modifier).</span>
             </p>
           </div>
         )}

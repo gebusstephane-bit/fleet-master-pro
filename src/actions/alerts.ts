@@ -37,7 +37,7 @@ interface Alert {
   severity: 'critical' | 'high' | 'medium' | 'low';
   title: string;
   message: string;
-  status?: 'unread' | 'read';
+  is_read?: boolean;
 }
 
 // Créer une alerte avec toutes les échéances réglementaires
@@ -92,7 +92,7 @@ export const createAlert = authActionClient
             severity: expiry < now ? 'critical' : 'high',
             title: 'Assurance à renouveler',
             message: `Le véhicule ${vehicle.registration_number} a son assurance qui expire le ${expiry.toLocaleDateString('fr-FR')}`,
-            status: 'unread',
+            is_read: false,
           });
         }
       }
@@ -108,7 +108,7 @@ export const createAlert = authActionClient
             severity: expiry < now ? 'critical' : 'high',
             title: 'Contrôle technique à renouveler',
             message: `Le CT du véhicule ${vehicle.registration_number} expire le ${expiry.toLocaleDateString('fr-FR')}`,
-            status: 'unread',
+            is_read: false,
           });
         }
       }
@@ -124,7 +124,7 @@ export const createAlert = authActionClient
             severity: expiry < now ? 'critical' : 'high',
             title: 'Contrôle tachygraphe à renouveler',
             message: `Le contrôle tachygraphe du véhicule ${vehicle.registration_number} expire le ${expiry.toLocaleDateString('fr-FR')}`,
-            status: 'unread',
+            is_read: false,
           });
         }
       }
@@ -140,7 +140,7 @@ export const createAlert = authActionClient
             severity: expiry < now ? 'critical' : 'high',
             title: 'Certificat ATP à renouveler',
             message: `Le certificat ATP du véhicule frigorifique ${vehicle.registration_number} expire le ${expiry.toLocaleDateString('fr-FR')}`,
-            status: 'unread',
+            is_read: false,
           });
         }
       }
@@ -156,7 +156,7 @@ export const createAlert = authActionClient
             severity: maintenance < now ? 'critical' : 'medium',
             title: 'Maintenance préventive due',
             message: `La maintenance préventive du véhicule ${vehicle.registration_number} est prévue pour le ${maintenance.toLocaleDateString('fr-FR')}`,
-            status: 'unread',
+            is_read: false,
           });
         }
       }
@@ -174,7 +174,7 @@ export const createAlert = authActionClient
             severity: expiry < now ? 'critical' : 'high',
             title: 'Permis à renouveler',
             message: `Le permis de ${driver.first_name} ${driver.last_name} expire le ${expiry.toLocaleDateString('fr-FR')}`,
-            status: 'unread',
+            is_read: false,
           });
         }
       }

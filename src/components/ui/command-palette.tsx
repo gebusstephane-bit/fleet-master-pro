@@ -62,14 +62,6 @@ const commands: CommandItem[] = [
     shortcut: "I",
   },
   {
-    id: "routes",
-    title: "Tournées",
-    subtitle: "Planifier les trajets",
-    icon: Route,
-    href: "/routes",
-    shortcut: "T",
-  },
-  {
     id: "agenda",
     title: "Agenda",
     subtitle: "Calendrier des interventions",
@@ -84,14 +76,6 @@ const commands: CommandItem[] = [
     icon: Bell,
     href: "/alerts",
     shortcut: "L",
-  },
-  {
-    id: "documents",
-    title: "Documents",
-    subtitle: "Gestion documentaire",
-    icon: FileText,
-    href: "/documents",
-    shortcut: "D",
   },
   {
     id: "dashboard",

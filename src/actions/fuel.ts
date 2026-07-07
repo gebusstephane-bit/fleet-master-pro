@@ -214,6 +214,31 @@ export const dismissFuelAnomaly = authActionClient
     return { success: true };
   });
 
+// Supprimer un plein de carburant
+export const deleteFuelRecord = authActionClient
+  .schema(idSchema)
+  .action(async ({ parsedInput, ctx }) => {
+    // Seuls ADMIN et AGENT_DE_PARC peuvent supprimer un plein
+    if (ctx.user.role !== 'ADMIN' && ctx.user.role !== 'AGENT_DE_PARC') {
+      throw new Error('Action non autorisée');
+    }
+
+    const supabase = await createClient();
+
+    // RLS scope par company ; on supprime par id
+    const { error } = await supabase
+      .from('fuel_records')
+      .delete()
+      .eq('id', parsedInput.id);
+
+    if (error) {
+      throw new Error(`Erreur suppression: ${error.message}`);
+    }
+
+    revalidatePath('/fuel');
+    return { success: true };
+  });
+
 // Calculer les stats carburant
 export const getFuelStats = authActionClient
   .action(async ({ ctx }) => {

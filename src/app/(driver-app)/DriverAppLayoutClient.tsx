@@ -194,7 +194,7 @@ export function DriverAppLayoutClient({
       const { count } = await supabase
         .from('notifications')
         .select('*', { count: 'exact', head: true })
-        .eq('read', false)
+        .is('read_at', null) // convention canonique (markAsRead ne met à jour que read_at)
         .eq('user_id', driver?.userId || '');
       
       setUnreadAlerts(count || 0);

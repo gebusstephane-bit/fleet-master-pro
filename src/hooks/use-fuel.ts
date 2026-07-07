@@ -9,6 +9,7 @@ import {
   getFuelStats,
   getFuelAnomalies,
   dismissFuelAnomaly,
+  deleteFuelRecord,
 } from '@/actions/fuel';
 
 export const fuelKeys = {
@@ -158,6 +159,25 @@ export function useDismissFuelAnomaly() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fuelKeys.anomalies() });
+    },
+    onError: (error: Error) => toast.error(getReadableError(error)),
+  });
+}
+
+export function useDeleteFuelRecord() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const result = await deleteFuelRecord({ id });
+      if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) throw new Error('Données invalides');
+      return result?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fuelKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: fuelKeys.stats() });
+      toast.success('Plein supprimé');
     },
     onError: (error: Error) => toast.error(getReadableError(error)),
   });

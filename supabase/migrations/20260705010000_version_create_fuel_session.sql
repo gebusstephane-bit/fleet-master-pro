@@ -6,10 +6,9 @@
 -- reconstructible. On les versionne ici À L'IDENTIQUE de la prod (dump du
 -- 2026-07-05), en CREATE OR REPLACE (idempotent, sans changement fonctionnel).
 --
--- ⚠️ Bug connu (surcharge 5-args) : le check `status = 'active'` (minuscule)
---    ne matche pas la convention app 'ACTIF' → le RPC renvoie VEHICLE_NOT_FOUND
---    et l'app bascule sur le fallback createFuelSessionDirect. Laissé FIDÈLE à
---    la prod ici ; correction à traiter séparément (polish).
+-- Note : le check status a été corrigé 'active' → 'ACTIF' (migration
+--    20260705030000) pour que le RPC redevienne le chemin principal du QR
+--    multi-carburants. Version ci-dessous alignée sur la prod corrigée.
 -- ============================================
 
 -- Surcharge 1 : création d'une session (fuel_sessions)
@@ -91,7 +90,7 @@ BEGIN
   SELECT qr_code_data::text, company_id, COALESCE(mileage, 0)
   INTO v_vehicle_token, v_company_id, v_vehicle_current_mileage
   FROM vehicles
-  WHERE id = p_vehicle_id AND status = 'active';
+  WHERE id = p_vehicle_id AND status = 'ACTIF';
 
   IF v_vehicle_token IS NULL THEN
     RETURN jsonb_build_object('success', false, 'error', 'Vehicule non trouve', 'code', 'VEHICLE_NOT_FOUND');

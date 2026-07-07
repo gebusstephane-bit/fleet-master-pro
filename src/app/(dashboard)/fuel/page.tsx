@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Fuel, Plus, Filter, MoreHorizontal } from 'lucide-react';
-import { useFuelRecords, useFuelStats, useCreateFuelRecord, useFuelAnomalies, useDismissFuelAnomaly } from '@/hooks/use-fuel';
+import { useFuelRecords, useFuelStats, useCreateFuelRecord, useFuelAnomalies, useDismissFuelAnomaly, useDeleteFuelRecord } from '@/hooks/use-fuel';
 import { useVehicles } from '@/hooks/use-vehicles';
 import { useUser } from '@/hooks/use-user';
 import { FuelForm } from '@/components/fuel/fuel-form';
@@ -29,6 +29,7 @@ export default function FuelPage() {
   const dismissMutation = useDismissFuelAnomaly();
   const { data: vehiclesData } = useVehicles();
   const createMutation = useCreateFuelRecord();
+  const deleteMutation = useDeleteFuelRecord();
   const { data: user } = useUser();
 
   // États locaux
@@ -108,8 +109,8 @@ export default function FuelPage() {
   };
 
   const handleDelete = async (id: string) => {
-    // TODO: Implémenter la suppression
-    toast.info('Fonctionnalité de suppression à implémenter');
+    if (!window.confirm('Supprimer ce plein ? Cette action est irréversible.')) return;
+    deleteMutation.mutate(id);
   };
 
   // Permissions
