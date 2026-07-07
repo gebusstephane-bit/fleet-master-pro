@@ -695,18 +695,27 @@ export async function middleware(request: NextRequest) {
     companyStatus = null;
 
     if (companyId) {
-      const { data: company } = await supabase
-        .from("companies")
-        .select(
-          "subscription_status, subscription_plan, trial_ends_at, onboarding_completed"
-        )
-        .eq("id", companyId)
-        .single();
+      // ⚠️ `trial_ends_at` n'existe PAS sur `companies` (uniquement sur
+      // `subscriptions`). L'inclure dans le select faisait échouer la requête
+      // entière → company null → AUCUN blocage d'abonnement. On lit donc
+      // companies (statut/onboarding) et subscriptions (trial_ends_at) séparément.
+      const [{ data: company }, { data: sub }] = await Promise.all([
+        supabase
+          .from("companies")
+          .select("subscription_status, subscription_plan, onboarding_completed")
+          .eq("id", companyId)
+          .single(),
+        supabase
+          .from("subscriptions")
+          .select("trial_ends_at")
+          .eq("company_id", companyId)
+          .maybeSingle(),
+      ]);
 
       if (company) {
         companyStatus = {
           subscription_status: company.subscription_status,
-          trial_ends_at: company.trial_ends_at,
+          trial_ends_at: (sub as { trial_ends_at: string | null } | null)?.trial_ends_at ?? null,
           onboarding_completed: company.onboarding_completed,
         };
       }
